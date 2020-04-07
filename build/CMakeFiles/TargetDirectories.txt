@@ -1,0 +1,3 @@
+/run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/build/CMakeFiles/rebuild_cache.dir
+/run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/build/CMakeFiles/Interpreter.dir
+/run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/build/CMakeFiles/edit_cache.dir
