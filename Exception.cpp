@@ -1,33 +1,81 @@
+/*
+ * @Author: your name
+ * @Date: 1970-01-01 08:00:00
+ * @LastEditTime: 2020-04-09 20:49:13
+ * @Description: file content
+ */
 #include "Exception.h"
 
 namespace INTERPRETER
 {
-    SyntaxException::SyntaxException()
+    /*******************************************************
+     *                    base exception                   *
+     *******************************************************/
+    Exception::Exception()
     {
+        this->str = "Exception";
+        this->eType = this->str;
+    }
+
+    Exception::Exception(string s)
+    {
+        Exception();
+        this->str = this->eType + s + " ";
+    }
+
+    Exception::~Exception()
+    {
+    }
+
+    void Exception::setMsg(string s)
+    {
+        this->str = this->eType + ": "+ s + " ";
+    }
+
+    const char* Exception::what()
+    {
+        return this->str.c_str();
     }
     
-    SyntaxException::SyntaxException(string str)
+    /*******************************************************
+     *                  derived exception                  *
+     *******************************************************/
+    SyntaxException::SyntaxException()
     {
-        this->str = str;
+        this->str = "SyntaxException";
+        this->eType = this->str;
     }
 
-    SyntaxException::SyntaxException(string str,int index)
+    MathException::MathException()
     {
-        this->str = str;
-        this->line = index;
+        this->str = "MathException";
+        this->eType = this->str;
     }
 
-    SyntaxException::~SyntaxException()
+    /*******************************************************
+     *                  exception factory                  *
+     *******************************************************/
+
+    const Exception ExceptionFactory(string e)
     {
+        if(e == "SyntaxException")
+        {
+            return SyntaxException();
+        }
+        else if(e == "MathException")
+        {
+            return MathException();
+        }
+        return Exception();
     }
 
-    string SyntaxException::__str()
-    {
-        return this->str;
-    }
 
-    int SyntaxException::__line()
+    const Exception ExceptionFactory(string e,string c)
     {
-        return this->line;
+        Exception exception = ExceptionFactory(e);
+        
+        exception.setMsg(c);
+
+        return exception;
     }
 }

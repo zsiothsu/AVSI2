@@ -1,3 +1,9 @@
+/*
+ * @Author: your name
+ * @Date: 1970-01-01 08:00:00
+ * @LastEditTime: 2020-04-09 20:49:21
+ * @Description: file content
+ */
 #include "Token.h"
 
 namespace INTERPRETER
@@ -69,13 +75,18 @@ namespace INTERPRETER
         {
         case END:
             return "EOF";
-            break;
         case NONE:
             return "NONE";
         case INT:
             return "INT";
-        case OPT:
-            return "OPT";
+        case ADD:
+            return "ADD";
+        case DEC:
+            return "DEC";
+        case MUL:
+            return "MUL";
+        case DIV:
+            return "DIV";
         default:
             return "<NOT A TYPE>";
             break;

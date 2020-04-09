@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-04-06
- * @LastEditTime: 2020-04-09 14:13:56
+ * @LastEditTime: 2020-04-09 20:49:28
  * @Description: some methods for Interpreter class
  */
 
@@ -83,13 +83,27 @@ namespace INTERPRETER
             {
                 return Token(INT,integer());
             }
-            if(this->currentChar == '+' || \
-               this->currentChar == '-')
+            if(this->currentChar == '+')
             {
-                char opt = this->currentChar;
                 advance();
-                return Token(OPT,opt);
+                return Token(ADD,'+');
             }
+            if(this->currentChar == '-')
+            {
+                advance();
+                return Token(DEC,'-');
+            }
+            if(this->currentChar == '*')
+            {
+                advance();
+                return Token(MUL,'*');
+            }
+            if(this->currentChar == '/')
+            {
+                advance();
+                return Token(DIV,'/');
+            }
+
             return Token::empty();
         }
         return Token(END,EOF);
@@ -127,37 +141,6 @@ namespace INTERPRETER
      *                parser / interpreter                 *
      *******************************************************/
     /**
-     * @description:    implement an arithmetic expression for integer
-     * @param:          left: left value
-     * @param:          right: right value
-     * @param:          opt: operator
-     * @return:         result of arithmetic expression
-     * @throw:          SyntaxException
-     */
-    int Interpreter::calc(int left,int right,Token opt)
-    {
-        char tmp = opt.getValue();
-        switch (tmp)
-        {
-        case '+':
-            return left + right;
-            break;
-        case '-':
-            return left - right;
-            break;
-        case '*':
-            return left * right;
-            break;
-        case '/':
-            return left / right;
-            break;
-        default:
-            break;
-        }
-        throw SyntaxException("invalid syntax");
-    }
-
-    /**
      * @description:    compare the current token type with the passed token
      *                  type and if they match then "eat" the current token
      *                  and assign the next token to the self.current_token,
@@ -174,7 +157,7 @@ namespace INTERPRETER
         }
         else
         {
-            throw SyntaxException("invalid syntax");
+            throw ExceptionFactory("SyntaxException","invalid syntax");
         }
     }
 
@@ -183,41 +166,83 @@ namespace INTERPRETER
      * @param:          None
      * @return:         result of arithmetic expression
      * @throw:          SyntaxException
-     * @grammar:        expr   : factor ((ADD | DEC) factor)*
-     *                  factor : INTEGER
+     * @grammar:        expr: term ((ADD | DEC) term)*
+     *                  term: integer;
      */
     int Interpreter::expr()
     {
-        try{
+        try
+        {
             this->currentToken = getNextToken();
-            int res = factor();
-
-            while(this->currentToken.getType() == OPT)
+            int res = term();
+            while(this->currentToken.getType() == ADD || \
+                  this->currentToken.getType() == DEC)
             {
                 Token opt = this->currentToken;
-                eat(OPT);
-                int right = factor();
-
-                res = calc(res,right,opt);
+                if(opt.getValue() == '+')
+                {
+                    eat(ADD);
+                    res = res + term();
+                }
+                else if(opt.getValue() == '-')
+                {
+                    eat(DEC);
+                    res = res - term();
+                }
+                else throw ExceptionFactory("SyntaxException","invalid syntax");;
             }
-
-            return res;
+            return res; 
         }
-        catch(SyntaxException e)
+        catch(Exception& e)
         {
             throw e;
         }
     }
 
     /**
-     * @description:    return an INT token value
-     * @param:          None
+     * @description:    return an integer factor
+     * @param:          none
      * @return:         integer
+     * @grammar:        integer
      */
     int Interpreter::factor()
     {
         Token token = this->currentToken;
         eat(INT);
         return token.getValue();
+    }
+
+    /**
+     * @description:    return MUL / DIV result 
+     * @param:          None
+     * @return:         integer
+     * @grammar:        term: factor ((MUL | DIV) factor)*
+     *                  factor: integer
+     */
+    int Interpreter::term()
+    {
+        int res = factor();
+        while(this->currentToken.getType() == MUL || \
+              this->currentToken.getType() == DIV)
+        {
+            Token opt = this->currentToken;
+            if(opt.getValue() == '*')
+            {
+                eat(MUL);
+                res = res * factor();
+            }
+            else if(opt.getValue() == '/')
+            {
+                eat(DIV);
+                int right = factor();
+                if(right != 0)
+                {
+                    res = res / right;
+                }
+                else throw ExceptionFactory("MathException","division by zero");
+            }
+            else throw ExceptionFactory("SyntaxException","invalid syntax");;
+        }
+        return res;
     }
 }

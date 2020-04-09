@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-04-09 14:09:52
+ * @LastEditTime: 2020-04-09 15:53:10
  * @Description: file content
  */
 #ifndef ___INTERPRETER_H___
@@ -32,10 +32,10 @@ namespace INTERPRETER
         int integer();
         void skipWhiteSpace();
 
-        int calc(int left,int right,Token opt);
         void eat(Type type);
         int expr();
         int factor();
+        int term();
     };
 }
 

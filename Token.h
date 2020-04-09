@@ -1,3 +1,9 @@
+/*
+ * @Author: your name
+ * @Date: 1970-01-01 08:00:00
+ * @LastEditTime: 2020-04-09 20:49:01
+ * @Description: file content
+ */
 #ifndef ___TOKEN_H___
 #define ___TOKEN_H___
 
@@ -9,13 +15,15 @@
 namespace INTERPRETER
 {
     using namespace std;
-
     typedef enum
     {
         END = EOF,
         NONE = 0,
         INT = 1,
-        OPT = 2
+        ADD = 2,
+        DEC = 3,
+        MUL = 4,
+        DIV = 5
     } Type;
     
     typedef char opt;
