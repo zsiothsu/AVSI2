@@ -2,6 +2,9 @@
 
 namespace INTERPRETER
 {
+    /*******************************************************
+     *                    constructor                      *
+     *******************************************************/
     Token::Token()
     {
     }
@@ -22,6 +25,17 @@ namespace INTERPRETER
     {
     }
 
+    /*******************************************************
+     *                  static method                      *
+     *******************************************************/
+    Token Token::empty()
+    {
+        return emptyToken;
+    }
+
+    /*******************************************************
+     *                      method                         *
+     *******************************************************/
     Type Token::getType()
     {
         return this->type;
@@ -40,6 +54,31 @@ namespace INTERPRETER
         else
         {
             return (int)this->valueChar;
+        }
+    }
+
+    string Token::__str()
+    {
+        string str = "Token(" + typeName(this->type) + "," + to_string(getValue()) + ")";
+        return str;
+    }
+
+    string typeName(Type type)
+    {
+        switch (type)
+        {
+        case END:
+            return "EOF";
+            break;
+        case NONE:
+            return "NONE";
+        case INT:
+            return "INT";
+        case OPT:
+            return "OPT";
+        default:
+            return "<NOT A TYPE>";
+            break;
         }
     }
 }

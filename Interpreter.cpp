@@ -1,37 +1,143 @@
+/*
+ * @Author: Chipen Hsiao
+ * @Date: 2020-04-06
+ * @LastEditTime: 2020-04-09 14:13:56
+ * @Description: some methods for Interpreter class
+ */
+
 #include "Interpreter.h"
 
 namespace INTERPRETER
 {
+    /*******************************************************
+     *                    constructor                      *
+     *******************************************************/
+    /**
+     * @description:    default constructor
+     * @param:          None
+     * @return:         None
+     */
     Interpreter::Interpreter()
     {
     }
 
+    /**
+     * @description:    default destructor
+     * @param:          None
+     * @return:         None
+     */
     Interpreter::~Interpreter()
     {
     }
 
+    /**
+     * @description:    to initialize a Interpreter.
+     * @param:          {string}line:command to be executed
+     * @return:         None
+     */
     Interpreter::Interpreter(string line)
     {
         this->line = line;
         this->cur = 0;
+        this->currentChar = this->line[0];
+        this->currentToken = Token::empty();
     }
 
-    void Interpreter::eat(Type type)
+    /*******************************************************
+     *                  lexical analyzer                   *
+     *******************************************************/
+    /**
+     * @description:    advance the "cur" pointer and set the "currentChar" variable
+     * @param:          None
+     * @return:         None
+     */
+    void Interpreter::advance()
     {
-        if(type == currentToken.getType())
+        this->cur += 1;
+        if(this->cur < this->line.length())
         {
-            this->currentToken = getNextToken();
+            this->currentChar=this->line[this->cur];
         }
         else
         {
-            throw SyntaxException("invalid syntax");
+            this->currentChar = EOF;
         }
-        
     }
 
-    int Interpreter::calc(int left,int right,char opt)
+    /**
+     * @description:    a lexical analyzer(scanner,tokenizer)
+     *                  breaking a sentence apart into tokens.
+     * @param:          None
+     * @return:         a token for parser
+     */
+    Token Interpreter::getNextToken()
     {
-        switch (opt)
+        while(this->currentChar != EOF)
+        {
+            if(this->currentChar == ' ')
+            {
+                skipWhiteSpace();
+                continue;
+            }
+            if(isdigit(this->currentChar))
+            {
+                return Token(INT,integer());
+            }
+            if(this->currentChar == '+' || \
+               this->currentChar == '-')
+            {
+                char opt = this->currentChar;
+                advance();
+                return Token(OPT,opt);
+            }
+            return Token::empty();
+        }
+        return Token(END,EOF);
+    }
+
+    /**
+     * @description:    extract a (multidigit) integer from the sentence
+     * @param:          None
+     * @return:         an integer
+     */
+    int Interpreter::integer()
+    {
+        int num = 0;
+        while(isdigit(this->currentChar))
+        {
+            num = num * 10 + this->currentChar - '0';
+            advance();
+        }
+        return num;
+    }
+
+    /**
+     * @description:    skip white space
+     * @param:          None
+     * @return:         None
+     */
+    void Interpreter::skipWhiteSpace()
+    {
+        while((this->currentChar != EOF) && (this->currentChar == ' '))
+        {
+            advance();
+        }
+    }
+    /*******************************************************
+     *                parser / interpreter                 *
+     *******************************************************/
+    /**
+     * @description:    implement an arithmetic expression for integer
+     * @param:          left: left value
+     * @param:          right: right value
+     * @param:          opt: operator
+     * @return:         result of arithmetic expression
+     * @throw:          SyntaxException
+     */
+    int Interpreter::calc(int left,int right,Token opt)
+    {
+        char tmp = opt.getValue();
+        switch (tmp)
         {
         case '+':
             return left + right;
@@ -51,21 +157,51 @@ namespace INTERPRETER
         throw SyntaxException("invalid syntax");
     }
 
+    /**
+     * @description:    compare the current token type with the passed token
+     *                  type and if they match then "eat" the current token
+     *                  and assign the next token to the self.current_token,
+     *                  otherwise raise an exception.
+     * @param:          type: token type to be compared with current token
+     * @return:         None
+     * @throw:          SyntaxException
+     */
+    void Interpreter::eat(Type type)
+    {
+        if(type == currentToken.getType())
+        {
+            this->currentToken = getNextToken();
+        }
+        else
+        {
+            throw SyntaxException("invalid syntax");
+        }
+    }
+
+    /**
+     * @description:    arithmetic expression parser / interpreter.
+     * @param:          None
+     * @return:         result of arithmetic expression
+     * @throw:          SyntaxException
+     * @grammar:        expr   : factor ((ADD | DEC) factor)*
+     *                  factor : INTEGER
+     */
     int Interpreter::expr()
     {
         try{
             this->currentToken = getNextToken();
+            int res = factor();
 
-            int left = currentToken.getValue();
-            eat(INT);
+            while(this->currentToken.getType() == OPT)
+            {
+                Token opt = this->currentToken;
+                eat(OPT);
+                int right = factor();
 
-            opt opt = currentToken.getValue();
-            eat(OPT);
+                res = calc(res,right,opt);
+            }
 
-            int right = currentToken.getValue();
-            eat(INT);
-
-            return calc(left,right,opt);
+            return res;
         }
         catch(SyntaxException e)
         {
@@ -73,60 +209,15 @@ namespace INTERPRETER
         }
     }
 
-    Token Interpreter::getNextToken()
+    /**
+     * @description:    return an INT token value
+     * @param:          None
+     * @return:         integer
+     */
+    int Interpreter::factor()
     {
-        try
-        {
-            char currentChar = this->line[cur];
-
-            while(currentChar == ' ')
-            {
-                currentChar = this->line[++cur];
-            }
-
-            if(isdigit(currentChar))
-            {
-                int num = 0;
-
-                while(isdigit(currentChar))
-                {
-                    num = num * 10 + currentChar - '0';
-                    if(this->cur < this->line.length())
-                        currentChar = this->line[++cur];
-                    else break;
-                }
-
-                return Token(INT,num);
-            }
-            else
-            {
-                Token res;
-                switch (currentChar)
-                {
-                case '+':
-                    res = Token(OPT,'+');
-                    break;
-                case '-':
-                    res = Token(OPT,'-');
-                    break;
-                case '*':
-                    res = Token(OPT,'*');
-                    break;
-                case '/':
-                    res = Token(OPT,'/');
-                    break;
-                default:
-                    break;
-                }
-                this->cur++;
-                return res;
-            }
-
-            throw SyntaxException("invalid syntax");
-        }
-        catch(out_of_range e)
-        {
-            return Token(END,-1);
-        }
+        Token token = this->currentToken;
+        eat(INT);
+        return token.getValue();
     }
 }

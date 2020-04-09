@@ -12,8 +12,8 @@ namespace INTERPRETER
 
     typedef enum
     {
-        END = -1,
-        ERR = 0,
+        END = EOF,
+        NONE = 0,
         INT = 1,
         OPT = 2
     } Type;
@@ -32,10 +32,16 @@ namespace INTERPRETER
         Token(Type type,char var);
         ~Token();
 
+        static Token empty();
+
         Type getType();
         int getValue();
+        string __str();
     };
     
+    const static Token emptyToken(NONE,0);
+
+    string typeName(Type type);
 }
 
 #endif
