@@ -1,1 +1,1 @@
-/usr/bin/c++   -O0 -Wall -g -ggdb   CMakeFiles/Interpreter.dir/main.cpp.o CMakeFiles/Interpreter.dir/Token.cpp.o CMakeFiles/Interpreter.dir/Exception.cpp.o CMakeFiles/Interpreter.dir/Interpreter.cpp.o  -o Interpreter 
+/usr/bin/c++  -g  -rdynamic CMakeFiles/Interpreter.dir/main.cpp.o  -o Interpreter 

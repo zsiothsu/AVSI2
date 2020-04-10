@@ -6,10 +6,6 @@
 
 #IncludeRegexTransform: 
 
-/run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/Exception.cpp
-Exception.h
-/run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/Exception.h
-
 /run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/Exception.h
 string
 -
@@ -26,10 +22,6 @@ Token.h
 Exception.h
 /run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/Exception.h
 
-/run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/Token.cpp
-Token.h
-/run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/Token.h
-
 /run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/Token.h
 iostream
 -
@@ -39,8 +31,4 @@ sstream
 -
 typeinfo
 -
-
-/run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/main.cpp
-Interpreter.h
-/run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/Interpreter.h
 

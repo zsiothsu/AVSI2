@@ -1,16 +1,15 @@
-#the file is main makelists for the whole project
+cmake_minimum_required(VERSION 3.0.0)
+project(InterpreterTest VERSION 0.1.0)
 
-#specify minimum version of cmake
-cmake_minimum_required(VERSION 3.5)
+include(CTest)
+enable_testing()
 
-#project name
-project(Interpreter)
+add_executable(InterpreterTest main.cpp)
 
-SET(CMAKE_BUILD_TYPE "Debug")
+add_subdirectory(./src)
 
-SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
+target_link_libraries(${PROJECT_NAME} Interpreter)
 
-#specify executable file name
-add_executable(${PROJECT_NAME} ./main.cpp ./Token.cpp ./Exception.cpp ./Interpreter.cpp)
-
-
+set(CPACK_PROJECT_NAME ${PROJECT_NAME})
+set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
+include(CPack)

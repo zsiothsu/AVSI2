@@ -1,0 +1,1 @@
+/usr/bin/c++  -g  -rdynamic CMakeFiles/InterpreterTest.dir/main.cpp.o  -o InterpreterTest  src/libInterpreter.a 

@@ -87,62 +87,17 @@ CMakeFiles/Interpreter.dir/main.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Interpreter.dir/main.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/main.cpp -o CMakeFiles/Interpreter.dir/main.cpp.s
 
-CMakeFiles/Interpreter.dir/Token.cpp.o: CMakeFiles/Interpreter.dir/flags.make
-CMakeFiles/Interpreter.dir/Token.cpp.o: ../Token.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/Interpreter.dir/Token.cpp.o"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Interpreter.dir/Token.cpp.o -c /run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/Token.cpp
-
-CMakeFiles/Interpreter.dir/Token.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Interpreter.dir/Token.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/Token.cpp > CMakeFiles/Interpreter.dir/Token.cpp.i
-
-CMakeFiles/Interpreter.dir/Token.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Interpreter.dir/Token.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/Token.cpp -o CMakeFiles/Interpreter.dir/Token.cpp.s
-
-CMakeFiles/Interpreter.dir/Exception.cpp.o: CMakeFiles/Interpreter.dir/flags.make
-CMakeFiles/Interpreter.dir/Exception.cpp.o: ../Exception.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/Interpreter.dir/Exception.cpp.o"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Interpreter.dir/Exception.cpp.o -c /run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/Exception.cpp
-
-CMakeFiles/Interpreter.dir/Exception.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Interpreter.dir/Exception.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/Exception.cpp > CMakeFiles/Interpreter.dir/Exception.cpp.i
-
-CMakeFiles/Interpreter.dir/Exception.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Interpreter.dir/Exception.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/Exception.cpp -o CMakeFiles/Interpreter.dir/Exception.cpp.s
-
-CMakeFiles/Interpreter.dir/Interpreter.cpp.o: CMakeFiles/Interpreter.dir/flags.make
-CMakeFiles/Interpreter.dir/Interpreter.cpp.o: ../Interpreter.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/Interpreter.dir/Interpreter.cpp.o"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Interpreter.dir/Interpreter.cpp.o -c /run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/Interpreter.cpp
-
-CMakeFiles/Interpreter.dir/Interpreter.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Interpreter.dir/Interpreter.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/Interpreter.cpp > CMakeFiles/Interpreter.dir/Interpreter.cpp.i
-
-CMakeFiles/Interpreter.dir/Interpreter.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Interpreter.dir/Interpreter.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/Interpreter.cpp -o CMakeFiles/Interpreter.dir/Interpreter.cpp.s
-
 # Object files for target Interpreter
 Interpreter_OBJECTS = \
-"CMakeFiles/Interpreter.dir/main.cpp.o" \
-"CMakeFiles/Interpreter.dir/Token.cpp.o" \
-"CMakeFiles/Interpreter.dir/Exception.cpp.o" \
-"CMakeFiles/Interpreter.dir/Interpreter.cpp.o"
+"CMakeFiles/Interpreter.dir/main.cpp.o"
 
 # External object files for target Interpreter
 Interpreter_EXTERNAL_OBJECTS =
 
 Interpreter: CMakeFiles/Interpreter.dir/main.cpp.o
-Interpreter: CMakeFiles/Interpreter.dir/Token.cpp.o
-Interpreter: CMakeFiles/Interpreter.dir/Exception.cpp.o
-Interpreter: CMakeFiles/Interpreter.dir/Interpreter.cpp.o
 Interpreter: CMakeFiles/Interpreter.dir/build.make
 Interpreter: CMakeFiles/Interpreter.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CXX executable Interpreter"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/run/media/chipen/数据/Pro_TEST/Pro_TEST_Cpp/Interpreter/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX executable Interpreter"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/Interpreter.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

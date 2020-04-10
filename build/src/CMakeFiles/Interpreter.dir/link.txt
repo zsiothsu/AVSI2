@@ -1,0 +1,2 @@
+/usr/bin/ar qc libInterpreter.a  CMakeFiles/Interpreter.dir/AST.cpp.o CMakeFiles/Interpreter.dir/Data.cpp.o CMakeFiles/Interpreter.dir/Exception.cpp.o CMakeFiles/Interpreter.dir/Interpreter.cpp.o CMakeFiles/Interpreter.dir/Lexer.cpp.o CMakeFiles/Interpreter.dir/Parser.cpp.o CMakeFiles/Interpreter.dir/Token.cpp.o
+/usr/bin/ranlib libInterpreter.a

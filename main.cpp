@@ -1,10 +1,11 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-04-09 20:42:17
+ * @LastEditTime: 2020-04-10 21:16:38
  * @Description: file content
  */
-#include "Interpreter.h"
+#include "./inc/Interpreter.h"
+
 using namespace std;
 using namespace INTERPRETER;
 
@@ -21,14 +22,12 @@ int main(void)
 
         try
         {
-            Interpreter action = Interpreter(line);
-            cout << action.expr() << endl;
+            // Interpreter
         }
         catch(Exception& e)
         {
             cout << e.what() << "\t at line " << cnt << endl;
             cin.clear();
-            //cin.ignore();
         }
 
         cnt++;
