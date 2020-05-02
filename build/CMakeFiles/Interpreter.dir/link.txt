@@ -1,1 +1,0 @@
-/usr/bin/c++  -g  -rdynamic CMakeFiles/Interpreter.dir/main.cpp.o  -o Interpreter 

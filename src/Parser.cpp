@@ -1,12 +1,12 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-04-10 21:02:29
+ * @LastEditTime: 2020-05-01 19:26:51
  * @Description: file content
  */
 #include "../inc/Parser.h"
 
-namespace INTERPRETER
+namespace AVSI
 {
     /*******************************************************
      *                    constructor                      *
@@ -15,10 +15,10 @@ namespace INTERPRETER
     {
     }
 
-    Parser::Parser(Lexer& lexer)
+    Parser::Parser(Lexer* lexer)
     {
-        this->lexer = &lexer;
-        this->currentToken = lexer.getNextToken();
+        this->lexer = lexer;
+        this->currentToken = lexer->getNextToken();
     }
 
     Parser::~Parser()
@@ -37,10 +37,12 @@ namespace INTERPRETER
      * @return:         None
      * @throw:          SyntaxException
      */
-    void Parser::eat(CharType type)
+    void Parser::eat(TokenType type)
     {
         if(type == currentToken.getType())
         {
+            if(currentToken.getType() == LPAREN) this->parenCnt++;
+            if(currentToken.getType() == RPAREN) this->parenCnt--;
             this->currentToken = this->lexer->getNextToken();
         }
         else
@@ -49,13 +51,21 @@ namespace INTERPRETER
         }
     }
 
+    AST* Parser::assignment()
+    {
+        AST* left = variable();
+        eat(ASSIGN);
+        AST* right = expr();
+        return new Assign(left,right);
+    }
+
     /**
      * @description:    arithmetic expression parser / interpreter.
      * @param:          None
      * @return:         result of arithmetic expression
      * @throw:          SyntaxException
      * @grammar:        expr: term ((ADD | DEC) term)*
-     *                  term: integer;
+     *                  term: Integer;
      */
     AST* Parser::expr(void)
     {
@@ -66,12 +76,12 @@ namespace INTERPRETER
                   this->currentToken.getType() == DEC)
             {
                 Token opt = this->currentToken;
-                if(opt.getValue() == '+')
+                if(opt.getChar() == '+')
                 {
                     eat(ADD);
                     res = new BinOp(res,opt,term());
                 }
-                else if(opt.getValue() == '-')
+                else if(opt.getChar() == '-')
                 {
                     eat(DEC);
                     res = new BinOp(res,opt,term());
@@ -87,35 +97,32 @@ namespace INTERPRETER
     }
 
     /**
-     * @description:    return an integer factor
+     * @description:    return an Integer factor
      * @param:          none
      * @return:         factor
-     * @grammar:        integer | LPAREN
+     * @grammar:        Integer | LPAREN
      */
-    //TODO: solve throwed Exception when input "()" without expr
     AST* Parser::factor(void)
     {
-        Token token = this->currentToken;
-        if(token.getType() == INT)
+        try
         {
-            eat(INT);
-            return new Num(token);
+            Token token = this->currentToken;
+            if(token.getType() == INT || token.getType() == FLT) { eat(token.getType()); return new Num(token); }
+            if(token.getType() == ADD) { eat(ADD); return new UnaryOp(new Num(Token(INT,0)),token,factor()); }
+            if(token.getType() == DEC) { eat(DEC); return new UnaryOp(new Num(Token(INT,0)),token,factor()); }
+            if(token.getType() == VAR) { return variable(); }
+            if(token.getType() == LPAREN) { eat(LPAREN); AST* res = expr(); eat(RPAREN); return res; }
+            if(token.getType() == RPAREN)
+            {
+                if(this->parenCnt <= 0) throw ExceptionFactory("SyntaxException","unmatched ')'");
+                return new NoneAST();
+            }
+            else throw ExceptionFactory("SyntaxException","invalid syntax");
         }
-        else if(token.getType() == LPAREN)
+        catch(Exception& e)
         {
-            try
-            {
-                eat(LPAREN);
-                AST* res = expr();
-                eat(RPAREN);
-                return res;   
-            }
-            catch(Exception& e)
-            {
-                throw e;   
-            }
+            throw e;
         }
-        else throw ExceptionFactory("SyntaxException","invalid syntax");
     }
 
     /**
@@ -140,8 +147,8 @@ namespace INTERPRETER
      * @param:          None
      * @return:         term for expr
      * @throw           SyntaxException
-     * @grammar:        term: factor ((MUL | DIV) factor)*
-     *                  factor: integer
+     * @c:        term: factor ((MUL | DIV) factor)*
+     *                  factor: Integer
      */
     AST* Parser::term(void)
     {
@@ -152,12 +159,12 @@ namespace INTERPRETER
                   this->currentToken.getType() == DIV)
             {
                 Token opt = this->currentToken;
-                if(opt.getValue() == '*')
+                if(opt.getChar() == '*')
                 {
                     eat(MUL);
                     res = new BinOp(res,opt,factor());
                 }
-                else if(opt.getValue() == '/')
+                else if(opt.getChar() == '/')
                 {
                     eat(DIV);
                     res = new BinOp(res,opt,factor());
@@ -165,6 +172,20 @@ namespace INTERPRETER
                 else throw ExceptionFactory("SyntaxException","invalid syntax");
             }
             return res;
+        }
+        catch(Exception& e)
+        {
+            throw e;
+        }
+    }
+
+    AST* Parser::variable()
+    {
+        try
+        {
+            Token var = this->currentToken;
+            eat(VAR);
+            return new Variable(var);
         }
         catch(Exception& e)
         {

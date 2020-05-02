@@ -8,7 +8,7 @@
             "name": "cpp - 生成和调试活动文件",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/Interpreter",
+            "program": "${workspaceFolder}/build/InterpreterTest",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

@@ -6,7 +6,7 @@
  */
 #include "../inc/Exception.h"
 
-namespace INTERPRETER
+namespace AVSI
 {
     /*******************************************************
      *                    base exception                   *
@@ -17,7 +17,7 @@ namespace INTERPRETER
         this->eType = this->str;
     }
 
-    Exception::Exception(string s)
+    Exception::Exception(std::string s)
     {
         Exception();
         this->str = this->eType + s + " ";
@@ -27,7 +27,7 @@ namespace INTERPRETER
     {
     }
 
-    void Exception::setMsg(string s)
+    void Exception::setMsg(std::string s)
     {
         this->str = this->eType + ": "+ s + " ";
     }
@@ -56,7 +56,7 @@ namespace INTERPRETER
      *                  exception factory                  *
      *******************************************************/
 
-    const Exception ExceptionFactory(string e)
+    const Exception ExceptionFactory(std::string e)
     {
         if(e == "SyntaxException")
         {
@@ -70,7 +70,7 @@ namespace INTERPRETER
     }
 
 
-    const Exception ExceptionFactory(string e,string c)
+    const Exception ExceptionFactory(std::string e,std::string c)
     {
         Exception exception = ExceptionFactory(e);
         

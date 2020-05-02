@@ -1,32 +1,36 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-04-10 18:23:23
+ * @LastEditTime: 2020-05-01 18:27:52
  * @Description: file content
  */
 #ifndef ___LEXER_H___
 #define ___LEXER_H___
 
 #include <cstdlib>
+#include <cmath>
 #include "AST.h"
+#include "Exception.h"
 
-namespace INTERPRETER
+namespace AVSI
 {
     class Lexer
     {
     private:
-        string line;
+        std::string line;
         unsigned int cur;
         char currentChar;
     public:
         Lexer(void);
-        Lexer(string line);
+        Lexer(std::string line);
         ~Lexer();
 
         void advance();
         Token getNextToken();
-        int integer();
+        Token number();
+        char peek();
         void skipWhiteSpace();
+        std::string Id();
     };
 }
 

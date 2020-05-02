@@ -1,12 +1,12 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-04-10 18:20:21
+ * @LastEditTime: 2020-05-01 16:38:31
  * @Description: file content
  */
 #include "../inc/Token.h"
 
-namespace INTERPRETER
+namespace AVSI
 {
     /*******************************************************
      *                    constructor                      *
@@ -15,15 +15,29 @@ namespace INTERPRETER
     {
     }
 
-    Token::Token(CharType type,int var)
+    Token::Token(TokenType type,int var)
     {
         this->valueInt = var;
+        this->valueFloat = var;
         this->type = type;
     }
 
-    Token::Token(CharType type,char var)
+    Token::Token(TokenType type,double var)
+    {
+        this->valueInt = (int)var;
+        this->valueFloat = var;
+        this->type = type;
+    }
+
+    Token::Token(TokenType type,char var)
     {
         this->valueChar = var;
+        this->type = type;
+    }
+
+    Token::Token(TokenType type,std::string var)
+    {
+        this->valueString = var;
         this->type = type;
     }
 
@@ -42,34 +56,28 @@ namespace INTERPRETER
     /*******************************************************
      *                      method                         *
      *******************************************************/
-    CharType Token::getType()
+    TokenType Token::getType()
     {
         return this->type;
     }
 
-    int Token::getValue()
+    double Token::getNum()
     {
-        if(this->type == END)
-        {
-            return -1;
-        }
-        else if(this->type == INT)
-        {
-            return this->valueInt;
-        }
-        else
-        {
-            return (int)this->valueChar;
-        }
+        return this->valueFloat;
     }
 
-    string Token::__str()
+    char Token::getChar()
     {
-        string str = "Token(" + typeName(this->type) + "," + to_string(getValue()) + ")";
-        return str;
+        return this->valueChar;
     }
 
-    string typeName(CharType type)
+    std::string Token::getString()
+    {
+        return this->valueString;
+    }
+
+    //TODO
+    std::string typeName(TokenType type)
     {
         switch (type)
         {

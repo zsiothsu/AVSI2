@@ -1,12 +1,12 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-04-10 18:20:12
+ * @LastEditTime: 2020-05-01 19:20:36
  * @Description: file content
  */
 #include "../inc/Lexer.h"
 
-namespace INTERPRETER
+namespace AVSI
 {
     /*******************************************************
      *                    constructor                      *
@@ -25,7 +25,7 @@ namespace INTERPRETER
      * @param:          line:command to be executed
      * @return:         None
      */
-    Lexer::Lexer(string line)
+    Lexer::Lexer(std::string line)
     {
         this->line = line;
         this->cur = 0;
@@ -72,44 +72,23 @@ namespace INTERPRETER
     {
         while(this->currentChar != EOF)
         {
-            if(this->currentChar == ' ')
-            {
-                skipWhiteSpace();
-                continue;
-            }
-            if(isdigit(this->currentChar))
-            {
-                return Token(INT,integer());
-            }
-            if(this->currentChar == '+')
-            {
-                advance();
-                return Token(ADD,'+');
-            }
-            if(this->currentChar == '-')
-            {
-                advance();
-                return Token(DEC,'-');
-            }
-            if(this->currentChar == '*')
-            {
-                advance();
-                return Token(MUL,'*');
-            }
-            if(this->currentChar == '/')
-            {
-                advance();
-                return Token(DIV,'/');
-            }
-            if(this->currentChar == '(')
-            {
-                advance();
-                return Token(LPAREN,'(');
-            }
-            if(this->currentChar == ')')
-            {
-                advance();
-                return Token(RPAREN,')');
+            if(this->currentChar == ' ') { skipWhiteSpace(); continue; }
+            if(isdigit(this->currentChar)) { return number(); }
+            if(this->currentChar == '+') { advance(); return Token(ADD,'+');}
+            if(this->currentChar == '-') { advance(); return Token(DEC,'-'); }
+            if(this->currentChar == '*') { advance(); return Token(MUL,'*'); }
+            if(this->currentChar == '/') { advance(); return Token(DIV,'/'); }
+            if(this->currentChar == '(') { advance(); return Token(LPAREN,'('); }
+            if(this->currentChar == ')') { advance(); return Token(RPAREN,')'); }
+            if(isalpha(this->currentChar) || this->currentChar == '_') { std::string id = Id(); return Token(VAR,id); }
+            if(this->currentChar == '=') {
+                if(peek() != '=')
+                {
+                    advance();
+                    return Token(RPAREN,')');
+                }
+                //TODO : eq
+                else return Token::empty();
             }
             return Token::empty();
         }
@@ -117,19 +96,48 @@ namespace INTERPRETER
     }
 
     /**
-     * @description:    extract a (multidigit) integer from the sentence
+     * @description:    extract a (multidigit) number from the sentence, refered from cJson
      * @param:          None
-     * @return:         an integer
+     * @return:         a number Token
      */
-    int Lexer::integer()
+    Token Lexer::number()
     {
-        int num = 0;
-        while(isdigit(this->currentChar))
+        double num = 0,scale = 0;
+        int subscale = 0,signsubscale = 1;
+        
+        if(this->currentChar == '0') advance(); // is zero
+        while(this->currentChar >= '1' && this->currentChar <= '9') { num = num * 10.0 + (this->currentChar - '0'); advance(); } // is number ?
+        if(this->currentChar == '.' && peek() >= '0' && peek() <= '9')
         {
-            num = num * 10 + this->currentChar - '0';
             advance();
+            do
+            {
+                num = num * 10.0 + (this->currentChar - '0');
+                scale--;
+                advance();
+            } while(this->currentChar >= '1' && this->currentChar <= '9');
+        } // fractional part?
+        if(this->currentChar == 'e' || this->currentChar == 'E')
+        {
+            advance(); if(this->currentChar == '+') advance(); else if(this->currentChar == '-') signsubscale = -1,advance();
+            while(this->currentChar >= '1' && this->currentChar <= '9') subscale = subscale * 10 + (this->currentChar - '0'),advance();
+        } // exponent?
+
+        num = num * pow(10.0,(scale + subscale * signsubscale));
+        if(scale == 0 && signsubscale == 1) return Token(INT,(int)num);
+        else return Token(FLT,num);
+    }
+
+    char Lexer::peek()
+    {
+        if(this->cur + 1  < this->line.length())
+        {
+            return this->line[this->cur + 1];
         }
-        return num;
+        else
+        {
+            return this->currentChar = EOF;
+        }
     }
 
     /**
@@ -143,5 +151,20 @@ namespace INTERPRETER
         {
             advance();
         }
+    }
+
+    std::string Lexer::Id()
+    {
+        std::string str;
+        while (
+            isalpha(this->currentChar) ||
+            isdigit(this->currentChar) ||
+            this->currentChar == '_'
+        )
+        {
+            str = str + this->currentChar;
+            advance();
+        }
+        return str;
     }
 }

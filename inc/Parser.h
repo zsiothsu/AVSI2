@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-04-10 20:07:16
+ * @LastEditTime: 2020-04-18 11:44:32
  * @Description: file content
  */
 #ifndef ___PARSER_H___
@@ -9,7 +9,7 @@
 
 #include "Lexer.h"
 
-namespace INTERPRETER
+namespace AVSI
 {
     using namespace std;
 
@@ -18,16 +18,21 @@ namespace INTERPRETER
     private:
         Lexer* lexer;
         Token currentToken;
+        int parenCnt = 0;
     public:
         Parser(void);
-        Parser(Lexer& lexer);
+        Parser(Lexer* lexer);
         ~Parser();
 
-        void eat(CharType type);
+        void eat(TokenType type);
+
+        AST* statement();
+        AST* assignment();
         AST* expr();
         AST* factor();
         AST* parse();
         AST* term();
+        AST* variable();
     };
 }
 

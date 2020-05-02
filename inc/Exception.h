@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-04-09 20:48:54
+ * @LastEditTime: 2020-05-02 11:13:54
  * @Description: file content
  */
 #ifndef ___EXCEPTION_H___
@@ -9,21 +9,21 @@
 
 #include <string>
 
-namespace INTERPRETER
+namespace AVSI
 {
     using namespace std;
 
     class Exception: public exception
     {
     protected:
-        string str;
-        string eType;
+        std::string str;
+        std::string eType;
     public:
         Exception();
-        Exception(string s);
+        Exception(std::string s);
         ~Exception();
 
-        void setMsg(string s);
+        void setMsg(std::string s);
         virtual const char* what();
     };
 
@@ -41,8 +41,8 @@ namespace INTERPRETER
         MathException();
     };
 
-    const Exception ExceptionFactory(string e);
-    const Exception ExceptionFactory(string e,string c);
+    const Exception ExceptionFactory(std::string e);
+    const Exception ExceptionFactory(std::string e,std::string c);
 }
 
 #endif
