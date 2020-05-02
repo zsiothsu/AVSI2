@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-04-06
- * @LastEditTime: 2020-05-02 11:32:43
+ * @LastEditTime: 2020-05-02 16:08:37
  * @Description: some methods for Interpreter class
  */
 
@@ -102,6 +102,7 @@ namespace AVSI
 
     any NodeVisitor::NumVisitor(AST* node)
     {
+        //TODO: return any
         Num* num = (Num*) node;
         return num->getValue();
     }
