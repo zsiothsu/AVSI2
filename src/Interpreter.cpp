@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-04-06
- * @LastEditTime: 2020-05-02 16:08:37
+ * @LastEditTime: 2020-05-04 14:15:47
  * @Description: some methods for Interpreter class
  */
 
@@ -44,12 +44,12 @@ namespace AVSI
     {
     }
 
-    void Interpreter::interpret(int* ans)
+    void Interpreter::interpret(double* ans)
     {
         try
         {
             AST* expression = this->parser->parse();
-            *ans = any::any_cast<double>(vistor(expression));
+            *ans = vistor(expression).any_cast<double>();
         }
         catch(Exception& e)
         {

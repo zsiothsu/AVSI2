@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-02 11:14:11
+ * @LastEditTime: 2020-05-02 20:53:51
  * @Description: file content
  */
 #ifndef ___TOKEN_H___
@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <string>
+#include "any.h"
 
 namespace AVSI
 {
@@ -50,7 +51,7 @@ namespace AVSI
         static Token empty();
 
         TokenType getType();
-        double getNum();
+        any getNum();
         char getChar();
         std::string getString();
         //std::string __str();

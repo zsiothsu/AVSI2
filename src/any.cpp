@@ -1,18 +1,28 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-02 16:00:38
+ * @LastEditTime: 2020-05-04 14:23:01
  * @Description: file content
  */
-#include "any.h"
+#include "../inc/any.h"
 
 namespace AVSI
 {
-    type_info::type_info(void) { this->typeId = EMPTY; this->typeName = typeMap[EMPTY]; }
-    type_info::type_info(DataType type) { this->typeId = type; this->typeName = typeMap[type]; }
+    type_info::type_info(void)
+    {
+        this->typeId = EMPTY;
+        map<DataType,string>::const_iterator where = typeMap.find(EMPTY);
+        if(where != typeMap.end()) this->typeName = where->second;
+    }
+    type_info::type_info(DataType type)
+    {
+        this->typeId = type;
+        map<DataType,string>::const_iterator where = typeMap.find(type);
+        if(where != typeMap.end()) this->typeName = where->second;
+    }
     std::string type_info::name(void) { return this->typeName; }
     DataType type_info::type(void) { return this->typeId; }
-    bool type_info::operator==(type_info type) const
+    bool type_info::operator==(type_info type)
     { 
         return this->typeId == type.type();
     }
@@ -21,6 +31,7 @@ namespace AVSI
     any::any(char var) { this->typeInfo = typeChar; this->valueChar = this->valueInt = this->valueFloat = var; }
     any::any(int var) { this->typeInfo = typeInt; this->valueInt = this->valueFloat = var; }
     any::any(double var) { this->typeInfo =typeFloat; this->valueFloat = var; }
+    any::~any() {}
 
     DataType any::type(void)
     {
@@ -31,7 +42,7 @@ namespace AVSI
     T any::any_cast(void)
     {
         if(typeid(T) == typeid(char) &&
-           this->typeInfo = typeChar
+           this->typeInfo == typeChar
         ) return this->valueChar;
 
         if(typeid(T) == typeid(int) &&  \
@@ -40,9 +51,9 @@ namespace AVSI
         ) return this->valueInt;
 
         if(typeid(T) == typeid(double) &&  \
-           (this->typeInfo.type() == typeInt || \
-            this->typeInfo.type() == typeChar || \
-            this->typeInfo.type() == typeFloat)
+           (this->typeInfo == typeInt || \
+            this->typeInfo == typeChar || \
+            this->typeInfo == typeFloat)
         ) return this->valueFloat;
     }
 
@@ -52,12 +63,12 @@ namespace AVSI
         return var.any_cast<T>();
     }
 
-    any any::operator=(char var) { return this->valueChar = var;}
-    any any::operator=(int var) { return this->valueInt = var;}
-    any any::operator=(double var) { return this->valueFloat = var;}
+    any any::operator=(char var) { this->typeInfo = typeChar; return this->valueChar = this->valueInt = this->valueFloat = var;}
+    any any::operator=(int var) { this->typeInfo = typeInt; return this->valueInt = this->valueFloat = var;}
+    any any::operator=(double var) { this->typeInfo = typeFloat; return this->valueFloat = var;}
 
-    bool any::operator==(char var) const { return this->valueChar == var;}
-    bool any::operator==(int var) const { return this->valueInt == var;}
+    bool any::operator==(char var) const { return this->valueFloat == (double)var;}
+    bool any::operator==(int var) const { return this->valueFloat == (double)var;}
     bool any::operator==(double var) const { return this->valueFloat == var;}
 
     any any::operator+(any var) 

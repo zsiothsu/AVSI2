@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-02 11:20:39
+ * @LastEditTime: 2020-05-04 14:16:08
  * @Description: file content
  */
 #ifndef ___INTERPRETER_H___
@@ -37,7 +37,7 @@ namespace AVSI
         Interpreter(Parser* parser);
         ~Interpreter();
 
-        void interpret(int* ans);
+        void interpret(double* ans);
     };
 
     typedef any (*visiteNode)(AST* node);

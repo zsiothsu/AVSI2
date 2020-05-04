@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-02 16:06:42
+ * @LastEditTime: 2020-05-02 20:50:55
  * @Description: file content
  */
 #ifndef ___AST_H___
@@ -61,13 +61,13 @@ namespace AVSI
     class Num: public AST
     {
     private:
-        double value;
+        any value;
     public:
         Num(void);
         Num(Token token);
         virtual ~Num();
 
-        double getValue(void);
+        any getValue(void);
     };
 
     class UnaryOp: public AST

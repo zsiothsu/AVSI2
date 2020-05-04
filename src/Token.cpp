@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-02 16:07:58
+ * @LastEditTime: 2020-05-02 20:53:39
  * @Description: file content
  */
 #include "../inc/Token.h"
@@ -61,10 +61,10 @@ namespace AVSI
         return this->type;
     }
 
-    //TODO double->any
-    double Token::getNum()
+    any Token::getNum()
     {
-        return this->valueFloat;
+        if(type == INT) return valueInt;
+        if(type == FLT) return valueFloat;
     }
 
     char Token::getChar()

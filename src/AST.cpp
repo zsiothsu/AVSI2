@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-02 16:08:23
+ * @LastEditTime: 2020-05-02 21:24:38
  * @Description: file content
  */
 #include "../inc/AST.h"
@@ -91,8 +91,11 @@ namespace AVSI
         this->value = token.getNum();
     }
 
-    //TODO double->any
-    double Num::getValue(void)
+    Num::~Num()
+    {
+    }
+
+    any Num::getValue(void)
     {
         return this->value;
     }
@@ -139,5 +142,9 @@ namespace AVSI
     NoneAST::NoneAST(void)
     {
         this->token = Token(NONE,0);
+    }
+
+    NoneAST::~NoneAST()
+    {
     }
 }

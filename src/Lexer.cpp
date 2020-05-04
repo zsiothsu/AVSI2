@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-01 19:20:36
+ * @LastEditTime: 2020-05-04 14:25:04
  * @Description: file content
  */
 #include "../inc/Lexer.h"
@@ -115,7 +115,7 @@ namespace AVSI
                 num = num * 10.0 + (this->currentChar - '0');
                 scale--;
                 advance();
-            } while(this->currentChar >= '1' && this->currentChar <= '9');
+            } while(this->currentChar >= '0' && this->currentChar <= '9');
         } // fractional part?
         if(this->currentChar == 'e' || this->currentChar == 'E')
         {

@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-04-12 20:40:17
+ * @LastEditTime: 2020-05-04 14:16:15
  * @Description: file content
  */
 #include "./inc/Interpreter.h"
@@ -31,9 +31,13 @@ int main(void)
             Lexer* lexer = new Lexer(line);
             Parser* parser = new Parser(lexer);
             Interpreter* interpreter = new Interpreter(parser);
-            int ans = 0;
+            double ans = 0;
             interpreter->interpret(&ans);
             cout << ans << endl;
+
+            delete lexer;
+            delete parser;
+            delete interpreter;
         }
         catch(Exception& e)
         {
