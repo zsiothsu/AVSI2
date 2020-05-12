@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-04 14:25:04
+ * @LastEditTime: 2020-05-12 11:20:24
  * @Description: file content
  */
 #include "../inc/Lexer.h"
@@ -74,18 +74,19 @@ namespace AVSI
         {
             if(this->currentChar == ' ') { skipWhiteSpace(); continue; }
             if(isdigit(this->currentChar)) { return number(); }
-            if(this->currentChar == '+') { advance(); return Token(ADD,'+');}
-            if(this->currentChar == '-') { advance(); return Token(DEC,'-'); }
-            if(this->currentChar == '*') { advance(); return Token(MUL,'*'); }
-            if(this->currentChar == '/') { advance(); return Token(DIV,'/'); }
-            if(this->currentChar == '(') { advance(); return Token(LPAREN,'('); }
-            if(this->currentChar == ')') { advance(); return Token(RPAREN,')'); }
-            if(isalpha(this->currentChar) || this->currentChar == '_') { std::string id = Id(); return Token(VAR,id); }
+            if(this->currentChar == '+') { advance(); return Token(add_opt,'+');}
+            if(this->currentChar == '-') { advance(); return Token(dec_opt,'-'); }
+            if(this->currentChar == '*') { advance(); return Token(mul_opt,'*'); }
+            if(this->currentChar == '/') { advance(); return Token(div_opt,'/'); }
+            if(this->currentChar == '(') { advance(); return Token(left_parenthese_keyword,'('); }
+            if(this->currentChar == ')') { advance(); return Token(right_parenthese_keyword,')'); }
+            if(this->currentChar == ';') { advance(); return Token(semi_keyword,';'); }
+            if(isalpha(this->currentChar) || this->currentChar == '_') { std::string id = Id(); return Token(variable_ast,id); }
             if(this->currentChar == '=') {
                 if(peek() != '=')
                 {
                     advance();
-                    return Token(RPAREN,')');
+                    return Token(assign_opt,')');
                 }
                 //TODO : eq
                 else return Token::empty();
@@ -106,7 +107,7 @@ namespace AVSI
         int subscale = 0,signsubscale = 1;
         
         if(this->currentChar == '0') advance(); // is zero
-        while(this->currentChar >= '1' && this->currentChar <= '9') { num = num * 10.0 + (this->currentChar - '0'); advance(); } // is number ?
+        if(this->currentChar >= '1' && this->currentChar <= '9') do { num = num * 10.0 + (this->currentChar - '0'); advance(); } while(this->currentChar >= '0' && this->currentChar <= '9'); // is number ?
         if(this->currentChar == '.' && peek() >= '0' && peek() <= '9')
         {
             advance();
@@ -120,12 +121,12 @@ namespace AVSI
         if(this->currentChar == 'e' || this->currentChar == 'E')
         {
             advance(); if(this->currentChar == '+') advance(); else if(this->currentChar == '-') signsubscale = -1,advance();
-            while(this->currentChar >= '1' && this->currentChar <= '9') subscale = subscale * 10 + (this->currentChar - '0'),advance();
+            while(this->currentChar >= '0' && this->currentChar <= '9') subscale = subscale * 10 + (this->currentChar - '0'),advance();
         } // exponent?
 
         num = num * pow(10.0,(scale + subscale * signsubscale));
-        if(scale == 0 && signsubscale == 1) return Token(INT,(int)num);
-        else return Token(FLT,num);
+        if(scale == 0 && signsubscale == 1) return Token(integer_ast,(int)num);
+        else return Token(float_ast,num);
     }
 
     char Lexer::peek()

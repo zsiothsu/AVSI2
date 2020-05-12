@@ -1,19 +1,22 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-02 20:50:55
+ * @LastEditTime: 2020-05-12 10:49:07
  * @Description: file content
  */
 #ifndef ___AST_H___
 #define ___AST_H___
 
 #include <typeinfo>
+#include <vector>
 #include "any.h"
 #include "Token.h"
 #include "Exception.h"
 
 namespace AVSI
 {
+    using std::vector;
+    
     /*******************************************************
      *                       AST base                      *
      *******************************************************/
@@ -94,12 +97,23 @@ namespace AVSI
         Variable(Token var);
     };
 
+    class Compound: public AST
+    {
+    public:
+        vector<AST*> child;
+
+        Compound(void);
+        virtual ~Compound();
+    };
+
     class NoneAST: public AST
     {
     public:
         NoneAST(void);
         virtual ~NoneAST();
     };
+
+    static AST ASTEmpty = NoneAST();
 }
 
 #endif

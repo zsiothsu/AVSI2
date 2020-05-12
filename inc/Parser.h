@@ -1,12 +1,13 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-04-18 11:44:32
+ * @LastEditTime: 2020-05-11 16:49:34
  * @Description: file content
  */
 #ifndef ___PARSER_H___
 #define ___PARSER_H___
 
+#include <vector>
 #include "Lexer.h"
 
 namespace AVSI
@@ -26,6 +27,8 @@ namespace AVSI
 
         void eat(TokenType type);
 
+        AST* program();
+        AST* statementList(); 
         AST* statement();
         AST* assignment();
         AST* expr();

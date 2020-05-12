@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-02 11:13:54
+ * @LastEditTime: 2020-05-12 13:50:59
  * @Description: file content
  */
 #ifndef ___EXCEPTION_H___
@@ -39,6 +39,13 @@ namespace AVSI
     public:
         using Exception::Exception;
         MathException();
+    };
+
+    class LogicException: public Exception
+    {
+    public:
+        using Exception::Exception;
+        LogicException();
     };
 
     const Exception ExceptionFactory(std::string e);

@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-02 21:24:38
+ * @LastEditTime: 2020-05-11 23:34:43
  * @Description: file content
  */
 #include "../inc/AST.h"
@@ -36,7 +36,7 @@ namespace AVSI
     {
         this->left = left;
         this->right = right;
-        this->token = Token(ASSIGN,'=');
+        this->token = Token(assign_opt,'=');
     }
 
     Assign::~Assign()
@@ -88,7 +88,7 @@ namespace AVSI
     Num::Num(Token token)
     {
         this->token = token;
-        this->value = token.getNum();
+        this->value = token.getValue();
     }
 
     Num::~Num()
@@ -136,7 +136,18 @@ namespace AVSI
     Variable::Variable(Token var)
     {
         this->token = var;
-        this->id = var.getString();
+        this->id = var.getValue().any_cast<std::string>();
+    }
+
+    Compound::Compound(void)
+    {
+        this->token = Token(compound_ast,0);
+        this->child = vector<AST*>();
+    }
+
+    Compound::~Compound()
+    {
+        for(AST* ast : this->child) delete ast;
     }
 
     NoneAST::NoneAST(void)

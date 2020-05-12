@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-04-06
- * @LastEditTime: 2020-05-04 14:15:47
+ * @LastEditTime: 2020-05-12 14:13:44
  * @Description: some methods for Interpreter class
  */
 
@@ -44,12 +44,12 @@ namespace AVSI
     {
     }
 
-    void Interpreter::interpret(double* ans)
+    any Interpreter::interpret()
     {
         try
         {
             AST* expression = this->parser->parse();
-            *ans = vistor(expression).any_cast<double>();
+            return visitor(expression);
         }
         catch(Exception& e)
         {
@@ -61,7 +61,7 @@ namespace AVSI
     /*******************************************************
      *                      visitor                        *
      *******************************************************/
-    any NodeVisitor::vistor(AST* node)
+    any NodeVisitor::visitor(AST* node)
     {
         try
         {
@@ -77,7 +77,11 @@ namespace AVSI
 
     any NodeVisitor::AssignVisitor(AST* node)
     {
-        
+        Assign* assign = (Assign*)node;
+        Variable* var = (Variable*)assign->left;
+        any value = visitor(assign->right);
+        globalVariable[var->id] = value;
+        return value;
     }
 
     any NodeVisitor::BinOpVisitor(AST* node)
@@ -88,22 +92,40 @@ namespace AVSI
         {
             throw ExceptionFactory("SyntaxException","invalid syntax");
         }
-        if(op->getOp() == ADD) return vistor(op->left) + vistor(op->right);
-        if(op->getOp() == DEC) return vistor(op->left) - vistor(op->right);
-        if(op->getOp() == MUL) return vistor(op->left) * vistor(op->right);
-        if(op->getOp() == DIV)
+        if(op->getOp() == add_opt) return visitor(op->left) + visitor(op->right);
+        if(op->getOp() == dec_opt) return visitor(op->left) - visitor(op->right);
+        if(op->getOp() == mul_opt) return visitor(op->left) * visitor(op->right);
+        if(op->getOp() == div_opt)
         {
-            any right = vistor(op->right);
+            any right = visitor(op->right);
             if(right == 0) throw ExceptionFactory("MathException","division by zero");
-            return vistor(op->left) / vistor(op->right);
+            return visitor(op->left) / visitor(op->right);
         }
+        return 0;
+    }
+
+    any NodeVisitor::CompoundVisitor(AST* node)
+    {
+        Compound* compound = (Compound*)node;
+        for(AST* ast : compound->child) visitor(ast);
         return 0;
     }
 
     any NodeVisitor::NumVisitor(AST* node)
     {
-        //TODO: return any
         Num* num = (Num*) node;
         return num->getValue();
+    }
+
+    any NodeVisitor::VariableVisitor(AST* node)
+    {
+        Variable* var = (Variable*)node;
+        map<string,any>::iterator iter = globalVariable.find(var->id);
+        if(iter != globalVariable.end()) return iter->second;
+        else
+        {
+            string msg = "name '" + var->id + "' is not defined";
+            throw ExceptionFactory("LogicException",msg);
+        }
     }
 }

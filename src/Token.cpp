@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-02 20:53:39
+ * @LastEditTime: 2020-05-11 15:08:00
  * @Description: file content
  */
 #include "../inc/Token.h"
@@ -15,29 +15,9 @@ namespace AVSI
     {
     }
 
-    Token::Token(TokenType type,int var)
+    Token::Token(TokenType type,any var)
     {
-        this->valueInt = var;
-        this->valueFloat = var;
-        this->type = type;
-    }
-
-    Token::Token(TokenType type,double var)
-    {
-        this->valueInt = (int)var;
-        this->valueFloat = var;
-        this->type = type;
-    }
-
-    Token::Token(TokenType type,char var)
-    {
-        this->valueChar = var;
-        this->type = type;
-    }
-
-    Token::Token(TokenType type,std::string var)
-    {
-        this->valueString = var;
+        this->value = var;
         this->type = type;
     }
 
@@ -61,23 +41,12 @@ namespace AVSI
         return this->type;
     }
 
-    any Token::getNum()
+    any Token::getValue()
     {
-        if(type == INT) return valueInt;
-        if(type == FLT) return valueFloat;
+        return this->value;
     }
 
-    char Token::getChar()
-    {
-        return this->valueChar;
-    }
-
-    std::string Token::getString()
-    {
-        return this->valueString;
-    }
-
-    //TODO
+    //TODO: map<TokeType,string>
     std::string typeName(TokenType type)
     {
         switch (type)
@@ -86,16 +55,16 @@ namespace AVSI
             return "EOF";
         case NONE:
             return "NONE";
-        case INT:
-            return "INT";
-        case ADD:
-            return "ADD";
-        case DEC:
-            return "DEC";
-        case MUL:
-            return "MUL";
-        case DIV:
-            return "DIV";
+        case integer_ast:
+            return "integer_ast";
+        case add_opt:
+            return "add_opt";
+        case dec_opt:
+            return "dec_opt";
+        case mul_opt:
+            return "mul_opt";
+        case div_opt:
+            return "div_opt";
         default:
             return "<NOT A TYPE>";
             break;

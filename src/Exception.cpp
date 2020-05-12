@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-04-10 18:20:01
+ * @LastEditTime: 2020-05-12 13:56:17
  * @Description: file content
  */
 #include "../inc/Exception.h"
@@ -52,6 +52,12 @@ namespace AVSI
         this->eType = this->str;
     }
 
+    LogicException::LogicException()
+    {
+        this->str = "LogicException";
+        this->eType = this->str;
+    }
+
     /*******************************************************
      *                  exception factory                  *
      *******************************************************/
@@ -65,6 +71,10 @@ namespace AVSI
         else if(e == "MathException")
         {
             return MathException();
+        }
+        else if(e == "LogicException")
+        {
+            return LogicException();
         }
         return Exception();
     }

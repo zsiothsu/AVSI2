@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-01 19:26:51
+ * @LastEditTime: 2020-05-12 11:15:00
  * @Description: file content
  */
 #include "../inc/Parser.h"
@@ -41,8 +41,8 @@ namespace AVSI
     {
         if(type == currentToken.getType())
         {
-            if(currentToken.getType() == LPAREN) this->parenCnt++;
-            if(currentToken.getType() == RPAREN) this->parenCnt--;
+            if(currentToken.getType() == left_parenthese_keyword) this->parenCnt++;
+            if(currentToken.getType() == right_parenthese_keyword) this->parenCnt--;
             this->currentToken = this->lexer->getNextToken();
         }
         else
@@ -51,10 +51,30 @@ namespace AVSI
         }
     }
 
+    AST* Parser::program()
+    {
+        return statementList();
+    }
+
+    AST* Parser::statementList()
+    {
+        Compound* root = new Compound();
+        AST* node;
+        while((node = statement()) != &ASTEmpty) root->child.push_back(node);
+        return root;
+    }
+
+    AST* Parser::statement()
+    {
+        AST* ret = &ASTEmpty;
+        if(this->currentToken.getType() == variable_ast) ret = assignment();
+        return ret;
+    }
+
     AST* Parser::assignment()
     {
         AST* left = variable();
-        eat(ASSIGN);
+        eat(assign_opt);
         AST* right = expr();
         return new Assign(left,right);
     }
@@ -72,18 +92,18 @@ namespace AVSI
         try
         {
             AST* res = term();
-            while(this->currentToken.getType() == ADD || \
-                  this->currentToken.getType() == DEC)
+            while(this->currentToken.getType() == add_opt || \
+                  this->currentToken.getType() == dec_opt)
             {
                 Token opt = this->currentToken;
-                if(opt.getChar() == '+')
+                if(opt.getValue() == '+')
                 {
-                    eat(ADD);
+                    eat(add_opt);
                     res = new BinOp(res,opt,term());
                 }
-                else if(opt.getChar() == '-')
+                else if(opt.getValue() == '-')
                 {
-                    eat(DEC);
+                    eat(dec_opt);
                     res = new BinOp(res,opt,term());
                 }
                 else throw ExceptionFactory("SyntaxException","invalid syntax");
@@ -107,12 +127,12 @@ namespace AVSI
         try
         {
             Token token = this->currentToken;
-            if(token.getType() == INT || token.getType() == FLT) { eat(token.getType()); return new Num(token); }
-            if(token.getType() == ADD) { eat(ADD); return new UnaryOp(new Num(Token(INT,0)),token,factor()); }
-            if(token.getType() == DEC) { eat(DEC); return new UnaryOp(new Num(Token(INT,0)),token,factor()); }
-            if(token.getType() == VAR) { return variable(); }
-            if(token.getType() == LPAREN) { eat(LPAREN); AST* res = expr(); eat(RPAREN); return res; }
-            if(token.getType() == RPAREN)
+            if(token.getType() == integer_ast || token.getType() == float_ast) { eat(token.getType()); return new Num(token); }
+            if(token.getType() == add_opt) { eat(add_opt); return new UnaryOp(new Num(Token(integer_ast,0)),token,factor()); }
+            if(token.getType() == dec_opt) { eat(dec_opt); return new UnaryOp(new Num(Token(integer_ast,0)),token,factor()); }
+            if(token.getType() == variable_ast) { return variable(); }
+            if(token.getType() == left_parenthese_keyword) { eat(left_parenthese_keyword); AST* res = expr(); eat(right_parenthese_keyword); return res; }
+            if(token.getType() == right_parenthese_keyword)
             {
                 if(this->parenCnt <= 0) throw ExceptionFactory("SyntaxException","unmatched ')'");
                 return new NoneAST();
@@ -134,7 +154,7 @@ namespace AVSI
     {
         try
         {
-            return expr();   
+            return program();   
         }
         catch(Exception& e)
         {
@@ -155,18 +175,18 @@ namespace AVSI
         try
         {
             AST* res = factor();
-            while(this->currentToken.getType() == MUL || \
-                  this->currentToken.getType() == DIV)
+            while(this->currentToken.getType() == mul_opt || \
+                  this->currentToken.getType() == div_opt)
             {
                 Token opt = this->currentToken;
-                if(opt.getChar() == '*')
+                if(opt.getValue() == '*')
                 {
-                    eat(MUL);
+                    eat(mul_opt);
                     res = new BinOp(res,opt,factor());
                 }
-                else if(opt.getChar() == '/')
+                else if(opt.getValue() == '/')
                 {
-                    eat(DIV);
+                    eat(div_opt);
                     res = new BinOp(res,opt,factor());
                 }
                 else throw ExceptionFactory("SyntaxException","invalid syntax");
@@ -184,7 +204,7 @@ namespace AVSI
         try
         {
             Token var = this->currentToken;
-            eat(VAR);
+            eat(variable_ast);
             return new Variable(var);
         }
         catch(Exception& e)
