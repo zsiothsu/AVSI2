@@ -1,8 +1,8 @@
 /*
- * @Author: your name
- * @Date: 1970-01-01 08:00:00
+ * @Author: Chipen Hsiao
+ * @Date: 2020-05-01
  * @LastEditTime: 2020-05-12 13:56:17
- * @Description: file content
+ * @Description: include some exception types for interpreter
  */
 #include "../inc/Exception.h"
 

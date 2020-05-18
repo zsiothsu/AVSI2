@@ -1,8 +1,8 @@
 /*
- * @Author: your name
- * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-12 11:20:24
- * @Description: file content
+ * @Author: Chipen Hsiao
+ * @Date: 2020-05-01
+ * @LastEditTime: 2020-05-18 17:28:06
+ * @Description: include Lexer class
  */
 #include "../inc/Lexer.h"
 
@@ -19,17 +19,17 @@ namespace AVSI
     Lexer::Lexer(void)
     {
     }
-    
-    /**
-     * @description:    to initialize a Lexer.
-     * @param:          line:command to be executed
-     * @return:         None
-     */
-    Lexer::Lexer(std::string line)
+
+    Lexer::Lexer(ifstream* file)
     {
-        this->line = line;
+        this->file = file;
+        this->linenum = 1;
         this->cur = 0;
-        this->currentChar = this->line[0];
+        do
+        {
+            getline(*this->file,this->line);
+            this->currentChar = this->line[this->cur];
+        } while(this->line.empty());
     }
 
     /**
@@ -58,7 +58,21 @@ namespace AVSI
         }
         else
         {
-            this->currentChar = EOF;
+            do
+            {
+                if(!this->file->eof())
+                {
+                    this->linenum++;
+                    this->cur = 0;
+                    getline(*this->file,this->line);
+                    this->currentChar = this->line[this->cur];
+                }
+                else
+                {
+                    this->currentChar = EOF;
+                    return;
+                }
+            } while (this->line.empty());
         }
     }
 
@@ -73,6 +87,7 @@ namespace AVSI
         while(this->currentChar != EOF)
         {
             if(this->currentChar == ' ') { skipWhiteSpace(); continue; }
+            if(this->currentChar == '#') { this->cur = this->line.length(); advance(); continue; }
             if(isdigit(this->currentChar)) { return number(); }
             if(this->currentChar == '+') { advance(); return Token(add_opt,'+');}
             if(this->currentChar == '-') { advance(); return Token(dec_opt,'-'); }
@@ -137,7 +152,7 @@ namespace AVSI
         }
         else
         {
-            return this->currentChar = EOF;
+            return this->currentChar = 0;
         }
     }
 

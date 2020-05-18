@@ -1,8 +1,8 @@
 /*
- * @Author: your name
- * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-11 23:34:43
- * @Description: file content
+ * @Author: Chipen Hsiao
+ * @Date: 2020-05-01
+ * @LastEditTime: 2020-05-18 17:25:36
+ * @Description: constructer of abstract syntax tree (AST)
  */
 #include "../inc/AST.h"
 

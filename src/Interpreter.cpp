@@ -1,8 +1,8 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-04-06
- * @LastEditTime: 2020-05-12 14:13:44
- * @Description: some methods for Interpreter class
+ * @LastEditTime: 2020-05-18 17:27:27
+ * @Description: include Interpreter class
  */
 
 #include "../inc/Interpreter.h"
@@ -48,8 +48,8 @@ namespace AVSI
     {
         try
         {
-            AST* expression = this->parser->parse();
-            return visitor(expression);
+            AST* tree = this->parser->parse();
+            return visitor(tree);
         }
         catch(Exception& e)
         {

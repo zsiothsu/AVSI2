@@ -1,8 +1,8 @@
 /*
- * @Author: your name
- * @Date: 1970-01-01 08:00:00
+ * @Author: Chipen Hsiao
+ * @Date: 2020-05-01
  * @LastEditTime: 2020-05-12 11:15:00
- * @Description: file content
+ * @Description: include Parser class
  */
 #include "../inc/Parser.h"
 

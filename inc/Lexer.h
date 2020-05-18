@@ -1,28 +1,29 @@
 /*
- * @Author: your name
- * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-11 15:33:38
- * @Description: file content
+ * @Author: Chipen Hsiao
+ * @Date: 2020-05-01
+ * @LastEditTime: 2020-05-18 17:27:52
+ * @Description: include Lexer class
  */
 #ifndef ___LEXER_H___
 #define ___LEXER_H___
 
+#include <fstream>
 #include <cstdlib>
-#include <cmath>
 #include "AST.h"
-#include "Exception.h"
 
 namespace AVSI
 {
     class Lexer
     {
     private:
-        std::string line;
+        ifstream* file;
+        unsigned int linenum;
         unsigned int cur;
         char currentChar;
+        std::string line;
     public:
         Lexer(void);
-        Lexer(std::string line);
+        Lexer(ifstream* file);
         ~Lexer();
 
         void advance();

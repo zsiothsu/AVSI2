@@ -1,8 +1,8 @@
 /*
- * @Author: your name
- * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-12 11:07:07
- * @Description: file content
+ * @Author: Chipen Hsiao
+ * @Date: 2020-05-01
+ * @LastEditTime: 2020-05-18 17:21:47
+ * @Description: "AVSI::any" is a data type which can store variable of basic type
  */
 #include "../inc/any.h"
 

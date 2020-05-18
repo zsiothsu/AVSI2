@@ -1,15 +1,14 @@
 /*
- * @Author: your name
- * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-12 10:49:07
- * @Description: file content
+ * @Author: Chipen Hsiao
+ * @Date: 2020-05-01
+ * @LastEditTime: 2020-05-18 17:25:26
+ * @Description: constructer of abstract syntax tree (AST)
  */
 #ifndef ___AST_H___
 #define ___AST_H___
 
 #include <typeinfo>
 #include <vector>
-#include "any.h"
 #include "Token.h"
 #include "Exception.h"
 

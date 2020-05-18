@@ -1,16 +1,13 @@
 /*
- * @Author: your name
- * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-12 14:10:50
- * @Description: file content
+ * @Author: Chipen Hsiao
+ * @Date: 2020-05-01
+ * @LastEditTime: 2020-05-18 17:27:17
+ * @Description: include Interpreter class
  */
 #ifndef ___INTERPRETER_H___
 #define ___INTERPRETER_H___
 
-#include <map>
-#include <vector>
 #include "Parser.h"
-#include "any.h"
 
 namespace AVSI
 {   

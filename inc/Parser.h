@@ -1,13 +1,12 @@
 /*
- * @Author: your name
- * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-11 16:49:34
- * @Description: file content
+ * @Author: Chipen Hsiao
+ * @Date: 2020-05-01
+ * @LastEditTime: 2020-05-18 17:10:14
+ * @Description: include Parser class
  */
 #ifndef ___PARSER_H___
 #define ___PARSER_H___
 
-#include <vector>
 #include "Lexer.h"
 
 namespace AVSI
