@@ -1,12 +1,12 @@
 <!--
  * @Author: Chipen Hsiao
  * @Date: 2020-05-18
- * @LastEditTime: 2020-05-18 17:45:14
+ * @LastEditTime: 2020-05-18 22:52:21
  * @Description: readme
 --> 
 ## A Very Simple Interpreter
 ---
-###构建项目
+### 构建项目
 在工作目录下使用 
 ```shell
 make
@@ -17,7 +17,7 @@ make
 make clean
 ```
 
-###使用
+### 使用
 ```shell
 ./build/Interpreter targetFile
 ```
@@ -26,6 +26,6 @@ make clean
 ./build/Interpreter ./test/pro.sl
 ```
 
-###语法
+### 语法
 参见 `./test/test.sl`
 
