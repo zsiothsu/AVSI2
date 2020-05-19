@@ -1,7 +1,7 @@
 <!--
  * @Author: Chipen Hsiao
  * @Date: 2020-05-18
- * @LastEditTime: 2020-05-18 22:52:21
+ * @LastEditTime: 2020-05-19 10:35:26
  * @Description: readme
 --> 
 ## A Very Simple Interpreter
@@ -27,5 +27,5 @@ make clean
 ```
 
 ### 语法
-参见 `./test/test.sl`
+参见 `./doc/grammar.sl`
 
