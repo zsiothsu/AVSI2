@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-04-06
- * @LastEditTime: 2020-05-18 17:27:27
+ * @LastEditTime: 2020-05-19 23:26:27
  * @Description: include Interpreter class
  */
 
@@ -9,41 +9,6 @@
 
 namespace AVSI
 {
-    /*******************************************************
-     *                    constructor                      *
-     *******************************************************/
-    /**
-     * @description:    default constructor
-     * @param:          None
-     * @return:         None
-     */
-    NodeVisitor::NodeVisitor(void)
-    {
-    }
-
-    /**
-     * @description:    default constructor
-     * @param:          None
-     * @return:         None
-     */
-    Interpreter::Interpreter(void)
-    {
-    }
-
-    Interpreter::Interpreter(Parser* paser)
-    {
-        this->parser = paser;
-    }
-
-    /**
-     * @description:    default destructor
-     * @param:          None
-     * @return:         None
-     */
-    Interpreter::~Interpreter()
-    {
-    }
-
     any Interpreter::interpret()
     {
         try
@@ -61,12 +26,15 @@ namespace AVSI
     /*******************************************************
      *                      visitor                        *
      *******************************************************/
-    any NodeVisitor::visitor(AST* node)
+    any Interpreter::visitor(AST* node)
     {
         try
         {
-            if(node->getToken().getType() == NONE) return 0;
-            any res = visitorMap[node->getToken().getType()](node);
+            if(node == &ASTEmpty) return 0;
+            any res = 0;
+            string functionName = node->__AST_name + "Visitor";
+            map<string,visitNode>::iterator iter = visitorMap.find(functionName);
+            if(iter != visitorMap.end()) res = (this->*((*iter).second))(node);
             return res;
         }
         catch(Exception& e)
@@ -75,7 +43,7 @@ namespace AVSI
         }
     }
 
-    any NodeVisitor::AssignVisitor(AST* node)
+    any Interpreter::AssignVisitor(AST* node)
     {
         Assign* assign = (Assign*)node;
         Variable* var = (Variable*)assign->left;
@@ -84,7 +52,7 @@ namespace AVSI
         return value;
     }
 
-    any NodeVisitor::BinOpVisitor(AST* node)
+    any Interpreter::BinOpVisitor(AST* node)
     {
         BinOp* op = (BinOp*)node;
         if(op->left->getToken().getType() == NONE ||
@@ -104,20 +72,28 @@ namespace AVSI
         return 0;
     }
 
-    any NodeVisitor::CompoundVisitor(AST* node)
+    any Interpreter::CompoundVisitor(AST* node)
     {
         Compound* compound = (Compound*)node;
         for(AST* ast : compound->child) visitor(ast);
         return 0;
     }
 
-    any NodeVisitor::NumVisitor(AST* node)
+    any Interpreter::NumVisitor(AST* node)
     {
         Num* num = (Num*) node;
         return num->getValue();
     }
 
-    any NodeVisitor::VariableVisitor(AST* node)
+    any Interpreter::UnaryOpVisitor(AST* node)
+    {
+        UnaryOp* op = (UnaryOp*)node;
+        if(op->getOp() == add_opt) return (any)0 + visitor(op->right);
+        if(op->getOp() == dec_opt) return (any)0 - visitor(op->right);
+        return 0;
+    }
+
+    any Interpreter::VariableVisitor(AST* node)
     {
         Variable* var = (Variable*)node;
         map<string,any>::iterator iter = globalVariable.find(var->id);

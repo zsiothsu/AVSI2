@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-05-19
- * @LastEditTime: 2020-05-19 21:27:33
+ * @LastEditTime: 2020-05-19 22:54:16
  * @Description: file content
  */ 
 #ifndef ___SYMBOLTABLE_H___
@@ -34,7 +34,7 @@ namespace AVSI
         map<string,Symbol> symbols;
     public:
         SymbolMap(void);
-        ~SymbolMap();
+        ~SymbolMap() {};
 
         void insert(Symbol symbol);
         Symbol find(string name);
@@ -46,7 +46,7 @@ namespace AVSI
         deque<SymbolMap> SymbolStack;
     public:
         SymbolTable(void);
-        ~SymbolTable();
+        ~SymbolTable() {};
         
         void insert(Symbol symbol);
         Symbol find(string name);

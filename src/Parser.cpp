@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-12 11:15:00
+ * @LastEditTime: 2020-05-19 22:52:01
  * @Description: include Parser class
  */
 #include "../inc/Parser.h"
@@ -128,8 +128,8 @@ namespace AVSI
         {
             Token token = this->currentToken;
             if(token.getType() == integer_ast || token.getType() == float_ast) { eat(token.getType()); return new Num(token); }
-            if(token.getType() == add_opt) { eat(add_opt); return new UnaryOp(new Num(Token(integer_ast,0)),token,factor()); }
-            if(token.getType() == dec_opt) { eat(dec_opt); return new UnaryOp(new Num(Token(integer_ast,0)),token,factor()); }
+            if(token.getType() == add_opt) { eat(add_opt); return new UnaryOp(token,factor()); }
+            if(token.getType() == dec_opt) { eat(dec_opt); return new UnaryOp(token,factor()); }
             if(token.getType() == variable_ast) { return variable(); }
             if(token.getType() == left_parenthese_keyword) { eat(left_parenthese_keyword); AST* res = expr(); eat(right_parenthese_keyword); return res; }
             if(token.getType() == right_parenthese_keyword)

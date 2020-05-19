@@ -1,57 +1,37 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-18 17:27:17
+ * @LastEditTime: 2020-05-19 23:40:04
  * @Description: include Interpreter class
  */
 #ifndef ___INTERPRETER_H___
 #define ___INTERPRETER_H___
 
-#include "Parser.h"
+#include "NodeVisitor.h"
 
 namespace AVSI
 {   
     using std::map;
     using std::vector;
-
-    class NodeVisitor
-    {
-   
-    public:
-        NodeVisitor(void);
-        
-        static any visitor(AST* node);
-        static any AssignVisitor(AST* node);
-        static any BinOpVisitor(AST* node);
-        static any CompoundVisitor(AST* node);
-        static any NumVisitor(AST* node);
-        static any VariableVisitor(AST* node);
-    };
-
-    class Interpreter: public NodeVisitor
+    
+    class Interpreter: public AVSI::NodeVisitor
     {
     private:
         Parser* parser;
     public:
-        Interpreter(void);
-        Interpreter(Parser* parser);
-        ~Interpreter();
+        Interpreter(void) {};
+        Interpreter(Parser* parser): parser(parser) {};
+        virtual ~Interpreter() {};
+
+        any visitor(AST* node);
+        any AssignVisitor(AST* node);
+        any BinOpVisitor(AST* node);
+        any CompoundVisitor(AST* node);
+        any NumVisitor(AST* node);
+        any UnaryOpVisitor(AST* node);
+        any VariableVisitor(AST* node);
 
         any interpret(void);
-    };
-
-    typedef any (*visiteNode)(AST* node);
-
-    static map<TokenType,visiteNode> visitorMap = {
-        {integer_ast    ,NodeVisitor::NumVisitor},
-        {float_ast      ,NodeVisitor::NumVisitor},
-        {add_opt        ,NodeVisitor::BinOpVisitor},
-        {dec_opt        ,NodeVisitor::BinOpVisitor},
-        {mul_opt        ,NodeVisitor::BinOpVisitor},
-        {div_opt        ,NodeVisitor::BinOpVisitor},
-        {assign_opt     ,NodeVisitor::AssignVisitor},
-        {compound_ast   ,NodeVisitor::CompoundVisitor},
-        {variable_ast   ,NodeVisitor::VariableVisitor}
     };
 
     static map<string,any> globalVariable = map<string,any>();
