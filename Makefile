@@ -2,6 +2,14 @@
 
 PROJECT_NAME	:= Interpreter
 
+export ECHO		:= echo
+export RM		:= rm
+export GREP		:= grep
+export XARGS	:= xargs
+export CD		:= cd
+export LS		:= ls
+
+
 # compiler
 CXX			:= g++
 
@@ -50,5 +58,5 @@ $(DIR_OUTPUT)/%.o : $(DIR_SRC)/%.cpp
 .PHONY: clean
 
 clean:
-	cd $(DIR_OUTPUT) && ls | grep -v ".gitkeep" | xargs rm
+	$(CD) $(DIR_OUTPUT) && $(LS) | $(GREP) -v ".gitkeep" | $(XARGS) $(RM)
 
