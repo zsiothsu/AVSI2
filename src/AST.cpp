@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-19 22:51:31
+ * @LastEditTime: 2020-05-20 10:39:48
  * @Description: constructer of abstract syntax tree (AST)
  */
 #include "../inc/AST.h"
@@ -45,6 +45,14 @@ namespace AVSI
         if(this->right != nullptr)
         {
             delete this->right;
+        }
+    }
+
+    Function::~Function()
+    {
+        if(this->compound != nullptr)
+        {
+            delete this->compound;
         }
     }
 

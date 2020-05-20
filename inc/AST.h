@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-19 22:51:09
+ * @LastEditTime: 2020-05-20 11:41:02
  * @Description: constructer of abstract syntax tree (AST)
  */
 #ifndef ___AST_H___
@@ -35,7 +35,7 @@ namespace AVSI
     public:
         string __AST_name;
 
-        AST(void);
+        AST(void) {};
         AST(string name): __AST_name(name) {};
         AST(string name,Token token):
             token(token),
@@ -92,6 +92,20 @@ namespace AVSI
         virtual ~BinOp();
 
         TokenType getOp(void);
+    };
+
+    class Function: public AST
+    {
+    public:
+        AST* compound;
+        string id;
+
+        Function(void): compound(nullptr) {};
+        Function(string id,AST* compound):
+            compound(compound),
+            id(id)
+        {};
+        virtual ~Function();
     };
 
     class Num: public AST

@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-18 17:06:57
+ * @LastEditTime: 2020-05-20 11:06:41
  * @Description: definition of tokens or interpreter
  */
 #ifndef ___TOKEN_H___
@@ -14,16 +14,21 @@ namespace AVSI
     using namespace std;
     typedef enum
     {
+        //special token
         END = EOF,
         NONE = 0,
+        // terminal
         integer_ast,
         float_ast,
+        compound_ast,
+        id_ast,
+        // operator
         add_opt,
         dec_opt,
         mul_opt,
         div_opt,
         assign_opt,
-        variable_ast,
+        // symbol
         left_parenthese_keyword,
         right_parenthese_keyword,
         left_bracket_keyword,
@@ -31,7 +36,8 @@ namespace AVSI
         left_brace_keyword,
         right_brace_keyword,
         semi_keyword,
-        compound_ast
+        // reserved keywork
+        function_keyword
     } TokenType;
     
     typedef char opt;

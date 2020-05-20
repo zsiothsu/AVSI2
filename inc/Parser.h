@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-18 17:10:14
+ * @LastEditTime: 2020-05-20 11:24:45
  * @Description: include Parser class
  */
 #ifndef ___PARSER_H___
@@ -30,6 +30,7 @@ namespace AVSI
         AST* statementList(); 
         AST* statement();
         AST* assignment();
+        AST* function();
         AST* expr();
         AST* factor();
         AST* parse();

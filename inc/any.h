@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-18 17:22:07
+ * @LastEditTime: 2020-05-20 10:47:52
  * @Description: "AVSI::any" is a data type which can store variable of basic type
  */
 

@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-18 17:28:06
+ * @LastEditTime: 2020-05-20 11:38:22
  * @Description: include Lexer class
  */
 #include "../inc/Lexer.h"
@@ -89,14 +89,7 @@ namespace AVSI
             if(this->currentChar == ' ') { skipWhiteSpace(); continue; }
             if(this->currentChar == '#') { this->cur = this->line.length(); advance(); continue; }
             if(isdigit(this->currentChar)) { return number(); }
-            if(this->currentChar == '+') { advance(); return Token(add_opt,'+');}
-            if(this->currentChar == '-') { advance(); return Token(dec_opt,'-'); }
-            if(this->currentChar == '*') { advance(); return Token(mul_opt,'*'); }
-            if(this->currentChar == '/') { advance(); return Token(div_opt,'/'); }
-            if(this->currentChar == '(') { advance(); return Token(left_parenthese_keyword,'('); }
-            if(this->currentChar == ')') { advance(); return Token(right_parenthese_keyword,')'); }
-            if(this->currentChar == ';') { advance(); return Token(semi_keyword,';'); }
-            if(isalpha(this->currentChar) || this->currentChar == '_') { std::string id = Id(); return Token(variable_ast,id); }
+            if(isalpha(this->currentChar) || this->currentChar == '_') { return Id(); }
             if(this->currentChar == '=') {
                 if(peek() != '=')
                 {
@@ -105,6 +98,12 @@ namespace AVSI
                 }
                 //TODO : eq
                 else return Token::empty();
+            }
+            map<char,TokenType>::iterator iter = TokenMap.find(this->currentChar);
+            if(iter != TokenMap.end())
+            {
+                advance();
+                return Token(iter->second,this->currentChar);
             }
             return Token::empty();
         }
@@ -169,7 +168,7 @@ namespace AVSI
         }
     }
 
-    std::string Lexer::Id()
+    Token Lexer::Id()
     {
         std::string str;
         while (
@@ -181,6 +180,8 @@ namespace AVSI
             str = str + this->currentChar;
             advance();
         }
-        return str;
+        map<string,TokenType>::iterator iter = reservedKeyword.find(str);
+        if(iter != reservedKeyword.end()) return Token(iter->second,str);
+        else return Token(id_ast,str);
     }
 }

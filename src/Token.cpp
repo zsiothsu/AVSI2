@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-11 15:08:00
+ * @LastEditTime: 2020-05-20 11:10:01
  * @Description: definition of tokens or interpreter
  */
 #include "../inc/Token.h"

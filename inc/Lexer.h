@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-18 17:27:52
+ * @LastEditTime: 2020-05-20 11:33:29
  * @Description: include Lexer class
  */
 #ifndef ___LEXER_H___
@@ -31,7 +31,25 @@ namespace AVSI
         Token number();
         char peek();
         void skipWhiteSpace();
-        std::string Id();
+        Token Id();
+    };
+
+    static map<char,TokenType> TokenMap = {
+        {'+',add_opt},
+        {'-',dec_opt},
+        {'*',mul_opt},
+        {'/',div_opt},
+        {'(',left_parenthese_keyword},
+        {')',right_parenthese_keyword},
+        {'[',left_bracket_keyword},
+        {']',right_bracket_keyword},
+        {'{',left_brace_keyword},
+        {'}',right_brace_keyword},
+        {';',semi_keyword}
+    };
+
+    static map<string,TokenType> reservedKeyword = {
+        {"function",function_keyword}
     };
 }
 

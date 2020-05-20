@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-19 22:52:01
+ * @LastEditTime: 2020-05-20 11:25:41
  * @Description: include Parser class
  */
 #include "../inc/Parser.h"
@@ -67,7 +67,8 @@ namespace AVSI
     AST* Parser::statement()
     {
         AST* ret = &ASTEmpty;
-        if(this->currentToken.getType() == variable_ast) ret = assignment();
+        if(this->currentToken.getType() == id_ast) ret = assignment();
+        if(this->currentToken.getType() == function_keyword) ret = function();
         return ret;
     }
 
@@ -77,6 +78,19 @@ namespace AVSI
         eat(assign_opt);
         AST* right = expr();
         return new Assign(left,right);
+    }
+
+    AST* Parser::function()
+    {
+        eat(function_keyword);
+        string id = this->currentToken.getValue().any_cast<string>();
+        eat(id_ast);
+        eat(left_parenthese_keyword);
+        eat(right_parenthese_keyword);
+        eat(left_brace_keyword);
+        AST* compound = statementList();
+        eat(right_brace_keyword);
+        return new Function(id,compound);
     }
 
     /**
@@ -130,7 +144,7 @@ namespace AVSI
             if(token.getType() == integer_ast || token.getType() == float_ast) { eat(token.getType()); return new Num(token); }
             if(token.getType() == add_opt) { eat(add_opt); return new UnaryOp(token,factor()); }
             if(token.getType() == dec_opt) { eat(dec_opt); return new UnaryOp(token,factor()); }
-            if(token.getType() == variable_ast) { return variable(); }
+            if(token.getType() == id_ast) { return variable(); }
             if(token.getType() == left_parenthese_keyword) { eat(left_parenthese_keyword); AST* res = expr(); eat(right_parenthese_keyword); return res; }
             if(token.getType() == right_parenthese_keyword)
             {
@@ -204,7 +218,7 @@ namespace AVSI
         try
         {
             Token var = this->currentToken;
-            eat(variable_ast);
+            eat(id_ast);
             return new Variable(var);
         }
         catch(Exception& e)
