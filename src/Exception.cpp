@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-12 13:56:17
+ * @LastEditTime: 2020-05-21 16:48:15
  * @Description: include some exception types for interpreter
  */
 #include "../inc/Exception.h"
@@ -11,22 +11,6 @@ namespace AVSI
     /*******************************************************
      *                    base exception                   *
      *******************************************************/
-    Exception::Exception()
-    {
-        this->str = "Exception";
-        this->eType = this->str;
-    }
-
-    Exception::Exception(std::string s)
-    {
-        Exception();
-        this->str = this->eType + s + " ";
-    }
-
-    Exception::~Exception()
-    {
-    }
-
     void Exception::setMsg(std::string s)
     {
         this->str = this->eType + ": "+ s + " ";
@@ -35,27 +19,6 @@ namespace AVSI
     const char* Exception::what()
     {
         return this->str.c_str();
-    }
-    
-    /*******************************************************
-     *                  derived exception                  *
-     *******************************************************/
-    SyntaxException::SyntaxException()
-    {
-        this->str = "SyntaxException";
-        this->eType = this->str;
-    }
-
-    MathException::MathException()
-    {
-        this->str = "MathException";
-        this->eType = this->str;
-    }
-
-    LogicException::LogicException()
-    {
-        this->str = "LogicException";
-        this->eType = this->str;
     }
 
     /*******************************************************
@@ -80,11 +43,13 @@ namespace AVSI
     }
 
 
-    const Exception ExceptionFactory(std::string e,std::string c)
+    const Exception ExceptionFactory(std::string e,std::string c,int line,int column)
     {
         Exception exception = ExceptionFactory(e);
         
         exception.setMsg(c);
+        exception.line = line;
+        exception.column = column;
 
         return exception;
     }

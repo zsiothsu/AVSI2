@@ -51,9 +51,18 @@ $(DIR_OUTPUT)/%.o : $(DIR_SRC)/%.cpp
 	@$(ECHO) "CXX    $<"
 	@$(CXX) -c $(CXXFLAGS) -I$(DIR_INC) -o $@ $<
 
-#$(TARGET): $(SRC_FILES) $(MAIN_FILE)
-#	@$(ECHO) "CXX    $<"
-#	@$(CXX) $(CXXFLAGS) $(LDFLAGS) -I$(DIR_INC) -o $@ $<
+$(DIR_OUTPUT)/%.d: $(DIR_SRC)/%.cpp
+	@set -e; rm -f $@; $(CXX) -MM $< $(CXXFLAGS) > $@.$$$$; \
+	sed 's,\($*\)\.o[ :]*,$(DIR_OUTPUT)/\1.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
+
+$(DIR_OUTPUT)/%.d: $(DIR_ROOT)/%.cpp
+	@set -e; rm -f $@; $(CXX) -MM $< $(CXXFLAGS) > $@.$$$$; \
+	sed 's,\($*\)\.o[ :]*,$(DIR_OUTPUT)/\1.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
+
+-include $(DIR_OUTPUT)/main.d
+-include $(OBJS:.o=.d)
 
 .PHONY: clean
 

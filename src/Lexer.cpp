@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-20 11:38:22
+ * @LastEditTime: 2020-05-21 16:21:35
  * @Description: include Lexer class
  */
 #include "../inc/Lexer.h"
@@ -86,6 +86,7 @@ namespace AVSI
     {
         while(this->currentChar != EOF)
         {
+            int line = this->linenum,column = this->cur;
             if(this->currentChar == ' ') { skipWhiteSpace(); continue; }
             if(this->currentChar == '#') { this->cur = this->line.length(); advance(); continue; }
             if(isdigit(this->currentChar)) { return number(); }
@@ -94,16 +95,17 @@ namespace AVSI
                 if(peek() != '=')
                 {
                     advance();
-                    return Token(assign_opt,')');
+                    return Token(assign_opt,'=',line,column);
                 }
-                //TODO : eq
+                //TODO : eq nep
                 else return Token::empty();
             }
             map<char,TokenType>::iterator iter = TokenMap.find(this->currentChar);
             if(iter != TokenMap.end())
             {
+                char tokenVaule = this->currentChar;
                 advance();
-                return Token(iter->second,this->currentChar);
+                return Token(iter->second,tokenVaule,line,column);
             }
             return Token::empty();
         }
@@ -117,6 +119,7 @@ namespace AVSI
      */
     Token Lexer::number()
     {
+        int line = this->linenum,column = this->cur;
         double num = 0,scale = 0;
         int subscale = 0,signsubscale = 1;
         
@@ -139,8 +142,8 @@ namespace AVSI
         } // exponent?
 
         num = num * pow(10.0,(scale + subscale * signsubscale));
-        if(scale == 0 && signsubscale == 1) return Token(integer_ast,(int)num);
-        else return Token(float_ast,num);
+        if(scale == 0 && signsubscale == 1) return Token(integer_ast,(int)num,line,column);
+        else return Token(float_ast,num,line,column);
     }
 
     char Lexer::peek()
@@ -170,6 +173,7 @@ namespace AVSI
 
     Token Lexer::Id()
     {
+        int line = this->linenum,column = this->cur;
         std::string str;
         while (
             isalpha(this->currentChar) ||
@@ -181,7 +185,7 @@ namespace AVSI
             advance();
         }
         map<string,TokenType>::iterator iter = reservedKeyword.find(str);
-        if(iter != reservedKeyword.end()) return Token(iter->second,str);
-        else return Token(id_ast,str);
+        if(iter != reservedKeyword.end()) return Token(iter->second,str,line,column);
+        else return Token(id_ast,str,line,column);
     }
 }

@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-18 17:30:14
+ * @LastEditTime: 2020-05-21 16:53:15
  * @Description: entry for interpreter
  */
 #include "./inc/Interpreter.h"
@@ -26,14 +26,15 @@ int main(int argc,char** argv)
 
         Lexer* lexer = new Lexer(&file);
         Parser* parser = new Parser(lexer);
-        Interpreter* interpreter = new Interpreter(parser);
+        Interpreter* interpreter = new Interpreter();
         try
         {
-            interpreter->interpret();
+            AST* tree = parser->parse();
+            interpreter->interpret(tree);
         }
         catch(Exception& e)
         {
-            std::cerr << e.what() << '\n';
+            std::cerr << e.what() << "\t at line " << e.line << " column " << e.column + 1 <<'\n';
         }
 
         delete lexer;

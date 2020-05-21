@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-04-06
- * @LastEditTime: 2020-05-19 23:26:27
+ * @LastEditTime: 2020-05-21 16:39:38
  * @Description: include Interpreter class
  */
 
@@ -9,18 +9,9 @@
 
 namespace AVSI
 {
-    any Interpreter::interpret()
+    any Interpreter::interpret(AST* root)
     {
-        try
-        {
-            AST* tree = this->parser->parse();
-            return visitor(tree);
-        }
-        catch(Exception& e)
-        {
-            throw e;
-        }
-        
+        return visitor(root);
     }
 
     /*******************************************************
@@ -28,19 +19,12 @@ namespace AVSI
      *******************************************************/
     any Interpreter::visitor(AST* node)
     {
-        try
-        {
-            if(node == &ASTEmpty) return 0;
-            any res = 0;
-            string functionName = node->__AST_name + "Visitor";
-            map<string,visitNode>::iterator iter = visitorMap.find(functionName);
-            if(iter != visitorMap.end()) res = (this->*((*iter).second))(node);
-            return res;
-        }
-        catch(Exception& e)
-        {
-            throw e;
-        }
+        if(node == &ASTEmpty) return 0;
+        any res = 0;
+        string visitorName = node->__AST_name + "Visitor";
+        map<string,visitNode>::iterator iter = visitorMap.find(visitorName);
+        if(iter != visitorMap.end()) res = (this->*((*iter).second))(node);
+        return res;
     }
 
     any Interpreter::AssignVisitor(AST* node)
@@ -48,25 +32,20 @@ namespace AVSI
         Assign* assign = (Assign*)node;
         Variable* var = (Variable*)assign->left;
         any value = visitor(assign->right);
-        globalVariable[var->id] = value;
+        symbolTable.insert({var->id,variable_t,value});
         return value;
     }
 
     any Interpreter::BinOpVisitor(AST* node)
     {
         BinOp* op = (BinOp*)node;
-        if(op->left->getToken().getType() == NONE ||
-           op->left->getToken().getType() == NONE)
-        {
-            throw ExceptionFactory("SyntaxException","invalid syntax");
-        }
         if(op->getOp() == add_opt) return visitor(op->left) + visitor(op->right);
         if(op->getOp() == dec_opt) return visitor(op->left) - visitor(op->right);
         if(op->getOp() == mul_opt) return visitor(op->left) * visitor(op->right);
         if(op->getOp() == div_opt)
         {
             any right = visitor(op->right);
-            if(right == 0) throw ExceptionFactory("MathException","division by zero");
+            if(right == 0) throw ExceptionFactory("MathException","division by zero",op->getToken().line,op->getToken().column);
             return visitor(op->left) / visitor(op->right);
         }
         return 0;
@@ -76,6 +55,12 @@ namespace AVSI
     {
         Compound* compound = (Compound*)node;
         for(AST* ast : compound->child) visitor(ast);
+        return 0;
+    }
+
+    any Interpreter::FunctionVisitor(AST* node)
+    {
+        //TODO
         return 0;
     }
 
@@ -90,18 +75,18 @@ namespace AVSI
         UnaryOp* op = (UnaryOp*)node;
         if(op->getOp() == add_opt) return (any)0 + visitor(op->right);
         if(op->getOp() == dec_opt) return (any)0 - visitor(op->right);
-        return 0;
+         return 0;
     }
 
     any Interpreter::VariableVisitor(AST* node)
     {
         Variable* var = (Variable*)node;
-        map<string,any>::iterator iter = globalVariable.find(var->id);
-        if(iter != globalVariable.end()) return iter->second;
-        else
+        Symbol symbol = symbolTable.find(var->id);
+        if(symbol.type == null_t)
         {
             string msg = "name '" + var->id + "' is not defined";
-            throw ExceptionFactory("LogicException",msg);
+            throw ExceptionFactory("LogicException",msg,var->getToken().line,var->getToken().column);
         }
+        return symbol.value;
     }
 }

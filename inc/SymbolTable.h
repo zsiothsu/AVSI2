@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-05-19
- * @LastEditTime: 2020-05-19 22:54:16
+ * @LastEditTime: 2020-05-21 15:42:27
  * @Description: file content
  */ 
 #ifndef ___SYMBOLTABLE_H___
@@ -19,13 +19,15 @@ namespace AVSI
     typedef enum
     {
         null_t,
-        variable_t
+        variable_t,
+        function_t
     } SymbolType;
 
     typedef struct
     {
         string name;
         SymbolType type;
+        any value;
     } Symbol;
 
     class SymbolMap

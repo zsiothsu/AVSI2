@@ -1,30 +1,13 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-20 11:10:01
+ * @LastEditTime: 2020-05-21 16:17:14
  * @Description: definition of tokens or interpreter
  */
 #include "../inc/Token.h"
 
 namespace AVSI
 {
-    /*******************************************************
-     *                    constructor                      *
-     *******************************************************/
-    Token::Token()
-    {
-    }
-
-    Token::Token(TokenType type,any var)
-    {
-        this->value = var;
-        this->type = type;
-    }
-
-    Token::~Token()
-    {
-    }
-
     /*******************************************************
      *                  static method                      *
      *******************************************************/

@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-20 11:06:41
+ * @LastEditTime: 2020-05-21 16:17:05
  * @Description: definition of tokens or interpreter
  */
 #ifndef ___TOKEN_H___
@@ -48,9 +48,21 @@ namespace AVSI
         any         value;
         TokenType   type;
     public:
-        Token();
-        Token(TokenType type,any var);
-        ~Token();
+        int         line;
+        int         column;
+
+        Token() {};
+        Token(TokenType type,any var):
+            value(var),
+            type(type)
+        {};
+        Token(TokenType type,any var,int line,int col):
+            value(var),
+            type(type),
+            line(line),
+            column(col)
+        {};
+        ~Token() {};
 
         static Token empty();
 

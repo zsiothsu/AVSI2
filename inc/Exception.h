@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-18 17:26:19
+ * @LastEditTime: 2020-05-21 16:47:32
  * @Description: include some exception types for interpreter
  */
 #ifndef ___EXCEPTION_H___
@@ -19,9 +19,20 @@ namespace AVSI
         std::string str;
         std::string eType;
     public:
-        Exception();
-        Exception(std::string s);
-        ~Exception();
+        int line;
+        int column;
+
+        Exception():
+            str("Exception"),
+            eType(str)
+        {};
+        Exception(std::string s):
+            str(s),
+            eType(str),
+            line(-1),
+            column(-1)
+        {};
+        ~Exception() {};
 
         void setMsg(std::string s);
         virtual const char* what();
@@ -31,25 +42,25 @@ namespace AVSI
     {
     public:
         using Exception::Exception;
-        SyntaxException();
+        SyntaxException(): Exception("SyntaxException") {};
     };
     
     class MathException: public Exception
     {
     public:
         using Exception::Exception;
-        MathException();
+        MathException(): Exception("MathException") {};
     };
 
     class LogicException: public Exception
     {
     public:
         using Exception::Exception;
-        LogicException();
+        LogicException(): Exception("LogicException") {};
     };
 
     const Exception ExceptionFactory(std::string e);
-    const Exception ExceptionFactory(std::string e,std::string c);
+    const Exception ExceptionFactory(std::string e,std::string c,int line,int column);
 }
 
 #endif

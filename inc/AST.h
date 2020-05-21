@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-20 11:41:02
+ * @LastEditTime: 2020-05-20 21:58:53
  * @Description: constructer of abstract syntax tree (AST)
  */
 #ifndef ___AST_H___
@@ -19,6 +19,7 @@
 #define __VARIABLE_NAME "Variable"
 #define __COMPOUND_NAME "Compound"
 #define __NONEAST_NAME  "NoneAST"
+#define __FUNCTION_NAME "Function"
 
 namespace AVSI
 {
@@ -100,7 +101,10 @@ namespace AVSI
         AST* compound;
         string id;
 
-        Function(void): compound(nullptr) {};
+        Function(void):
+            AST(__FUNCTION_NAME),
+            compound(nullptr)
+        {};
         Function(string id,AST* compound):
             compound(compound),
             id(id)
