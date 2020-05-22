@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-21 16:05:00
+ * @LastEditTime: 2020-05-22 19:07:01
  * @Description: include Interpreter class
  */
 #ifndef ___INTERPRETER_H___
@@ -26,7 +26,7 @@ namespace AVSI
         any AssignVisitor(AST* node);
         any BinOpVisitor(AST* node);
         any CompoundVisitor(AST* node);
-        any FunctionVisitor(AST* node);
+        any FunctionDeclVisitor(AST* node);
         any NumVisitor(AST* node);
         any UnaryOpVisitor(AST* node);
         any VariableVisitor(AST* node);

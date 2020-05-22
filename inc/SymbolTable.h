@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-05-19
- * @LastEditTime: 2020-05-21 15:42:27
+ * @LastEditTime: 2020-05-22 20:25:52
  * @Description: file content
  */ 
 #ifndef ___SYMBOLTABLE_H___
@@ -15,6 +15,8 @@ namespace AVSI
     using std::map;
     using std::deque;
     using std::string;
+    using std::clog;
+    using std::endl;
 
     typedef enum
     {
@@ -35,11 +37,18 @@ namespace AVSI
     private:
         map<string,Symbol> symbols;
     public:
-        SymbolMap(void);
+        string name;
+
+        SymbolMap(void): symbols(map<string,Symbol>()) {};
+        SymbolMap(string name):
+            symbols(map<string,Symbol>()),
+            name(name)
+        {};
         ~SymbolMap() {};
 
         void insert(Symbol symbol);
         Symbol find(string name);
+        string __str();
     };
 
     class SymbolTable
@@ -47,6 +56,8 @@ namespace AVSI
     private:
         deque<SymbolMap> SymbolStack;
     public:
+        int level;
+
         SymbolTable(void);
         ~SymbolTable() {};
         
@@ -54,7 +65,13 @@ namespace AVSI
         Symbol find(string name);
         
         void pop(void);
-        void push(void);
+        void push(string name);
+    };
+
+    static map<SymbolType,string> symbolTypeName = {
+        {variable_t ,"variable"},
+        {function_t ,"function"},
+        {null_t     ,"null"}
     };
 }
 

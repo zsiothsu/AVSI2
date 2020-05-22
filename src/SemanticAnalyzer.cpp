@@ -1,48 +1,98 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-21 16:26:20
+ * @LastEditTime: 2020-05-22 23:12:03
  * @Description: file content
  */ 
 #include "../inc/SemanticAnalyzer.h"
 
 namespace AVSI
 {
+    void SemanticAnalyzer::SemanticAnalyze(AST* root)
+    {
+        clog << "\033[32m====================================\033[0m" << endl
+             << "\033[32m          Semantic Analyze\033[0m"           << endl
+             << "\033[32m------------------------------------\033[0m" << endl;
+
+        this->symbolTable.push("global");
+        visitor(root);
+        this->symbolTable.pop();
+
+        clog << "\033[32m====================================\033[0m" << endl << endl;
+    }
+
     any SemanticAnalyzer::visitor(AST* node)
     {
         if(node == &ASTEmpty) return 0;
+
         string visitorName = node->__AST_name + "Visitor";
         map<string,visitNode>::iterator iter = visitorMap.find(visitorName);
         if(iter != visitorMap.end()) (this->*((*iter).second))(node);
+
         return 0;
 
     }
     any SemanticAnalyzer::AssignVisitor(AST* node)
     {
         Assign* assign = (Assign*)node;
-        visitor(assign->left);
+
+        Variable* var = (Variable*)assign->left;
         visitor(assign->right);
+
+        this->symbolTable.insert({var->id,variable_t});
+
         return 0;
     }
 
     any SemanticAnalyzer::BinOpVisitor(AST* node)
     {
         BinOp* op = (BinOp*)node;
+
         visitor(op->left);
         visitor(op->right);
+
         return 0;
     }
 
     any SemanticAnalyzer::CompoundVisitor(AST* node)
     {
         Compound* compound = (Compound*)node;
+
         for(AST* ast : compound->child) visitor(ast);
+
         return 0;
     }
 
-    any SemanticAnalyzer::FunctionVisitor(AST* node)
+    any SemanticAnalyzer::FunctionDeclVisitor(AST* node)
     {
-        //TODO
+        FunctionDecl* functionDecl = (FunctionDecl*)node;
+
+        SymbolType type = this->symbolTable.find(functionDecl->id).type;
+        if(type != null_t)
+        {
+            string msg = "mutiple definition";
+            if(type == function_t)
+            {
+                msg = "mutiple definition of function "  \
+                     + functionDecl->id                  \
+                     + "'";
+            }
+            else if(type == variable_t)
+            {
+                msg = "function '"                           \
+                     + functionDecl->id                      \
+                     + "' have the same name with variable";
+            }
+            throw ExceptionFactory(__LogicException,msg,
+                                   functionDecl->getToken().line,
+                                   functionDecl->getToken().column);
+        }
+        this->symbolTable.insert({functionDecl->id,function_t});
+
+        this->symbolTable.push(functionDecl->id);
+        visitor(functionDecl->compound);
+        this->symbolTable.pop();
+
         return 0;
     }
 
@@ -54,15 +104,23 @@ namespace AVSI
     any SemanticAnalyzer::UnaryOpVisitor(AST* node)
     {
         UnaryOp* op = (UnaryOp*)node;
+
         visitor(op->right);
+
         return 0;
     }
 
     any SemanticAnalyzer::VariableVisitor(AST* node)
     {
         Variable* var = (Variable*)node;
-        Symbol symbol = {var->id,variable_t};
-        symbolTable.insert(symbol);
+
+        Symbol symbol = this->symbolTable.find(var->id);
+        if(symbol.type == null_t)
+        {
+            string msg = "name '" + var->id + "' is not defined";
+            throw ExceptionFactory(__LogicException,msg,var->getToken().line,var->getToken().column);
+        }
+        
         return 0;
     }
 }

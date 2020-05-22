@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-21 16:21:35
+ * @LastEditTime: 2020-05-22 21:22:17
  * @Description: include Lexer class
  */
 #include "../inc/Lexer.h"
@@ -28,6 +28,7 @@ namespace AVSI
         do
         {
             getline(*this->file,this->line);
+            this->line += " ";
             this->currentChar = this->line[this->cur];
         } while(this->line.empty());
     }
@@ -65,6 +66,7 @@ namespace AVSI
                     this->linenum++;
                     this->cur = 0;
                     getline(*this->file,this->line);
+                    this->line += " ";
                     this->currentChar = this->line[this->cur];
                 }
                 else

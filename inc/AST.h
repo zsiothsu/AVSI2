@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-20 21:58:53
+ * @LastEditTime: 2020-05-22 21:05:17
  * @Description: constructer of abstract syntax tree (AST)
  */
 #ifndef ___AST_H___
@@ -12,14 +12,14 @@
 #include "Token.h"
 #include "Exception.h"
 
-#define __ASSIGN_NAME   "Assign"
-#define __BINOP_NAME    "BinOp"
-#define __NUM_NAME      "Num"
-#define __UNARYTOP_NAME "UnaryOp"
-#define __VARIABLE_NAME "Variable"
-#define __COMPOUND_NAME "Compound"
-#define __NONEAST_NAME  "NoneAST"
-#define __FUNCTION_NAME "Function"
+#define __ASSIGN_NAME       "Assign"
+#define __BINOP_NAME        "BinOp"
+#define __NUM_NAME          "Num"
+#define __UNARYTOP_NAME     "UnaryOp"
+#define __VARIABLE_NAME     "Variable"
+#define __COMPOUND_NAME     "Compound"
+#define __NONEAST_NAME      "NoneAST"
+#define __FUNCTIONDECL_NAME "FunctionDecl"
 
 namespace AVSI
 {
@@ -95,21 +95,22 @@ namespace AVSI
         TokenType getOp(void);
     };
 
-    class Function: public AST
+    class FunctionDecl: public AST
     {
     public:
         AST* compound;
         string id;
 
-        Function(void):
-            AST(__FUNCTION_NAME),
+        FunctionDecl(void):
+            AST(__FUNCTIONDECL_NAME),
             compound(nullptr)
         {};
-        Function(string id,AST* compound):
+        FunctionDecl(string id,AST* compound):
+            AST(__FUNCTIONDECL_NAME),
             compound(compound),
             id(id)
         {};
-        virtual ~Function();
+        virtual ~FunctionDecl();
     };
 
     class Num: public AST

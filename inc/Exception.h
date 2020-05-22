@@ -1,13 +1,17 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-21 16:47:32
+ * @LastEditTime: 2020-05-22 19:29:09
  * @Description: include some exception types for interpreter
  */
 #ifndef ___EXCEPTION_H___
 #define ___EXCEPTION_H___
 
 #include <string>
+
+#define __SyntaxException   "SyntaxException"
+#define __MathException     "MathException"
+#define __LogicException    "LogicException"
 
 namespace AVSI
 {
@@ -42,21 +46,21 @@ namespace AVSI
     {
     public:
         using Exception::Exception;
-        SyntaxException(): Exception("SyntaxException") {};
+        SyntaxException(): Exception(__SyntaxException) {};
     };
     
     class MathException: public Exception
     {
     public:
         using Exception::Exception;
-        MathException(): Exception("MathException") {};
+        MathException(): Exception(__MathException) {};
     };
 
     class LogicException: public Exception
     {
     public:
         using Exception::Exception;
-        LogicException(): Exception("LogicException") {};
+        LogicException(): Exception(__LogicException) {};
     };
 
     const Exception ExceptionFactory(std::string e);

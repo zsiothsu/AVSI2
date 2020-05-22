@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-05-19
- * @LastEditTime: 2020-05-20 23:12:20
+ * @LastEditTime: 2020-05-22 21:00:03
  * @Description: file content
  */ 
 #ifndef ___NODEVISITOR_H___
@@ -25,7 +25,7 @@ namespace AVSI
         virtual any AssignVisitor(AST* node) = 0;
         virtual any BinOpVisitor(AST* node) = 0;
         virtual any CompoundVisitor(AST* node) = 0;
-        virtual any FunctionVisitor(AST* node) = 0;
+        virtual any FunctionDeclVisitor(AST* node) = 0;
         virtual any NumVisitor(AST* node) = 0;
         virtual any UnaryOpVisitor(AST* node) = 0;
         virtual any VariableVisitor(AST* node) = 0;
@@ -34,13 +34,13 @@ namespace AVSI
     typedef any (NodeVisitor::*visitNode)(AST* node);
 
     static map<string,visitNode> visitorMap = {
-        {"NumVisitor"       ,&NodeVisitor::NumVisitor},
-        {"BinOpVisitor"     ,&NodeVisitor::BinOpVisitor},
-        {"UnaryOpVisitor"   ,&NodeVisitor::UnaryOpVisitor},
-        {"FunctionVisitor"  ,&NodeVisitor::FunctionVisitor},
-        {"AssignVisitor"    ,&NodeVisitor::AssignVisitor},
-        {"CompoundVisitor"  ,&NodeVisitor::CompoundVisitor},
-        {"VariableVisitor"  ,&NodeVisitor::VariableVisitor}
+        {"NumVisitor"           ,&NodeVisitor::NumVisitor},
+        {"BinOpVisitor"         ,&NodeVisitor::BinOpVisitor},
+        {"UnaryOpVisitor"       ,&NodeVisitor::UnaryOpVisitor},
+        {"FunctionDeclVisitor"  ,&NodeVisitor::FunctionDeclVisitor},
+        {"AssignVisitor"        ,&NodeVisitor::AssignVisitor},
+        {"CompoundVisitor"      ,&NodeVisitor::CompoundVisitor},
+        {"VariableVisitor"      ,&NodeVisitor::VariableVisitor}
     };
 }
 

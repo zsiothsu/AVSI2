@@ -1,10 +1,11 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-21 16:53:15
+ * @LastEditTime: 2020-05-22 23:06:33
  * @Description: entry for interpreter
  */
 #include "./inc/Interpreter.h"
+#include "./inc/SemanticAnalyzer.h"
 using namespace std;
 using namespace AVSI;
 
@@ -26,11 +27,13 @@ int main(int argc,char** argv)
 
         Lexer* lexer = new Lexer(&file);
         Parser* parser = new Parser(lexer);
+        SemanticAnalyzer* semanticAnalyzer = new SemanticAnalyzer();
         Interpreter* interpreter = new Interpreter();
         try
         {
             AST* tree = parser->parse();
-            interpreter->interpret(tree);
+            semanticAnalyzer->SemanticAnalyze(tree);
+            //interpreter->interpret(tree);
         }
         catch(Exception& e)
         {

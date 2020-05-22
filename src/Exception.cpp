@@ -27,15 +27,15 @@ namespace AVSI
 
     const Exception ExceptionFactory(std::string e)
     {
-        if(e == "SyntaxException")
+        if(e == __SyntaxException)
         {
             return SyntaxException();
         }
-        else if(e == "MathException")
+        else if(e == __MathException)
         {
             return MathException();
         }
-        else if(e == "LogicException")
+        else if(e == __LogicException)
         {
             return LogicException();
         }

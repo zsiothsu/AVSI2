@@ -48,7 +48,7 @@ namespace AVSI
         }
     }
 
-    Function::~Function()
+    FunctionDecl::~FunctionDecl()
     {
         if(this->compound != nullptr)
         {
