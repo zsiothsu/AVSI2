@@ -1,12 +1,13 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-20 11:24:45
+ * @LastEditTime: 2020-05-25 19:13:42
  * @Description: include Parser class
  */
 #ifndef ___PARSER_H___
 #define ___PARSER_H___
 
+#include <set>
 #include "Lexer.h"
 
 namespace AVSI
@@ -30,7 +31,8 @@ namespace AVSI
         AST* statementList(); 
         AST* statement();
         AST* assignment();
-        AST* function();
+        AST* functionDecl();
+        AST* param();
         AST* expr();
         AST* factor();
         AST* parse();

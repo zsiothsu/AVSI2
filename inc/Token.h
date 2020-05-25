@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-21 16:17:05
+ * @LastEditTime: 2020-05-25 17:30:20
  * @Description: definition of tokens or interpreter
  */
 #ifndef ___TOKEN_H___
@@ -36,6 +36,7 @@ namespace AVSI
         left_brace_keyword,
         right_brace_keyword,
         semi_keyword,
+        comma_keyword,
         // reserved keywork
         function_keyword
     } TokenType;

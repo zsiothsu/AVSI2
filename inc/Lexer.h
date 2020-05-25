@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-20 11:33:29
+ * @LastEditTime: 2020-05-25 17:08:23
  * @Description: include Lexer class
  */
 #ifndef ___LEXER_H___
@@ -45,7 +45,8 @@ namespace AVSI
         {']',right_bracket_keyword},
         {'{',left_brace_keyword},
         {'}',right_brace_keyword},
-        {';',semi_keyword}
+        {';',semi_keyword},
+        {',',comma_keyword}
     };
 
     static map<string,TokenType> reservedKeyword = {

@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-05-19
- * @LastEditTime: 2020-05-22 21:00:03
+ * @LastEditTime: 2020-05-25 17:57:22
  * @Description: file content
  */ 
 #ifndef ___NODEVISITOR_H___
@@ -26,6 +26,7 @@ namespace AVSI
         virtual any BinOpVisitor(AST* node) = 0;
         virtual any CompoundVisitor(AST* node) = 0;
         virtual any FunctionDeclVisitor(AST* node) = 0;
+        virtual any ParamVisitor(AST* node) = 0;
         virtual any NumVisitor(AST* node) = 0;
         virtual any UnaryOpVisitor(AST* node) = 0;
         virtual any VariableVisitor(AST* node) = 0;
@@ -40,7 +41,8 @@ namespace AVSI
         {"FunctionDeclVisitor"  ,&NodeVisitor::FunctionDeclVisitor},
         {"AssignVisitor"        ,&NodeVisitor::AssignVisitor},
         {"CompoundVisitor"      ,&NodeVisitor::CompoundVisitor},
-        {"VariableVisitor"      ,&NodeVisitor::VariableVisitor}
+        {"VariableVisitor"      ,&NodeVisitor::VariableVisitor},
+        {"ParamVisitor"         ,&NodeVisitor::ParamVisitor}
     };
 }
 

@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-22 23:12:03
+ * @LastEditTime: 2020-05-25 19:42:36
  * @Description: file content
  */ 
 #include "../inc/SemanticAnalyzer.h"
@@ -39,6 +39,13 @@ namespace AVSI
         Variable* var = (Variable*)assign->left;
         visitor(assign->right);
 
+        Symbol definedSymbol = this->symbolTable.find(var->id);
+        if(definedSymbol.type == function_t)
+        {
+            string msg = "symbol '" + var->id + "' has beed defined as function";
+            throw ExceptionFactory(__LogicException,msg,var->getToken().line,var->getToken().column);
+        }
+
         this->symbolTable.insert({var->id,variable_t});
 
         return 0;
@@ -73,7 +80,7 @@ namespace AVSI
             string msg = "mutiple definition";
             if(type == function_t)
             {
-                msg = "mutiple definition of function "  \
+                msg = "mutiple definition of function '"  \
                      + functionDecl->id                  \
                      + "'";
             }
@@ -90,9 +97,26 @@ namespace AVSI
         this->symbolTable.insert({functionDecl->id,function_t});
 
         this->symbolTable.push(functionDecl->id);
+        if(functionDecl->paramList != nullptr) visitor(functionDecl->paramList);
         visitor(functionDecl->compound);
         this->symbolTable.pop();
 
+        return 0;
+    }
+
+    any SemanticAnalyzer::ParamVisitor(AST* node)
+    {
+        Param* param = (Param*)node;
+        for(Variable* var:param->paramList)
+        {
+            Symbol definedSymbol = this->symbolTable.find(var->id);
+            if(definedSymbol.type == function_t)
+            {
+                string msg = "symbol '" + var->id + "' has beed defined as function";
+                throw ExceptionFactory(__LogicException,msg,var->getToken().line,var->getToken().column);
+            }
+            this->symbolTable.insert({var->id,variable_t});
+        }
         return 0;
     }
 

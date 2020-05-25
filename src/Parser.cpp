@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-22 22:22:58
+ * @LastEditTime: 2020-05-25 19:42:02
  * @Description: include Parser class
  */
 #include "../inc/Parser.h"
@@ -68,7 +68,7 @@ namespace AVSI
     {
         AST* ret = &ASTEmpty;
         if(this->currentToken.getType() == id_ast) ret = assignment();
-        else if(this->currentToken.getType() == function_keyword) ret = function();
+        else if(this->currentToken.getType() == function_keyword) ret = functionDecl();
         return ret;
     }
 
@@ -80,17 +80,47 @@ namespace AVSI
         return new Assign(left,right);
     }
 
-    AST* Parser::function()
+    AST* Parser::functionDecl()
     {
+        Token token = this->currentToken;
         eat(function_keyword);
         string id = this->currentToken.getValue().any_cast<string>();
         eat(id_ast);
+
+        AST* paramList = nullptr;
         eat(left_parenthese_keyword);
+        if(this->currentToken.getType() == id_ast) paramList = param();
         eat(right_parenthese_keyword);
+
         eat(left_brace_keyword);
         AST* compound = statementList();
         eat(right_brace_keyword);
-        return new FunctionDecl(id,compound);
+        return new FunctionDecl(id,paramList,compound,token);
+    }
+
+    AST* Parser::param()
+    {
+        Param* param = new Param();
+        set<string> paramSet;
+        while(this->currentToken.getType() == id_ast)
+        {
+            string id = this->currentToken.getValue().any_cast<string>();
+            if(paramSet.find(id) != paramSet.end())
+            {
+                string msg = "duplicate argument '" + id +"' in function definition";
+                throw ExceptionFactory(__SyntaxException,msg,this->currentToken.line,this->currentToken.column);
+            }
+            paramSet.insert(id);
+            param->paramList.push_back(new Variable(this->currentToken));
+            eat(id_ast);
+            if(this->currentToken.getType() == right_parenthese_keyword)
+            {
+                return param;
+            }
+            eat(comma_keyword);
+        }
+        throw ExceptionFactory(__SyntaxException,"unexpected symbol in parameter list",this->currentToken.line,this->currentToken.column);
+        return param;
     }
 
     /**
