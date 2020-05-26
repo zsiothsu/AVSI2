@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-25 19:42:36
+ * @LastEditTime: 2020-05-26 16:00:40
  * @Description: file content
  */ 
 #include "../inc/SemanticAnalyzer.h"
@@ -101,6 +101,11 @@ namespace AVSI
         visitor(functionDecl->compound);
         this->symbolTable.pop();
 
+        return 0;
+    }
+
+    any SemanticAnalyzer::FunctionCallVisitor(AST* node)
+    {
         return 0;
     }
 

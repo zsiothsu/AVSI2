@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-25 17:08:23
+ * @LastEditTime: 2020-05-26 15:33:38
  * @Description: include Lexer class
  */
 #ifndef ___LEXER_H___
@@ -19,9 +19,10 @@ namespace AVSI
         ifstream* file;
         unsigned int linenum;
         unsigned int cur;
-        char currentChar;
         std::string line;
     public:
+        char currentChar;
+
         Lexer(void);
         Lexer(ifstream* file);
         ~Lexer();

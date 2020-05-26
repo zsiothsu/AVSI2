@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-25 19:42:02
+ * @LastEditTime: 2020-05-26 15:57:11
  * @Description: include Parser class
  */
 #include "../inc/Parser.h"
@@ -67,7 +67,8 @@ namespace AVSI
     AST* Parser::statement()
     {
         AST* ret = &ASTEmpty;
-        if(this->currentToken.getType() == id_ast) ret = assignment();
+        if(this->currentToken.getType() == id_ast && this->lexer->currentChar == '(') ret = functionCall();
+        else if(this->currentToken.getType() == id_ast) ret = assignment();
         else if(this->currentToken.getType() == function_keyword) ret = functionDecl();
         return ret;
     }
@@ -96,6 +97,28 @@ namespace AVSI
         AST* compound = statementList();
         eat(right_brace_keyword);
         return new FunctionDecl(id,paramList,compound,token);
+    }
+
+    AST* Parser::functionCall()
+    {
+        Token token = this->currentToken;
+        string id = this->currentToken.getValue().any_cast<string>();
+        eat(id_ast);
+
+        vector<AST*> paramList;
+        eat(left_parenthese_keyword);
+        if(this->currentToken.getType() != right_parenthese_keyword)
+        {
+            paramList.push_back(expr());
+            while(this->currentToken.getType() == comma_keyword)
+            {
+                eat(comma_keyword);
+                paramList.push_back(expr());
+            }
+        }
+        eat(right_parenthese_keyword);
+
+        return new FunctionCall(id,paramList,token);
     }
 
     AST* Parser::param()

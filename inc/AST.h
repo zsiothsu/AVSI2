@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-25 19:30:48
+ * @LastEditTime: 2020-05-26 15:53:42
  * @Description: constructer of abstract syntax tree (AST)
  */
 #ifndef ___AST_H___
@@ -20,6 +20,7 @@
 #define __COMPOUND_NAME     "Compound"
 #define __NONEAST_NAME      "NoneAST"
 #define __FUNCTIONDECL_NAME "FunctionDecl"
+#define __FUNCTIONCALL_NAME "FunctionCall"
 #define __PARAM_NAME        "Param"
 
 namespace AVSI
@@ -115,6 +116,25 @@ namespace AVSI
             compound(compound)
         {};
         virtual ~FunctionDecl();
+    };
+
+    class FunctionCall: public AST
+    {
+    public:
+        string id;
+        vector<AST*> paramList;
+
+        FunctionCall(void):
+            AST(__FUNCTIONCALL_NAME),
+            paramList(vector<AST*>())
+        {};
+        FunctionCall(string id,vector<AST*> paramList,Token token):
+            AST(__FUNCTIONCALL_NAME,token),
+            id(id),
+            paramList(paramList)
+        {};
+
+        virtual ~FunctionCall();
     };
 
     class Num: public AST

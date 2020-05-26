@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-04-06
- * @LastEditTime: 2020-05-25 19:27:43
+ * @LastEditTime: 2020-05-26 16:02:22
  * @Description: include Interpreter class
  */
 
@@ -68,6 +68,12 @@ namespace AVSI
     }
 
     any Interpreter::FunctionDeclVisitor(AST* node)
+    {
+        //TODO
+        return 0;
+    }
+
+    any Interpreter::FunctionCallVisitor(AST* node)
     {
         //TODO
         return 0;

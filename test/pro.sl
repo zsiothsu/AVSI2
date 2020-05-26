@@ -1,7 +1,7 @@
 ###
  # @Author: your name
  # @Date: 1970-01-01 08:00:00
- # @LastEditTime: 2020-05-25 19:46:31
+ # @LastEditTime: 2020-05-26 16:05:58
  # @Description: file content
 ### 
 
@@ -21,3 +21,4 @@ function fun_without_param()
 
 a = 1
 b = a + 1
+fun_with_param(a,b,a)
