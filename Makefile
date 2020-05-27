@@ -26,7 +26,7 @@ CXXFLAGS	:= -Wall -g -O2 --std=c++17 -I$(DIR_INC) \
 #-fsanitize=address \
 #-fsanitize-recover=address
 
-LDFLAGS		:= -lstdc++ -L/usr/lib \
+LDFLAGS		:= -lstdc++ -lgflags -L/usr/lib \
 #-lasan
 
 # important file

@@ -1,16 +1,20 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-26 16:01:07
+ * @LastEditTime: 2020-05-27 14:41:19
  * @Description: file content
  */ 
 #ifndef ___SEMANTICANALYZER_H___
 #define ___SEMANTICANALYZER_H___
 
+#include <gflags/gflags.h>
+#include <gflags/gflags_declare.h>
 #include "NodeVisitor.h"
+#include "flags.h"
 
 namespace AVSI
 {
+
     using std::clog;
 
     class SemanticAnalyzer: public NodeVisitor

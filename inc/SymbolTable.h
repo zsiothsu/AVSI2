@@ -9,6 +9,7 @@
 
 #include <deque>
 #include "NodeVisitor.h"
+#include "flags.h"
 
 namespace AVSI
 {

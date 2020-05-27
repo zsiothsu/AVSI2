@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-22 23:18:25
+ * @LastEditTime: 2020-05-27 14:40:58
  * @Description: file content
  */ 
 #include "../inc/SymbolTable.h"
@@ -60,18 +60,20 @@ namespace AVSI
 
     void SymbolTable::pop()
     {
-        SymbolMap& symbolMap= this->SymbolStack.back();
+        if(FLAGS_scope == true)
+        {
+            SymbolMap& symbolMap= this->SymbolStack.back();
 
-        clog << "\033[34mscope: " << symbolMap.name  << " level: " << to_string(this->level) << endl;
-        
-        clog << "\033[32m";
-        for(int i = 0;i <= 14 + (int)(symbolMap.name.length()) + (int)(to_string(this->level).length());i++)
-            clog << '-';
-        clog << endl;
-        clog << "\033[0m";
+            clog << "\033[34mscope: " << symbolMap.name  << " level: " << to_string(this->level) << endl;
 
-        clog << symbolMap.__str() << endl;
+            clog << "\033[32m";
+            for(int i = 0;i <= 14 + (int)(symbolMap.name.length()) + (int)(to_string(this->level).length());i++)
+                clog << '-';
+            clog << endl;
+            clog << "\033[0m";
 
+            clog << symbolMap.__str() << endl;
+        }
         this->SymbolStack.pop_back();
         this->level--;
     }

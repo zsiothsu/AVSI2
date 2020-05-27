@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-26 16:00:40
+ * @LastEditTime: 2020-05-27 14:42:09
  * @Description: file content
  */ 
 #include "../inc/SemanticAnalyzer.h"
@@ -10,15 +10,21 @@ namespace AVSI
 {
     void SemanticAnalyzer::SemanticAnalyze(AST* root)
     {
-        clog << "\033[32m====================================\033[0m" << endl
-             << "\033[32m          Semantic Analyze\033[0m"           << endl
-             << "\033[32m------------------------------------\033[0m" << endl;
+        if(FLAGS_scope == true)
+        {
+            clog << "\033[32m====================================\033[0m" << endl
+                 << "\033[32m          Semantic Analyze\033[0m"           << endl
+                 << "\033[32m------------------------------------\033[0m" << endl;
+        }
 
         this->symbolTable.push("global");
         visitor(root);
         this->symbolTable.pop();
 
-        clog << "\033[32m====================================\033[0m" << endl << endl;
+        if(FLAGS_scope == true)
+        {
+            clog << "\033[32m====================================\033[0m" << endl << endl;
+        }
     }
 
     any SemanticAnalyzer::visitor(AST* node)
