@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-05-19
- * @LastEditTime: 2020-05-25 19:24:09
+ * @LastEditTime: 2020-05-27 23:51:29
  * @Description: file content
  */ 
 #ifndef ___SYMBOLTABLE_H___
@@ -55,18 +55,31 @@ namespace AVSI
     class SymbolTable
     {
     private:
-        deque<SymbolMap> SymbolStack;
+        SymbolMap symbolMap;
     public:
+        SymbolTable* father;
+        deque<SymbolTable*> child;
         int level;
 
-        SymbolTable(void);
-        ~SymbolTable() {};
+        SymbolTable(void):
+            father(nullptr),
+            child(deque<SymbolTable*>()),
+            level(1)
+        {};
+
+        SymbolTable(SymbolTable* father,string name, int level):
+            symbolMap(SymbolMap(name)),
+            father(father),
+            child(deque<SymbolTable*>()),
+            level(level)
+        {};
+
+        ~SymbolTable();
         
         void insert(Symbol symbol);
         Symbol find(string name);
-        
-        void pop(void);
-        void push(string name);
+        void mount(SymbolTable* symbolTable);
+        void __str();
     };
 
     static map<SymbolType,string> symbolTypeName = {

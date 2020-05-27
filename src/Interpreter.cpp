@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-04-06
- * @LastEditTime: 2020-05-26 16:02:22
+ * @LastEditTime: 2020-05-27 22:51:35
  * @Description: include Interpreter class
  */
 
@@ -11,7 +11,32 @@ namespace AVSI
 {
     any Interpreter::interpret(AST* root)
     {
-        return visitor(root);
+        ActivationRecord* ar = new ActivationRecord("program",program,1);
+
+
+
+        if(FLAGS_callStack)
+        {
+            clog << "\033[32m====================================\033[0m" << endl
+                 << "\033[32m               runtime\033[0m"               << endl
+                 << "\033[32m------------------------------------\033[0m" << endl;
+            clog << "CallStack: enter 'program'" << endl;
+        }
+
+        this->callStack.push(ar);
+        any ret = visitor(root);
+        this->callStack.pop();
+
+        if(FLAGS_callStack)
+        {
+            clog << "CallStack: leave 'program'" << endl <<endl;
+
+            clog << ar->__str__();
+
+            clog << "\033[32m====================================\033[0m" << endl;
+        }
+
+        return ret;
     }
 
     /*******************************************************
@@ -36,7 +61,8 @@ namespace AVSI
         Variable* var = (Variable*)assign->left;
         any value = visitor(assign->right);
 
-        symbolTable.insert({var->id,variable_t,value});
+        ActivationRecord* ar = this->callStack.peek();
+        ar->__setitem__(var->id,value);
 
         return value;
     }
@@ -106,8 +132,9 @@ namespace AVSI
     {
         Variable* var = (Variable*)node;
 
-        Symbol symbol = symbolTable.find(var->id);
+        ActivationRecord* ar = this->callStack.peek();
+        any value = ar->__getitem__(var->id);
         
-        return symbol.value;
+        return value;
     }
 }

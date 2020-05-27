@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-27 14:40:58
+ * @LastEditTime: 2020-05-28 00:16:00
  * @Description: file content
  */ 
 #include "../inc/SymbolTable.h"
@@ -33,37 +33,42 @@ namespace AVSI
         return str;
     }
 
-    SymbolTable::SymbolTable(void)
+    SymbolTable::~SymbolTable()
     {
-        this->SymbolStack = deque<SymbolMap>();
-        SymbolStack.push_back(SymbolMap());
-        this->level = 0;
+        for(auto subtable : this->child)
+        {
+            if(subtable != nullptr) delete subtable;
+        }
     }
 
     void SymbolTable::insert(Symbol symbol)
     {
-        SymbolMap& symbolmap = this->SymbolStack.back();
-        symbolmap.insert(symbol);
+        this->symbolMap.insert(symbol);
     }
 
     Symbol SymbolTable::find(string name)
     {
-        for(auto symbolmap = this->SymbolStack.rbegin();
-            symbolmap != this->SymbolStack.rend();
-            symbolmap++)
+        SymbolTable* ptr = this;
+        while(ptr != nullptr)
         {
-            Symbol symbol = symbolmap->find(name);
+            Symbol symbol = ptr->symbolMap.find(name);
             if(symbol.type != null_t) return symbol;
+            else ptr = ptr->father;
         }
+        
         return {name,null_t};
     }
 
-    void SymbolTable::pop()
+    void SymbolTable::mount(SymbolTable* symbolTable)
+    {
+        this->child.push_back(symbolTable);
+    }
+
+    void SymbolTable::__str()
     {
         if(FLAGS_scope == true)
         {
-            SymbolMap& symbolMap= this->SymbolStack.back();
-
+            //header
             clog << "\033[34mscope: " << symbolMap.name  << " level: " << to_string(this->level) << endl;
 
             clog << "\033[32m";
@@ -71,16 +76,14 @@ namespace AVSI
                 clog << '-';
             clog << endl;
             clog << "\033[0m";
-
-            clog << symbolMap.__str() << endl;
+            //contents
+            string str = this->symbolMap.__str();
+            clog << str << endl;
+            //child
+            for(auto subtable:this->child)
+            {
+                subtable->__str();
+            }
         }
-        this->SymbolStack.pop_back();
-        this->level--;
-    }
-
-    void SymbolTable::push(string name)
-    {
-        this->level++;
-        this->SymbolStack.push_back(SymbolMap(name));
     }
 }

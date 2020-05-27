@@ -1,13 +1,14 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-26 16:01:22
+ * @LastEditTime: 2020-05-27 21:22:17
  * @Description: include Interpreter class
  */
 #ifndef ___INTERPRETER_H___
 #define ___INTERPRETER_H___
 
 #include "NodeVisitor.h"
+#include "CallStack.h"
 
 namespace AVSI
 {   
@@ -17,9 +18,9 @@ namespace AVSI
     class Interpreter: public NodeVisitor
     {
     private:
-        SymbolTable symbolTable;
+        CallStack callStack;
     public:
-        Interpreter(void): symbolTable(SymbolTable()) {};
+        Interpreter(void): callStack(CallStack()) {};
         virtual ~Interpreter() {};
 
         any visitor(AST* node);
