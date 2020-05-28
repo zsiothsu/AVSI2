@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-28 00:17:41
+ * @LastEditTime: 2020-05-28 17:23:02
  * @Description: file content
  */ 
 #include "../inc/SemanticAnalyzer.h"
@@ -10,10 +10,10 @@ namespace AVSI
 {
     SemanticAnalyzer::~SemanticAnalyzer()
     {
-        if(this->currentSymbolTable != nullptr) delete this->currentSymbolTable;
+        if(this->symbolTable != nullptr) delete this->symbolTable;
     }
 
-    void SemanticAnalyzer::SemanticAnalyze(AST* root)
+    SymbolTable* SemanticAnalyzer::SemanticAnalyze(AST* root)
     {
         if(FLAGS_scope)
         {
@@ -24,12 +24,14 @@ namespace AVSI
 
         visitor(root);
 
-        this->symbolTable.__str();
+        this->symbolTable->__str();
 
         if(FLAGS_scope)
         {
             clog << "\033[32m====================================\033[0m" << endl << endl;
         }
+
+        return this->symbolTable;
     }
 
     any SemanticAnalyzer::visitor(AST* node)
@@ -50,14 +52,14 @@ namespace AVSI
         Variable* var = (Variable*)assign->left;
         visitor(assign->right);
 
-        Symbol definedSymbol = this->symbolTable.find(var->id);
-        if(definedSymbol.type == function_t)
+        Symbol* definedSymbol = this->currentSymbolTable->find(var->id);
+        if((definedSymbol != nullptr) && (definedSymbol->type == function_t))
         {
             string msg = "symbol '" + var->id + "' has beed defined as function";
             throw ExceptionFactory(__LogicException,msg,var->getToken().line,var->getToken().column);
         }
 
-        this->currentSymbolTable->insert({var->id,variable_t});
+        this->currentSymbolTable->insert(new Symbol(var->id,variable_t));
 
         return 0;
     }
@@ -85,17 +87,18 @@ namespace AVSI
     {
         FunctionDecl* functionDecl = (FunctionDecl*)node;
 
-        SymbolType type = this->currentSymbolTable->find(functionDecl->id).type;
-        if(type != null_t)
+        // mutiple definition
+        Symbol* symbol = this->currentSymbolTable->find(functionDecl->id);
+        if(symbol != nullptr)
         {
             string msg = "mutiple definition";
-            if(type == function_t)
+            if(symbol->type == function_t)
             {
                 msg = "mutiple definition of function '"  \
                      + functionDecl->id                  \
                      + "'";
             }
-            else if(type == variable_t)
+            else if(symbol->type == variable_t)
             {
                 msg = "function '"                           \
                      + functionDecl->id                      \
@@ -105,13 +108,36 @@ namespace AVSI
                                    functionDecl->getToken().line,
                                    functionDecl->getToken().column);
         }
-        this->currentSymbolTable->insert({functionDecl->id,function_t});
 
+        // insert current function to current symboltable
+        Symbol_function* fun = new Symbol_function(functionDecl->id,function_t);
+        this->currentSymbolTable->insert(fun);
+        fun->node_ast = (void*)functionDecl->compound;
+
+        // create new symboltable for function scope and mount it under current symboltable
         SymbolTable* subTable = new SymbolTable(this->currentSymbolTable,functionDecl->id,this->currentSymbolTable->level+1);
         this->currentSymbolTable->mount(subTable);
         this->currentSymbolTable = subTable;
 
-        if(functionDecl->paramList != nullptr) visitor(functionDecl->paramList);
+        // add formal parameter
+        if(functionDecl->paramList != nullptr)
+        {
+            Param* param = (Param*)(functionDecl->paramList);
+
+            for(Variable* var:param->paramList)
+            {
+                Symbol* definedSymbol = this->currentSymbolTable->find(var->id);
+                if(definedSymbol != nullptr && definedSymbol->type == function_t)
+                {
+                    string msg = "symbol '" + var->id + "' has beed defined as function";
+                    throw ExceptionFactory(__LogicException,msg,var->getToken().line,var->getToken().column);
+                }
+                Symbol* paramSymbol = new Symbol(var->id,variable_t);
+                fun->formalVariable.push_back(paramSymbol);
+                this->currentSymbolTable->insert(paramSymbol);
+            }
+        }
+        
         visitor(functionDecl->compound);
 
         this->currentSymbolTable = this->currentSymbolTable->father;
@@ -121,22 +147,10 @@ namespace AVSI
 
     any SemanticAnalyzer::FunctionCallVisitor(AST* node)
     {
-        return 0;
-    }
+        FunctionCall* functionCall = (FunctionCall*)node;
 
-    any SemanticAnalyzer::ParamVisitor(AST* node)
-    {
-        Param* param = (Param*)node;
-        for(Variable* var:param->paramList)
-        {
-            Symbol definedSymbol = this->currentSymbolTable->find(var->id);
-            if(definedSymbol.type == function_t)
-            {
-                string msg = "symbol '" + var->id + "' has beed defined as function";
-                throw ExceptionFactory(__LogicException,msg,var->getToken().line,var->getToken().column);
-            }
-            this->currentSymbolTable->insert({var->id,variable_t});
-        }
+        for(auto paramNode:functionCall->paramList) visitor(paramNode);
+
         return 0;
     }
 
@@ -158,8 +172,8 @@ namespace AVSI
     {
         Variable* var = (Variable*)node;
 
-        Symbol symbol = this->currentSymbolTable->find(var->id);
-        if(symbol.type == null_t)
+        Symbol* symbol = this->currentSymbolTable->find(var->id);
+        if(symbol == nullptr)
         {
             string msg = "name '" + var->id + "' is not defined";
             throw ExceptionFactory(__LogicException,msg,var->getToken().line,var->getToken().column);

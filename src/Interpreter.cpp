@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-04-06
- * @LastEditTime: 2020-05-27 22:51:35
+ * @LastEditTime: 2020-05-28 18:15:52
  * @Description: include Interpreter class
  */
 
@@ -9,7 +9,12 @@
 
 namespace AVSI
 {
-    any Interpreter::interpret(AST* root)
+    Interpreter::~Interpreter()
+    {
+        if(this->symbolTable != nullptr) delete this->symbolTable;
+    }
+
+    any Interpreter::interpret(void)
     {
         ActivationRecord* ar = new ActivationRecord("program",program,1);
 
@@ -20,19 +25,20 @@ namespace AVSI
             clog << "\033[32m====================================\033[0m" << endl
                  << "\033[32m               runtime\033[0m"               << endl
                  << "\033[32m------------------------------------\033[0m" << endl;
-            clog << "CallStack: enter 'program'" << endl;
+            clog << "CallStack: enter 'program' level: 1" << endl;
+            clog << ar->__str__();
         }
 
         this->callStack.push(ar);
-        any ret = visitor(root);
+        any ret = visitor(this->root);
         this->callStack.pop();
 
         if(FLAGS_callStack)
         {
-            clog << "CallStack: leave 'program'" << endl <<endl;
+            clog << "CallStack: leave 'program'" << endl;
 
-            clog << ar->__str__();
-
+            clog << ar->__str__() << endl;
+            delete ar;
             clog << "\033[32m====================================\033[0m" << endl;
         }
 
@@ -101,13 +107,64 @@ namespace AVSI
 
     any Interpreter::FunctionCallVisitor(AST* node)
     {
-        //TODO
-        return 0;
-    }
+        // current function
+        FunctionCall* fun = (FunctionCall*)node;
+        string funName = fun->id;
+        fun->symbol_function = (Symbol_function*)this->currentSymbolTable->find(funName);
+        if(fun->symbol_function == nullptr)
+        {
+            string msg = "undefined reference '" + funName + "'";
+            throw ExceptionFactory(__LogicException,msg,fun->getToken().line,fun->getToken().column);
+        }
 
-    any Interpreter::ParamVisitor(AST* node)
-    {
-        //TODO
+        // Activation Record and symbol of target function
+        ActivationRecord* ar = new ActivationRecord(funName,function,this->callStack.peek()->level+1);
+        Symbol_function* symbol = fun->symbol_function;
+
+        // formal and actual paremeters
+        deque<Symbol*> formalParams = symbol->formalVariable;
+        vector<AST*> actualParams = fun->paramList;
+
+        if((int)(formalParams.size()) != (int)(actualParams.size()))
+        {
+            string msg = "function '" + fun->id + "' takes " + to_string((int)formalParams.size()) + " arguments but " + to_string((int)(actualParams.size())) + " were given";
+            throw ExceptionFactory(__LogicException,msg,fun->getToken().line,fun->getToken().column);
+        }
+
+        deque<Symbol*>::iterator iterFormal = formalParams.begin();
+        vector<AST*>::iterator iterActual = actualParams.begin();
+        for(;iterFormal != formalParams.end();iterFormal++,iterActual++)
+        {
+            ar->__setitem__((*iterFormal)->name,visitor(*iterActual));
+        }
+
+        if(FLAGS_callStack)
+        {
+            clog << "CallStack: enter '" + fun->id + "' level: " << ar->level << endl;
+            clog << ar->__str__();
+        }
+
+        this->callStack.push(ar);
+        for(auto subSymbolTable: this->currentSymbolTable->child)
+        {
+            if(subSymbolTable->symbolMap->name == funName)
+            {
+                this->currentSymbolTable = subSymbolTable;
+                break;
+            }
+        }
+
+        visitor((AST*)symbol->node_ast);
+        if(FLAGS_callStack)
+        {
+            clog << "CallStack: leave '" + fun->id + "'" << endl;
+            clog << ar->__str__();
+        }
+
+        this->callStack.pop();
+        this->currentSymbolTable = this->currentSymbolTable->father;
+
+        delete ar;
         return 0;
     }
 

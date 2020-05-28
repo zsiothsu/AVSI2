@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-26 15:53:42
+ * @LastEditTime: 2020-05-28 14:52:50
  * @Description: constructer of abstract syntax tree (AST)
  */
 #ifndef ___AST_H___
@@ -11,6 +11,7 @@
 #include <vector>
 #include "Token.h"
 #include "Exception.h"
+#include "SymbolTable.h"
 
 #define __ASSIGN_NAME       "Assign"
 #define __BINOP_NAME        "BinOp"
@@ -123,6 +124,7 @@ namespace AVSI
     public:
         string id;
         vector<AST*> paramList;
+        Symbol_function* symbol_function;
 
         FunctionCall(void):
             AST(__FUNCTIONCALL_NAME),

@@ -1,22 +1,33 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-28 00:16:00
+ * @LastEditTime: 2020-05-28 18:26:49
  * @Description: file content
  */ 
 #include "../inc/SymbolTable.h"
 
 namespace AVSI
 {
-    void SymbolMap::insert(Symbol symbol)
+    SymbolMap::~SymbolMap()
     {
-        this->symbols[symbol.name] = symbol;
+        if(!this->symbols.empty())
+        {
+            for(auto symbol:this->symbols)
+            {
+                if(symbol.second != nullptr) delete symbol.second;
+            }
+        }
     }
 
-    Symbol SymbolMap::find(string name)
+    void SymbolMap::insert(Symbol* symbol)
     {
-        Symbol ret = {name,null_t};
-        map<string,Symbol>::iterator iter = this->symbols.find(name);
+        this->symbols[symbol->name] = symbol;
+    }
+
+    Symbol* SymbolMap::find(string name)
+    {
+        Symbol* ret = nullptr;
+        map<string,Symbol*>::iterator iter = this->symbols.find(name);
         if(iter != this->symbols.end()) ret = iter->second;
         return ret;
     }
@@ -26,37 +37,56 @@ namespace AVSI
         string str;
         for(auto symbol : this->symbols)
         {
-            string symbolName = symbol.second.name;
-            string symbolType = (symbolTypeName.find(symbol.second.type))->second;
-            str += "    <" + symbolName + "," + symbolType + ">\n";
+            string symbolName = symbol.second->name;
+            SymbolType symbolType = symbol.second->type;
+            if(symbolType == variable_t) str += "    <" + symbolName + "," + symbolTypeName.find(variable_t)->second + ">\n";
+            else if(symbolType == function_t)
+            {
+                Symbol_function* fun = (Symbol_function*)(symbol.second);
+                str += "    <" + symbolName + "," + symbolTypeName.find(function_t)->second;
+                if(!(fun->formalVariable.empty()))
+                {   
+                    str += ",param{";
+                    for(auto param:fun->formalVariable)
+                    {
+                        str += param->name + ",";
+                    }
+                    str += "\b}";
+                }
+                str += ">\n";
+            }
         }
         return str;
     }
 
     SymbolTable::~SymbolTable()
     {
-        for(auto subtable : this->child)
+        if(this->symbolMap != nullptr) delete this->symbolMap;
+        if(!this->child.empty())
         {
-            if(subtable != nullptr) delete subtable;
+            for(auto subtable : this->child)
+            {
+                if(subtable != nullptr) delete subtable;
+            }
         }
     }
 
-    void SymbolTable::insert(Symbol symbol)
+    void SymbolTable::insert(Symbol* symbol)
     {
-        this->symbolMap.insert(symbol);
+        this->symbolMap->insert(symbol);
     }
 
-    Symbol SymbolTable::find(string name)
+    Symbol* SymbolTable::find(string name)
     {
         SymbolTable* ptr = this;
         while(ptr != nullptr)
         {
-            Symbol symbol = ptr->symbolMap.find(name);
-            if(symbol.type != null_t) return symbol;
+            Symbol* symbol = ptr->symbolMap->find(name);
+            if(symbol != nullptr) return symbol;
             else ptr = ptr->father;
         }
         
-        return {name,null_t};
+        return nullptr;
     }
 
     void SymbolTable::mount(SymbolTable* symbolTable)
@@ -69,15 +99,15 @@ namespace AVSI
         if(FLAGS_scope == true)
         {
             //header
-            clog << "\033[34mscope: " << symbolMap.name  << " level: " << to_string(this->level) << endl;
+            clog << "\033[34mscope: " << symbolMap->name  << " level: " << to_string(this->level) << endl;
 
             clog << "\033[32m";
-            for(int i = 0;i <= 14 + (int)(symbolMap.name.length()) + (int)(to_string(this->level).length());i++)
+            for(int i = 0;i <= 14 + (int)(symbolMap->name.length()) + (int)(to_string(this->level).length());i++)
                 clog << '-';
             clog << endl;
             clog << "\033[0m";
             //contents
-            string str = this->symbolMap.__str();
+            string str = this->symbolMap->__str();
             clog << str << endl;
             //child
             for(auto subtable:this->child)

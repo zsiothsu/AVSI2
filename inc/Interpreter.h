@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-27 21:22:17
+ * @LastEditTime: 2020-05-28 18:16:17
  * @Description: include Interpreter class
  */
 #ifndef ___INTERPRETER_H___
@@ -19,9 +19,17 @@ namespace AVSI
     {
     private:
         CallStack callStack;
+        SymbolTable* symbolTable;
+        SymbolTable* currentSymbolTable;
+        AST* root;
     public:
         Interpreter(void): callStack(CallStack()) {};
-        virtual ~Interpreter() {};
+        Interpreter(AST* root,SymbolTable* symbolTable):
+            symbolTable(symbolTable),
+            currentSymbolTable(symbolTable),
+            root(root)
+        {};
+        virtual ~Interpreter();
 
         any visitor(AST* node);
         any AssignVisitor(AST* node);
@@ -29,12 +37,11 @@ namespace AVSI
         any CompoundVisitor(AST* node);
         any FunctionDeclVisitor(AST* node);
         any FunctionCallVisitor(AST* node);
-        any ParamVisitor(AST* node);
         any NumVisitor(AST* node);
         any UnaryOpVisitor(AST* node);
         any VariableVisitor(AST* node);
 
-        any interpret(AST* root);
+        any interpret(void);
     };
 
     static map<string,any> globalVariable = map<string,any>();

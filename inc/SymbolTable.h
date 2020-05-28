@@ -1,14 +1,16 @@
 /*
  * @Author: your name
  * @Date: 2020-05-19
- * @LastEditTime: 2020-05-27 23:51:29
+ * @LastEditTime: 2020-05-28 15:09:03
  * @Description: file content
  */ 
 #ifndef ___SYMBOLTABLE_H___
 #define ___SYMBOLTABLE_H___
 
 #include <deque>
-#include "NodeVisitor.h"
+#include <map>
+#include <iostream>
+#include <cstring>
 #include "flags.h"
 
 namespace AVSI
@@ -18,6 +20,7 @@ namespace AVSI
     using std::string;
     using std::clog;
     using std::endl;
+    using std::to_string;
 
     typedef enum
     {
@@ -26,49 +29,80 @@ namespace AVSI
         function_t
     } SymbolType;
 
-    typedef struct
+    // typedef struct
+    // {
+    //     string name;
+    //     SymbolType type;
+    //     any value;
+    // } Symbol;
+
+    class Symbol
     {
+    public:
         string name;
         SymbolType type;
-        any value;
-    } Symbol;
+
+        Symbol(void) {};
+        Symbol(string name,SymbolType type):
+            name(name),
+            type(type)
+        {};
+    };
+
+    class Symbol_function: public Symbol
+    {
+    public:
+        deque<Symbol*> formalVariable;
+        void* node_ast;
+
+        Symbol_function(void):
+            formalVariable(deque<Symbol*>()),
+            node_ast(nullptr)
+        {};
+        Symbol_function(string name,SymbolType type):
+            Symbol(name,type),
+            formalVariable(deque<Symbol*>()),
+            node_ast(nullptr)
+        {};
+    };
 
     class SymbolMap
     {
-    private:
-        map<string,Symbol> symbols;
     public:
+        map<string,Symbol*> symbols;
         string name;
 
-        SymbolMap(void): symbols(map<string,Symbol>()) {};
+        SymbolMap(void): symbols(map<string,Symbol*>()) {};
         SymbolMap(string name):
-            symbols(map<string,Symbol>()),
+            symbols(map<string,Symbol*>()),
             name(name)
         {};
-        ~SymbolMap() {};
+        ~SymbolMap();
 
-        void insert(Symbol symbol);
-        Symbol find(string name);
+        void insert(Symbol* symbol);
+        Symbol* find(string name);
         string __str();
     };
 
+
+
     class SymbolTable
     {
-    private:
-        SymbolMap symbolMap;
     public:
+        SymbolMap* symbolMap;
         SymbolTable* father;
         deque<SymbolTable*> child;
         int level;
 
         SymbolTable(void):
+            symbolMap(nullptr),
             father(nullptr),
             child(deque<SymbolTable*>()),
             level(1)
         {};
 
         SymbolTable(SymbolTable* father,string name, int level):
-            symbolMap(SymbolMap(name)),
+            symbolMap(new SymbolMap(name)),
             father(father),
             child(deque<SymbolTable*>()),
             level(level)
@@ -76,8 +110,8 @@ namespace AVSI
 
         ~SymbolTable();
         
-        void insert(Symbol symbol);
-        Symbol find(string name);
+        void insert(Symbol* symbol);
+        Symbol* find(string name);
         void mount(SymbolTable* symbolTable);
         void __str();
     };

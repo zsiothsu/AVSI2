@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-27 23:50:54
+ * @LastEditTime: 2020-05-28 18:20:37
  * @Description: entry for interpreter
  */
 #include "./inc/Interpreter.h"
@@ -46,21 +46,19 @@ int main(int argc,char** argv)
     Lexer* lexer = new Lexer(&file);
     Parser* parser = new Parser(lexer);
     SemanticAnalyzer* semanticAnalyzer = new SemanticAnalyzer();
-    Interpreter* interpreter = new Interpreter();
-
     try
     {
         AST* tree = parser->parse();
-        semanticAnalyzer->SemanticAnalyze(tree);
-        //interpreter->interpret(tree);
+        SymbolTable* symbolTable = semanticAnalyzer->SemanticAnalyze(tree);
+        Interpreter* interpreter = new Interpreter(tree,symbolTable);
+        interpreter->interpret();
+        
+        //delete semanticAnalyzer;
+        delete interpreter;
     }
     catch(Exception& e)
     {
         std::cerr << e.what() << "\t at line " << e.line << " column " << e.column + 1 <<'\n';
     }
-    
-    delete lexer;
-    delete parser;
-    delete interpreter;
     return 0;
 }

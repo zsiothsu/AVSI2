@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 1970-01-01 08:00:00
- * @LastEditTime: 2020-05-27 22:46:10
+ * @LastEditTime: 2020-05-28 14:14:08
  * @Description: file content
  */ 
 #ifndef ___CALLSTACK_H___
@@ -33,17 +33,17 @@ namespace AVSI
     private:
         string name;
         ARType type;
-        int level;
         map<string,any> members;
     public:
+        int level;
         ActivationRecord(void):
             members(map<string,any>())
         {};
         ActivationRecord(string name,ARType type,int level):
             name(name),
             type(type),
-            level(level),
-            members(map<string,any>())
+            members(map<string,any>()),
+            level(level)
         {};
         virtual ~ActivationRecord() {};
 
