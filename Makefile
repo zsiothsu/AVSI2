@@ -17,6 +17,7 @@ CXX			:= g++
 DIR_ROOT	:= .
 DIR_INC		:= ./inc
 DIR_SRC		:= ./src
+DIR_LIB		:= ./lib
 DIR_OUTPUT	:= ./build
 
 # compiler flags
@@ -26,7 +27,7 @@ CXXFLAGS	:= -Wall -g -O2 --std=c++17 -I$(DIR_INC) \
 #-fsanitize=address \
 #-fsanitize-recover=address
 
-LDFLAGS		:= -lstdc++ -lgflags -L/usr/lib \
+LDFLAGS		:= -lstdc++ -L/usr/lib\
 #-lasan
 
 # important file
@@ -39,7 +40,7 @@ MAIN := $(DIR_ROOT)/main.cpp
 
 all: $(DIR_OUTPUT)/$(BIN)
 
-$(DIR_OUTPUT)/$(BIN): $(DIR_OUTPUT)/main.o $(OBJS)
+$(DIR_OUTPUT)/$(BIN): $(DIR_OUTPUT)/main.o $(OBJS) $(DIR_LIB)/libgflags_nothreads.a
 	@$(ECHO) "CXX    $<"
 	@$(CXX) $(LDFLAGS) $^ -o $@
 

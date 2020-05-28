@@ -1,7 +1,7 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-28 18:20:37
+ * @LastEditTime: 2020-05-28 19:09:40
  * @Description: entry for interpreter
  */
 #include "./inc/Interpreter.h"
@@ -17,9 +17,9 @@ DEFINE_bool(callStack,false,"print call stack");
 void setFlags(string name)
 {
     string UsageMessage = name + " file [--scope] [--callStack]";
-    gflags::SetUsageMessage(UsageMessage);
+    google::SetUsageMessage(UsageMessage);
     string VersionString = "0.0.0 (AVSI)";
-    gflags::SetVersionString(VersionString);
+    google::SetVersionString(VersionString);
 }
 
 int main(int argc,char** argv)
