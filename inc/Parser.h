@@ -1,26 +1,26 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-26 15:30:13
+ * @LastEditTime: 2020-06-02 15:51:09
  * @Description: include Parser class
  */
 #ifndef ___PARSER_H___
 #define ___PARSER_H___
 
-#include <set>
 #include "Lexer.h"
+#include <set>
 
-namespace AVSI
-{
+namespace AVSI {
     using namespace std;
 
     class Parser
     {
-    private:
+      private:
         Lexer* lexer;
         Token currentToken;
         int parenCnt = 0;
-    public:
+
+      public:
         Parser(void);
         Parser(Lexer* lexer);
         ~Parser();
@@ -28,7 +28,7 @@ namespace AVSI
         void eat(TokenType type);
 
         AST* program();
-        AST* statementList(); 
+        AST* statementList();
         AST* statement();
         AST* assignment();
         AST* functionDecl();
@@ -40,6 +40,6 @@ namespace AVSI
         AST* term();
         AST* variable();
     };
-}
+} // namespace AVSI
 
 #endif

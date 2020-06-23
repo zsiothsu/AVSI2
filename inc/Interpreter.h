@@ -7,28 +7,26 @@
 #ifndef ___INTERPRETER_H___
 #define ___INTERPRETER_H___
 
-#include "NodeVisitor.h"
 #include "CallStack.h"
+#include "NodeVisitor.h"
 
-namespace AVSI
-{   
+namespace AVSI {
     using std::map;
     using std::vector;
-    
-    class Interpreter: public NodeVisitor
+
+    class Interpreter : public NodeVisitor
     {
-    private:
+      private:
         CallStack callStack;
         SymbolTable* symbolTable;
         SymbolTable* currentSymbolTable;
         AST* root;
-    public:
-        Interpreter(void): callStack(CallStack()) {};
-        Interpreter(AST* root,SymbolTable* symbolTable):
-            symbolTable(symbolTable),
-            currentSymbolTable(symbolTable),
-            root(root)
-        {};
+
+      public:
+        Interpreter(void) : callStack(CallStack()){};
+        Interpreter(AST* root, SymbolTable* symbolTable)
+            : symbolTable(symbolTable), currentSymbolTable(symbolTable),
+              root(root){};
         virtual ~Interpreter();
 
         any visitor(AST* node);
@@ -44,7 +42,7 @@ namespace AVSI
         any interpret(void);
     };
 
-    static map<string,any> globalVariable = map<string,any>();
-}
+    static map<string, any> globalVariable = map<string, any>();
+} // namespace AVSI
 
 #endif

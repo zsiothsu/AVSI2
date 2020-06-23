@@ -6,14 +6,11 @@
  */
 #include "../inc/Parser.h"
 
-namespace AVSI
-{
+namespace AVSI {
     /*******************************************************
      *                    constructor                      *
      *******************************************************/
-    Parser::Parser(void)
-    {
-    }
+    Parser::Parser(void) {}
 
     Parser::Parser(Lexer* lexer)
     {
@@ -21,9 +18,7 @@ namespace AVSI
         this->currentToken = lexer->getNextToken();
     }
 
-    Parser::~Parser()
-    {
-    }
+    Parser::~Parser() {}
 
     /*******************************************************
      *                         parser                      *
@@ -39,22 +34,21 @@ namespace AVSI
      */
     void Parser::eat(TokenType type)
     {
-        if(type == currentToken.getType())
-        {
-            if(currentToken.getType() == left_parenthese_keyword) this->parenCnt++;
-            if(currentToken.getType() == right_parenthese_keyword) this->parenCnt--;
+        if(type == currentToken.getType()) {
+            if(currentToken.getType() == left_parenthese_keyword)
+                this->parenCnt++;
+            if(currentToken.getType() == right_parenthese_keyword)
+                this->parenCnt--;
             this->currentToken = this->lexer->getNextToken();
         }
-        else
-        {
-            throw ExceptionFactory(__SyntaxException,"invalid syntax",this->currentToken.line,this->currentToken.column);
+        else {
+            throw ExceptionFactory(__SyntaxException, "invalid syntax",
+                                   this->currentToken.line,
+                                   this->currentToken.column);
         }
     }
 
-    AST* Parser::program()
-    {
-        return statementList();
-    }
+    AST* Parser::program() { return statementList(); }
 
     AST* Parser::statementList()
     {
@@ -66,17 +60,15 @@ namespace AVSI
 
     AST* Parser::statement()
     {
-        if(this->currentToken.getType() == function_keyword)
-        {
+        if(this->currentToken.getType() == function_keyword) {
             return functionDecl();
         }
-        else if(this->currentToken.getType() == id_ast && this->lexer->currentChar == '(')
-        {
+        else if(this->currentToken.getType() == id_ast &&
+                this->lexer->currentChar == '(') {
             AST* ast = functionCall();
             return ast;
         }
-        else if(this->currentToken.getType() == id_ast)
-        {
+        else if(this->currentToken.getType() == id_ast) {
             return assignment();
         }
         return &ASTEmpty;
@@ -87,7 +79,7 @@ namespace AVSI
         AST* left = variable();
         eat(assign_opt);
         AST* right = expr();
-        return new Assign(left,right);
+        return new Assign(left, right);
     }
 
     AST* Parser::functionDecl()
@@ -105,7 +97,7 @@ namespace AVSI
         eat(left_brace_keyword);
         AST* compound = statementList();
         eat(right_brace_keyword);
-        return new FunctionDecl(id,paramList,compound,token);
+        return new FunctionDecl(id, paramList, compound, token);
     }
 
     AST* Parser::functionCall()
@@ -116,17 +108,15 @@ namespace AVSI
 
         vector<AST*> paramList;
         eat(left_parenthese_keyword);
-        if(this->currentToken.getType() != right_parenthese_keyword)
-        {
+        if(this->currentToken.getType() != right_parenthese_keyword) {
             paramList.push_back(expr());
-            while(this->currentToken.getType() == comma_keyword)
-            {
+            while(this->currentToken.getType() == comma_keyword) {
                 eat(comma_keyword);
                 paramList.push_back(expr());
             }
         }
         eat(right_parenthese_keyword);
-        FunctionCall* fun = new FunctionCall(id,paramList,token);
+        FunctionCall* fun = new FunctionCall(id, paramList, token);
         return fun;
     }
 
@@ -134,24 +124,26 @@ namespace AVSI
     {
         Param* param = new Param();
         set<string> paramSet;
-        while(this->currentToken.getType() == id_ast)
-        {
+        while(this->currentToken.getType() == id_ast) {
             string id = this->currentToken.getValue().any_cast<string>();
-            if(paramSet.find(id) != paramSet.end())
-            {
-                string msg = "duplicate argument '" + id +"' in function definition";
-                throw ExceptionFactory(__SyntaxException,msg,this->currentToken.line,this->currentToken.column);
+            if(paramSet.find(id) != paramSet.end()) {
+                string msg =
+                    "duplicate argument '" + id + "' in function definition";
+                throw ExceptionFactory(__SyntaxException, msg,
+                                       this->currentToken.line,
+                                       this->currentToken.column);
             }
             paramSet.insert(id);
             param->paramList.push_back(new Variable(this->currentToken));
             eat(id_ast);
-            if(this->currentToken.getType() == right_parenthese_keyword)
-            {
+            if(this->currentToken.getType() == right_parenthese_keyword) {
                 return param;
             }
             eat(comma_keyword);
         }
-        throw ExceptionFactory(__SyntaxException,"unexpected symbol in parameter list",this->currentToken.line,this->currentToken.column);
+        throw ExceptionFactory(
+            __SyntaxException, "unexpected symbol in parameter list",
+            this->currentToken.line, this->currentToken.column);
         return param;
     }
 
@@ -166,23 +158,23 @@ namespace AVSI
     AST* Parser::expr(void)
     {
         AST* res = term();
-        while(this->currentToken.getType() == add_opt || \
-              this->currentToken.getType() == dec_opt)
-        {
+        while(this->currentToken.getType() == add_opt ||
+              this->currentToken.getType() == dec_opt) {
             Token opt = this->currentToken;
-            if(opt.getValue() == '+')
-            {
+            if(opt.getValue() == '+') {
                 eat(add_opt);
-                res = new BinOp(res,opt,term());
+                res = new BinOp(res, opt, term());
             }
-            else if(opt.getValue() == '-')
-            {
+            else if(opt.getValue() == '-') {
                 eat(dec_opt);
-                res = new BinOp(res,opt,term());
+                res = new BinOp(res, opt, term());
             }
-            else throw ExceptionFactory(__SyntaxException,"unrecognized operator",opt.line,opt.column);
+            else
+                throw ExceptionFactory(__SyntaxException,
+                                       "unrecognized operator", opt.line,
+                                       opt.column);
         }
-        return res; 
+        return res;
     }
 
     /**
@@ -194,17 +186,35 @@ namespace AVSI
     AST* Parser::factor(void)
     {
         Token token = this->currentToken;
-        if(token.getType() == integer_ast || token.getType() == float_ast) { eat(token.getType()); return new Num(token); }
-        if(token.getType() == add_opt) { eat(add_opt); return new UnaryOp(token,factor()); }
-        if(token.getType() == dec_opt) { eat(dec_opt); return new UnaryOp(token,factor()); }
+        if(token.getType() == integer_ast || token.getType() == float_ast) {
+            eat(token.getType());
+            return new Num(token);
+        }
+        if(token.getType() == add_opt) {
+            eat(add_opt);
+            return new UnaryOp(token, factor());
+        }
+        if(token.getType() == dec_opt) {
+            eat(dec_opt);
+            return new UnaryOp(token, factor());
+        }
         if(token.getType() == id_ast) { return variable(); }
-        if(token.getType() == left_parenthese_keyword) { eat(left_parenthese_keyword); AST* res = expr(); eat(right_parenthese_keyword); return res; }
-        if(token.getType() == right_parenthese_keyword)
-        {
-            if(this->parenCnt <= 0) throw ExceptionFactory(__SyntaxException,"unmatched ')'",token.line,token.column);
+        if(token.getType() == left_parenthese_keyword) {
+            eat(left_parenthese_keyword);
+            AST* res = expr();
+            eat(right_parenthese_keyword);
+            return res;
+        }
+        if(token.getType() == right_parenthese_keyword) {
+            if(this->parenCnt <= 0)
+                throw ExceptionFactory(__SyntaxException, "unmatched ')'",
+                                       token.line, token.column);
             return new NoneAST();
         }
-        else throw ExceptionFactory(__SyntaxException,"unrecognized factor in expression",token.line,token.column);
+        else
+            throw ExceptionFactory(__SyntaxException,
+                                   "unrecognized factor in expression",
+                                   token.line, token.column);
     }
 
     /**
@@ -212,13 +222,10 @@ namespace AVSI
      * @param:          None
      * @return:         root of parse result.
      */
-    AST* Parser::parse(void)
-    {
-        return program();   
-    }
+    AST* Parser::parse(void) { return program(); }
 
     /**
-     * @description:    return MUL / DIV result 
+     * @description:    return MUL / DIV result
      * @param:          None
      * @return:         term for expr
      * @throw           SyntaxException
@@ -228,21 +235,21 @@ namespace AVSI
     AST* Parser::term(void)
     {
         AST* res = factor();
-        while(this->currentToken.getType() == mul_opt || \
-              this->currentToken.getType() == div_opt)
-        {
+        while(this->currentToken.getType() == mul_opt ||
+              this->currentToken.getType() == div_opt) {
             Token opt = this->currentToken;
-            if(opt.getValue() == '*')
-            {
+            if(opt.getValue() == '*') {
                 eat(mul_opt);
-                res = new BinOp(res,opt,factor());
+                res = new BinOp(res, opt, factor());
             }
-            else if(opt.getValue() == '/')
-            {
+            else if(opt.getValue() == '/') {
                 eat(div_opt);
-                res = new BinOp(res,opt,factor());
+                res = new BinOp(res, opt, factor());
             }
-            else throw ExceptionFactory(__SyntaxException,"unrecognized operator",opt.line,opt.column);
+            else
+                throw ExceptionFactory(__SyntaxException,
+                                       "unrecognized operator", opt.line,
+                                       opt.column);
         }
         return res;
     }
@@ -253,4 +260,4 @@ namespace AVSI
         eat(id_ast);
         return new Variable(var);
     }
-}
+} // namespace AVSI

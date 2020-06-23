@@ -9,12 +9,10 @@
 
 #include "any.h"
 
-namespace AVSI
-{
+namespace AVSI {
     using namespace std;
-    typedef enum
-    {
-        //special token
+    typedef enum {
+        // special token
         END = EOF,
         NONE = 0,
         // terminal
@@ -40,30 +38,24 @@ namespace AVSI
         // reserved keywork
         function_keyword
     } TokenType;
-    
+
     typedef char opt;
-    
+
     class Token
     {
-    private:
-        any         value;
-        TokenType   type;
-    public:
-        int         line;
-        int         column;
+      private:
+        any value;
+        TokenType type;
 
-        Token() {};
-        Token(TokenType type,any var):
-            value(var),
-            type(type)
-        {};
-        Token(TokenType type,any var,int line,int col):
-            value(var),
-            type(type),
-            line(line),
-            column(col)
-        {};
-        ~Token() {};
+      public:
+        int line;
+        int column;
+
+        Token(){};
+        Token(TokenType type, any var) : value(var), type(type){};
+        Token(TokenType type, any var, int line, int col)
+            : value(var), type(type), line(line), column(col){};
+        ~Token(){};
 
         static Token empty();
 
@@ -72,12 +64,12 @@ namespace AVSI
         any getNum();
         char getChar();
         std::string getString();
-        //std::string __str();
+        // std::string __str();
     };
-    
-    const static Token emptyToken(NONE,0);
+
+    const static Token emptyToken(NONE, 0);
 
     std::string typeName(TokenType type);
-}
+} // namespace AVSI
 
 #endif

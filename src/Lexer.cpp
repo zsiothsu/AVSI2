@@ -1,13 +1,12 @@
 /*
  * @Author: Chipen Hsiao
  * @Date: 2020-05-01
- * @LastEditTime: 2020-05-22 21:22:17
+ * @LastEditTime: 2020-06-02 15:56:33
  * @Description: include Lexer class
  */
 #include "../inc/Lexer.h"
 
-namespace AVSI
-{
+namespace AVSI {
     /*******************************************************
      *                    constructor                      *
      *******************************************************/
@@ -16,18 +15,15 @@ namespace AVSI
      * @param:          None
      * @return:         None
      */
-    Lexer::Lexer(void)
-    {
-    }
+    Lexer::Lexer(void) {}
 
     Lexer::Lexer(ifstream* file)
     {
         this->file = file;
         this->linenum = 1;
         this->cur = 0;
-        do
-        {
-            getline(*this->file,this->line);
+        do {
+            getline(*this->file, this->line);
             this->line += " ";
             this->currentChar = this->line[this->cur];
         } while(this->line.empty());
@@ -38,43 +34,37 @@ namespace AVSI
      * @param:          None
      * @return:         None
      */
-    Lexer::~Lexer()
-    {
-    }
+    Lexer::~Lexer() {}
 
     /*******************************************************
      *                  lexical analyzer                   *
      *******************************************************/
     /**
-     * @description:    advance the "cur" pointer and set the "currentChar" variable
+     * @description:    advance the "cur" pointer and set the "currentChar"
+     * variable
      * @param:          None
      * @return:         None
      */
     void Lexer::advance()
     {
         this->cur += 1;
-        if(this->cur < this->line.length())
-        {
-            this->currentChar=this->line[this->cur];
+        if(this->cur < this->line.length()) {
+            this->currentChar = this->line[this->cur];
         }
-        else
-        {
-            do
-            {
-                if(!this->file->eof())
-                {
+        else {
+            do {
+                if(!this->file->eof()) {
                     this->linenum++;
                     this->cur = 0;
-                    getline(*this->file,this->line);
+                    getline(*this->file, this->line);
                     this->line += " ";
                     this->currentChar = this->line[this->cur];
                 }
-                else
-                {
+                else {
                     this->currentChar = EOF;
                     return;
                 }
-            } while (this->line.empty());
+            } while(this->line.empty());
         }
     }
 
@@ -86,76 +76,91 @@ namespace AVSI
      */
     Token Lexer::getNextToken()
     {
-        while(this->currentChar != EOF)
-        {
-            int line = this->linenum,column = this->cur;
-            if(this->currentChar == ' ') { skipWhiteSpace(); continue; }
-            if(this->currentChar == '#') { this->cur = this->line.length(); advance(); continue; }
-            if(isdigit(this->currentChar)) { return number(); }
-            if(isalpha(this->currentChar) || this->currentChar == '_') { return Id(); }
-            if(this->currentChar == '=') {
-                if(peek() != '=')
-                {
-                    advance();
-                    return Token(assign_opt,'=',line,column);
-                }
-                //TODO : eq nep
-                else return Token::empty();
+        while(this->currentChar != EOF) {
+            int line = this->linenum, column = this->cur;
+            if(this->currentChar == ' ') {
+                skipWhiteSpace();
+                continue;
             }
-            map<char,TokenType>::iterator iter = TokenMap.find(this->currentChar);
-            if(iter != TokenMap.end())
-            {
+            if(this->currentChar == '#') {
+                this->cur = this->line.length();
+                advance();
+                continue;
+            }
+            if(isdigit(this->currentChar)) { return number(); }
+            if(isalpha(this->currentChar) || this->currentChar == '_') {
+                return Id();
+            }
+            if(this->currentChar == '=') {
+                if(peek() != '=') {
+                    advance();
+                    return Token(assign_opt, '=', line, column);
+                }
+                // TODO : eq nep
+                else
+                    return Token::empty();
+            }
+            map<char, TokenType>::iterator iter =
+                TokenMap.find(this->currentChar);
+            if(iter != TokenMap.end()) {
                 char tokenVaule = this->currentChar;
                 advance();
-                return Token(iter->second,tokenVaule,line,column);
+                return Token(iter->second, tokenVaule, line, column);
             }
             return Token::empty();
         }
-        return Token(END,EOF);
+        return Token(END, EOF);
     }
 
     /**
-     * @description:    extract a (multidigit) number from the sentence, refered from cJson
+     * @description:    extract a (multidigit) number from the sentence, refered
+     * from cJson
      * @param:          None
      * @return:         a number Token
      */
     Token Lexer::number()
     {
-        int line = this->linenum,column = this->cur;
-        double num = 0,scale = 0;
-        int subscale = 0,signsubscale = 1;
-        
+        int line = this->linenum, column = this->cur;
+        double num = 0, scale = 0;
+        int subscale = 0, signsubscale = 1;
+
         if(this->currentChar == '0') advance(); // is zero
-        if(this->currentChar >= '1' && this->currentChar <= '9') do { num = num * 10.0 + (this->currentChar - '0'); advance(); } while(this->currentChar >= '0' && this->currentChar <= '9'); // is number ?
-        if(this->currentChar == '.' && peek() >= '0' && peek() <= '9')
-        {
+        if(this->currentChar >= '1' && this->currentChar <= '9') do {
+                num = num * 10.0 + (this->currentChar - '0');
+                advance();
+            } while(this->currentChar >= '0' &&
+                    this->currentChar <= '9'); // is number ?
+        if(this->currentChar == '.' && peek() >= '0' && peek() <= '9') {
             advance();
-            do
-            {
+            do {
                 num = num * 10.0 + (this->currentChar - '0');
                 scale--;
                 advance();
             } while(this->currentChar >= '0' && this->currentChar <= '9');
         } // fractional part?
-        if(this->currentChar == 'e' || this->currentChar == 'E')
-        {
-            advance(); if(this->currentChar == '+') advance(); else if(this->currentChar == '-') signsubscale = -1,advance();
-            while(this->currentChar >= '0' && this->currentChar <= '9') subscale = subscale * 10 + (this->currentChar - '0'),advance();
+        if(this->currentChar == 'e' || this->currentChar == 'E') {
+            advance();
+            if(this->currentChar == '+')
+                advance();
+            else if(this->currentChar == '-')
+                signsubscale = -1, advance();
+            while(this->currentChar >= '0' && this->currentChar <= '9')
+                subscale = subscale * 10 + (this->currentChar - '0'), advance();
         } // exponent?
 
-        num = num * pow(10.0,(scale + subscale * signsubscale));
-        if(scale == 0 && signsubscale == 1) return Token(integer_ast,(int)num,line,column);
-        else return Token(float_ast,num,line,column);
+        num = num * pow(10.0, (scale + subscale * signsubscale));
+        if(scale == 0 && signsubscale == 1)
+            return Token(integer_ast, (int)num, line, column);
+        else
+            return Token(float_ast, num, line, column);
     }
 
     char Lexer::peek()
     {
-        if(this->cur + 1  < this->line.length())
-        {
+        if(this->cur + 1 < this->line.length()) {
             return this->line[this->cur + 1];
         }
-        else
-        {
+        else {
             return this->currentChar = 0;
         }
     }
@@ -167,27 +172,24 @@ namespace AVSI
      */
     void Lexer::skipWhiteSpace()
     {
-        while((this->currentChar != EOF) && (this->currentChar == ' '))
-        {
+        while((this->currentChar != EOF) && (this->currentChar == ' ')) {
             advance();
         }
     }
 
     Token Lexer::Id()
     {
-        int line = this->linenum,column = this->cur;
+        int line = this->linenum, column = this->cur;
         std::string str;
-        while (
-            isalpha(this->currentChar) ||
-            isdigit(this->currentChar) ||
-            this->currentChar == '_'
-        )
-        {
+        while(isalpha(this->currentChar) || isdigit(this->currentChar) ||
+              this->currentChar == '_') {
             str = str + this->currentChar;
             advance();
         }
-        map<string,TokenType>::iterator iter = reservedKeyword.find(str);
-        if(iter != reservedKeyword.end()) return Token(iter->second,str,line,column);
-        else return Token(id_ast,str,line,column);
+        map<string, TokenType>::iterator iter = reservedKeyword.find(str);
+        if(iter != reservedKeyword.end())
+            return Token(iter->second, str, line, column);
+        else
+            return Token(id_ast, str, line, column);
     }
-}
+} // namespace AVSI
