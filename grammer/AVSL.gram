@@ -1,0 +1,48 @@
+COMPOUND:
+    | STATEMENT (| STATEMENT)*
+
+STATEMENT:
+    | FUNCTIONDECL
+    | FUNCTIONCALL
+    | ASSIGNMENT
+
+ASSIGNMENT:
+    | a=VARIABLE '='EQUAL b=EXPR { Assign(a,b) }
+
+FUNCTIONDECL:
+    | FUNCTION a=ID '('LPAR b=PARAM ')'RPAR '{'LBRACE c=COMPOUND '}'RBRACE {
+        FunctionDecl(a,b,c,NULL)
+    }
+
+FUNCTIONCALL:
+    | a=ID '('LPAR b=PARAMLIST ')'RPAR { FunctionCall(a,b) }
+    
+PARAM:
+    | NULL
+    | a=ID b=(','COMMA ID)* { param({a,b}) }
+
+PARAMLIST:
+    | NULL
+    | a=EXPR b=(','COMMA EXPR)* { vector<AST>(a,b) }
+
+EXPR:
+    | a=TERM (b=('+'PLUS | '-'MINUS) c=TERM)* {
+        b==NULL ? a : BinOp(a,b,c)
+    } 
+
+TERM:
+    | a=FACTOR (b=('*'STAR | '/'SLASH) c=FACTOR)* {
+        b==NULL ? a : BinOp(a,b,c)
+    }
+
+FACTOR:
+    | a=INTEGER { Num(a) }
+    | a=FLOAT {Num{a}}
+    | a='+'PLUS b=FACTOR { UnaryOp(a,b) }
+    | a='-'MINUS b=FACTOR { UnaryOp(a,b) }
+    | VARIABLE
+    | '('LPAR a=EXPR ')'RPAR { a }
+    | SyntaxException
+
+VARIABLE:
+    | a=ID { Variable(a) }

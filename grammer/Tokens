@@ -1,0 +1,32 @@
+# data
+INTEGER
+FLOAT
+ID
+
+# reserved keyword
+FUNCTION
+RETURN
+
+# structure
+COMPOUND
+
+# operator
+PLUS            '+'
+MINUS           '-'
+STAR            '*'
+SLASH           '/'
+EQUAL           '='
+
+# symbol
+LPAR            '('
+RPAR            ')'
+LSQB            '['
+RSQB            ']'
+LBRACE          '{'
+RBRACE          '}'
+SEMI            ';'
+COMMA           ','
+
+# special token for reading program file
+END = EOF
+NONE = 0

@@ -23,6 +23,7 @@
 #define __FUNCTIONDECL_NAME "FunctionDecl"
 #define __FUNCTIONCALL_NAME "FunctionCall"
 #define __PARAM_NAME "Param"
+#define __RETURN_NAME "Return"
 
 namespace AVSI {
     using std::string;
@@ -59,7 +60,7 @@ namespace AVSI {
 
         Assign(void) : AST(__ASSIGN_NAME), left(nullptr), right(nullptr){};
         Assign(AST* left, AST* right)
-            : AST(__ASSIGN_NAME, Token(assign_opt, '=')),
+            : AST(__ASSIGN_NAME, Token(EQUAL, '=')),
               left(left),
               right(right){};
         virtual ~Assign();
@@ -139,7 +140,7 @@ namespace AVSI {
       public:
         AST* right;
 
-        UnaryOp(void) : AST(__AST_name){};
+        UnaryOp(void) : AST(__UNARYTOP_NAME){};
         UnaryOp(Token op, AST* right)
             : AST(__UNARYTOP_NAME, op), op(op), right(right){};
         virtual ~UnaryOp();
@@ -165,7 +166,7 @@ namespace AVSI {
         vector<AST*> child;
 
         Compound(void)
-            : AST(__COMPOUND_NAME, Token(compound_ast, 0)),
+            : AST(__COMPOUND_NAME, Token(COMPOUND, 0)),
               child(vector<AST*>()){};
         virtual ~Compound();
     };
@@ -176,6 +177,15 @@ namespace AVSI {
         vector<Variable*> paramList;
 
         Param(void) : AST(__PARAM_NAME), paramList(vector<Variable*>()){};
+    };
+
+    class Return : public AST
+    {
+      public: 
+        AST* ret;
+
+        Return(void) : AST(__RETURN_NAME) {};
+        Return(Token token, AST* ret): AST(__RETURN_NAME,token), ret(ret) {};
     };
 
     class NoneAST : public AST

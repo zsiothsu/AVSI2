@@ -75,13 +75,13 @@ namespace AVSI {
     {
         BinOp* op = (BinOp*)node;
 
-        if(op->getOp() == add_opt)
+        if(op->getOp() == PLUS)
             return visitor(op->left) + visitor(op->right);
-        if(op->getOp() == dec_opt)
+        if(op->getOp() == MINUS)
             return visitor(op->left) - visitor(op->right);
-        if(op->getOp() == mul_opt)
+        if(op->getOp() == STAR)
             return visitor(op->left) * visitor(op->right);
-        if(op->getOp() == div_opt) {
+        if(op->getOp() == SLASH) {
             any right = visitor(op->right);
             if(right == 0)
                 throw ExceptionFactory(__MathException, "division by zero",
@@ -151,6 +151,7 @@ namespace AVSI {
             clog << ar->__str__();
         }
 
+        // load symboltable
         this->callStack.push(ar);
         for(auto subSymbolTable : this->currentSymbolTable->child) {
             if(subSymbolTable->symbolMap->name == funName) {
@@ -158,8 +159,9 @@ namespace AVSI {
                 break;
             }
         }
-
+        // visit function
         visitor((AST*)symbol->node_ast);
+
         if(FLAGS_callStack) {
             clog << "CallStack: leave '" + fun->id + "'" << endl;
             clog << ar->__str__();
@@ -183,8 +185,8 @@ namespace AVSI {
     {
         UnaryOp* op = (UnaryOp*)node;
 
-        if(op->getOp() == add_opt) return (any)0 + visitor(op->right);
-        if(op->getOp() == dec_opt) return (any)0 - visitor(op->right);
+        if(op->getOp() == PLUS) return (any)0 + visitor(op->right);
+        if(op->getOp() == MINUS) return (any)0 - visitor(op->right);
 
         return 0;
     }

@@ -9,6 +9,7 @@
 
 #include "Parser.h"
 #include "SymbolTable.h"
+#include "StatusCode.h"
 
 namespace AVSI {
     using std::map;
@@ -27,6 +28,7 @@ namespace AVSI {
         virtual any FunctionDeclVisitor(AST* node) = 0;
         virtual any FunctionCallVisitor(AST* node) = 0;
         virtual any NumVisitor(AST* node) = 0;
+        virtual any ReturnVisitor(AST* node) = 0;
         virtual any UnaryOpVisitor(AST* node) = 0;
         virtual any VariableVisitor(AST* node) = 0;
     };
@@ -41,7 +43,8 @@ namespace AVSI {
         {"FunctionCallVisitor", &NodeVisitor::FunctionCallVisitor},
         {"AssignVisitor", &NodeVisitor::AssignVisitor},
         {"CompoundVisitor", &NodeVisitor::CompoundVisitor},
-        {"VariableVisitor", &NodeVisitor::VariableVisitor}};
+        {"VariableVisitor", &NodeVisitor::VariableVisitor},
+        {"ReturnVisitor", &NodeVisitor::ReturnVisitor}};
 } // namespace AVSI
 
 #endif

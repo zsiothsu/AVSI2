@@ -25,11 +25,11 @@ namespace AVSI {
         switch(type) {
             case END: return "EOF";
             case NONE: return "NONE";
-            case integer_ast: return "integer_ast";
-            case add_opt: return "add_opt";
-            case dec_opt: return "dec_opt";
-            case mul_opt: return "mul_opt";
-            case div_opt: return "div_opt";
+            case INTEGER: return "INTEGER";
+            case PLUS: return "PLUS";
+            case MINUS: return "MINUS";
+            case STAR: return "STAR";
+            case SLASH: return "SLASH";
             default: return "<NOT A TYPE>"; break;
         }
     }

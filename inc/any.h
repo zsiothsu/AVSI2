@@ -25,11 +25,11 @@ namespace AVSI {
     using std::string;
 
     typedef enum {
-        EMPTY = 0,
-        CHAR = 1,
-        INTEGER = 2,
-        FLOAT = 3,
-        STRING = 4
+        Empty = 0,
+        Char = 1,
+        Integer = 2,
+        Float = 3,
+        String = 4
     } DataType;
 
     class type_info
@@ -89,20 +89,20 @@ namespace AVSI {
         friend istream& operator>>(istream& input, any& d);
     };
 
-    static map<DataType, string> typeMap = {{EMPTY, "empty"},
-                                            {CHAR, "char"},
-                                            {INTEGER, "int"},
-                                            {FLOAT, "float"},
-                                            {STRING, "string"}};
+    static map<DataType, string> typeMap = {{Empty, "empty"},
+                                            {Char, "char"},
+                                            {Integer, "int"},
+                                            {Float, "float"},
+                                            {String, "string"}};
 
     static const regex numPattern = regex(
         "^(\\+|-)?(0|[1-9][0-9]*)(\\.[1-9]+)?((e|E)(\\+|-)?(0|[1-9][0-9]*))?$");
 
-    static type_info typeEMPTY = type_info(EMPTY);
-    static type_info typeInt = type_info(INTEGER);
-    static type_info typeFloat = type_info(FLOAT);
-    static type_info typeChar = type_info(CHAR);
-    static type_info typeString = type_info(STRING);
+    static type_info typeEmpty = type_info(Empty);
+    static type_info typeInt = type_info(Integer);
+    static type_info typeFloat = type_info(Float);
+    static type_info typeChar = type_info(Char);
+    static type_info typeString = type_info(String);
 
     template <typename T>
     T any::any_cast(void)

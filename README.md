@@ -31,7 +31,7 @@ example:
 ```
 
 ## Grammar
-refer to `./doc/grammar.sl`
+refer to `./example`
 
 ## License
 AVSI is licensed under the MIT license

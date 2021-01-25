@@ -94,7 +94,7 @@ namespace AVSI {
             if(this->currentChar == '=') {
                 if(peek() != '=') {
                     advance();
-                    return Token(assign_opt, '=', line, column);
+                    return Token(EQUAL, '=', line, column);
                 }
                 // TODO : eq nep
                 else
@@ -150,9 +150,9 @@ namespace AVSI {
 
         num = num * pow(10.0, (scale + subscale * signsubscale));
         if(scale == 0 && signsubscale == 1)
-            return Token(integer_ast, (int)num, line, column);
+            return Token(INTEGER, (int)num, line, column);
         else
-            return Token(float_ast, num, line, column);
+            return Token(FLOAT, num, line, column);
     }
 
     char Lexer::peek()
@@ -190,6 +190,6 @@ namespace AVSI {
         if(iter != reservedKeyword.end())
             return Token(iter->second, str, line, column);
         else
-            return Token(id_ast, str, line, column);
+            return Token(ID, str, line, column);
     }
 } // namespace AVSI

@@ -35,21 +35,22 @@ namespace AVSI {
         Token Id();
     };
 
-    static map<char, TokenType> TokenMap = {{'+', add_opt},
-                                            {'-', dec_opt},
-                                            {'*', mul_opt},
-                                            {'/', div_opt},
-                                            {'(', left_parenthese_keyword},
-                                            {')', right_parenthese_keyword},
-                                            {'[', left_bracket_keyword},
-                                            {']', right_bracket_keyword},
-                                            {'{', left_brace_keyword},
-                                            {'}', right_brace_keyword},
-                                            {';', semi_keyword},
-                                            {',', comma_keyword}};
+    static map<char, TokenType> TokenMap = {{'+', PLUS},
+                                            {'-', MINUS},
+                                            {'*', STAR},
+                                            {'/', SLASH},
+                                            {'(', LPAR},
+                                            {')', RPAR},
+                                            {'[', LSQB},
+                                            {']', RSQB},
+                                            {'{', LBRACE},
+                                            {'}', RBRACE},
+                                            {';', SEMI},
+                                            {',', COMMA}};
 
     static map<string, TokenType> reservedKeyword = {
-        {"function", function_keyword}};
+        {"function", FUNCTION},
+        {"return",RETURN}};
 } // namespace AVSI
 
 #endif

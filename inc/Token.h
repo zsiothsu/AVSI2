@@ -16,30 +16,29 @@ namespace AVSI {
         END = EOF,
         NONE = 0,
         // terminal
-        integer_ast,
-        float_ast,
-        compound_ast,
-        id_ast,
+        INTEGER,
+        FLOAT,
+        COMPOUND,
+        ID,
         // operator
-        add_opt,
-        dec_opt,
-        mul_opt,
-        div_opt,
-        assign_opt,
+        PLUS,
+        MINUS,
+        STAR,
+        SLASH,
+        EQUAL,
         // symbol
-        left_parenthese_keyword,
-        right_parenthese_keyword,
-        left_bracket_keyword,
-        right_bracket_keyword,
-        left_brace_keyword,
-        right_brace_keyword,
-        semi_keyword,
-        comma_keyword,
+        LPAR,
+        RPAR,
+        LSQB,
+        RSQB,
+        LBRACE,
+        RBRACE,
+        SEMI,
+        COMMA,
         // reserved keywork
-        function_keyword
+        FUNCTION,
+        RETURN
     } TokenType;
-
-    typedef char opt;
 
     class Token
     {

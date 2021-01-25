@@ -37,6 +37,7 @@ namespace AVSI {
         AST* expr();
         AST* factor();
         AST* parse();
+        AST* returnExpr();
         AST* term();
         AST* variable();
     };

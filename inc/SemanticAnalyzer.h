@@ -33,6 +33,7 @@ namespace AVSI {
         any FunctionDeclVisitor(AST* node);
         any FunctionCallVisitor(AST* node);
         any NumVisitor(AST* node);
+        any ReturnVisitor(AST* node);
         any UnaryOpVisitor(AST* node);
         any VariableVisitor(AST* node);
 
