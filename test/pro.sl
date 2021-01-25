@@ -1,10 +1,3 @@
-###
- # @Author: your name
- # @Date: 1970-01-01 08:00:00
- # @LastEditTime: 2020-05-28 17:28:10
- # @Description: file content
-### 
-
 function fun_with_param(a2,b2,c2)
 {
     var1 = a2
