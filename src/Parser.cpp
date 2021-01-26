@@ -201,6 +201,9 @@ namespace AVSI {
             eat(MINUS);
             return new UnaryOp(token, factor());
         }
+        if(token.getType() == ID && this->lexer->currentChar == '(') {
+            return functionCall();
+        }
         if(token.getType() == ID) { return variable(); }
         if(token.getType() == LPAR) {
             eat(LPAR);
@@ -232,7 +235,8 @@ namespace AVSI {
         Token token = this->currentToken;
         eat(RETURN);
 
-        AST* ret = expr();
+        AST* ret = nullptr;
+        if(this->currentToken.isExpr()) ret = expr();
 
         return new Return(token,ret);
     }

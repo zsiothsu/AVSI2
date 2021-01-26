@@ -49,7 +49,7 @@ namespace AVSI {
                                             {',', COMMA}};
 
     static map<string, TokenType> reservedKeyword = {
-        {"function", FUNCTION},
+        {"func", FUNCTION},
         {"return",RETURN}};
 } // namespace AVSI
 

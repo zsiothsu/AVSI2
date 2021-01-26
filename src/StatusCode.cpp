@@ -1,18 +1,21 @@
 #include "../inc/StatusCode.h"
 
 namespace AVSI {
-    StatusCode RUNNING_STATUS = NONE;
+    uint16_t RUNNING_STATUS = 0;
 
-    void setStatus(StatusCode s)
+    void clearStatus(uint16_t s)
     {
-        RUNNING_STATUS = s;
+        RUNNING_STATUS &= ~s;
     }
 
-    StatusCode getStatus(void)
+    void setStatus(uint16_t s)
     {
-        StatusCode ret = RUNNING_STATUS;
-        RUNNING_STATUS = NONE;
-        return ret;
+        RUNNING_STATUS |= s;
+    }
+
+    bool getStatus(uint16_t s)
+    {
+        return RUNNING_STATUS & s;
     }
 
 } // namespace AVSI

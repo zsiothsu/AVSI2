@@ -5,6 +5,7 @@ STATEMENT:
     | FUNCTIONDECL
     | FUNCTIONCALL
     | ASSIGNMENT
+    | RETURNEXPR
 
 ASSIGNMENT:
     | a=VARIABLE '='EQUAL b=EXPR { Assign(a,b) }
@@ -42,7 +43,12 @@ FACTOR:
     | a='-'MINUS b=FACTOR { UnaryOp(a,b) }
     | VARIABLE
     | '('LPAR a=EXPR ')'RPAR { a }
+    | a=FUNCTIONCALL { a }
     | SyntaxException
+
+RETURNEXPR:
+    | RETURN a=EXPR { Return(a) }
+    | RETURN { Return(None) }
 
 VARIABLE:
     | a=ID { Variable(a) }

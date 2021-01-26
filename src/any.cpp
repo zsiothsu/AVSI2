@@ -6,12 +6,13 @@
  * type
  */
 #include "../inc/any.h"
+#include "../inc/Exception.h"
 
 namespace AVSI {
     type_info::type_info(void)
     {
-        this->typeId = EMPTY;
-        map<DataType, string>::const_iterator where = typeMap.find(EMPTY);
+        this->typeId = Empty;
+        map<DataType, string>::const_iterator where = typeMap.find(Empty);
         if(where != typeMap.end()) this->typeName = where->second;
     }
     type_info::type_info(DataType type)
@@ -27,7 +28,7 @@ namespace AVSI {
         return this->typeId == type.type();
     }
 
-    any::any(void) { this->typeInfo = typeEMPTY; }
+    any::any(void) { this->typeInfo = typeEmpty; }
     any::any(char var)
     {
         this->typeInfo = typeChar;
@@ -87,6 +88,8 @@ namespace AVSI {
     // TODO: string
     any any::operator+(any var)
     {
+        checkOperand(this->type(),var.type(),"+");
+
         if(this->typeInfo.type() >= var.typeInfo.type()) {
             if(this->typeInfo == typeChar)
                 return any(this->any_cast<char>() + var.any_cast<char>());
@@ -108,6 +111,8 @@ namespace AVSI {
 
     any any::operator-(any var)
     {
+        checkOperand(this->type(),var.type(),"-");
+
         if(this->typeInfo.type() >= var.typeInfo.type()) {
             if(this->typeInfo == typeChar)
                 return any(this->any_cast<char>() - var.any_cast<char>());
@@ -129,6 +134,8 @@ namespace AVSI {
 
     any any::operator*(any var)
     {
+        checkOperand(this->type(),var.type(),"*");
+
         if(this->typeInfo.type() >= var.typeInfo.type()) {
             if(this->typeInfo == typeChar)
                 return any(this->any_cast<char>() * var.any_cast<char>());
@@ -150,6 +157,8 @@ namespace AVSI {
 
     any any::operator/(any var)
     {
+        checkOperand(this->type(),var.type(),"/");
+
         if(this->typeInfo.type() >= var.typeInfo.type()) {
             if(this->typeInfo == typeChar)
                 return any(this->any_cast<char>() / var.any_cast<char>());
@@ -171,6 +180,7 @@ namespace AVSI {
 
     ostream& operator<<(ostream& output, AVSI::any& d)
     { // TODO:string
+        if(d.typeInfo == typeEmpty) output << "None";
         if(d.typeInfo == typeChar) output << d.any_cast<char>();
         if(d.typeInfo == typeInt) output << d.any_cast<int>();
         if(d.typeInfo == typeFloat) output << d.any_cast<double>();
@@ -222,5 +232,16 @@ namespace AVSI {
         }
 
         return input;
+    }
+
+    bool checkOperand(DataType left, DataType right, string op)
+    {
+        if(left == Empty || right == Empty) {
+            string msg = "unsupported operand type(s) for " +
+                         op + ": '" + typeMap[left] +
+                         "' and '" + typeMap[right] + "'"; 
+            throw ExceptionFactory(__TypeException, msg, 0, 0);
+        }
+        return true;
     }
 } // namespace AVSI

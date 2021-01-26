@@ -87,6 +87,8 @@ namespace AVSI {
 
         friend ostream& operator<<(ostream& output, any& d);
         friend istream& operator>>(istream& input, any& d);
+
+        friend bool checkOperand(DataType left, DataType right, string op);
     };
 
     static map<DataType, string> typeMap = {{Empty, "empty"},
@@ -103,6 +105,8 @@ namespace AVSI {
     static type_info typeFloat = type_info(Float);
     static type_info typeChar = type_info(Char);
     static type_info typeString = type_info(String);
+
+    bool checkOperand(DataType left, DataType right, string op);
 
     template <typename T>
     T any::any_cast(void)

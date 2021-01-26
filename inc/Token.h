@@ -63,6 +63,7 @@ namespace AVSI {
         any getNum();
         char getChar();
         std::string getString();
+        bool isExpr();
         // std::string __str();
     };
 

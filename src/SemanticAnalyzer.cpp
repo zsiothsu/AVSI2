@@ -139,7 +139,11 @@ namespace AVSI {
             }
         }
 
+        // visit function, and set 'inFunction' status
+        bool statusCodeInFunction_preDecl = getStatus(Status_inFunction);
+        setStatus(Status_inFunction);
         visitor(functionDecl->compound);
+        setStatus(statusCodeInFunction_preDecl ? Status_inFunction : Status_none);
 
         this->currentSymbolTable = this->currentSymbolTable->father;
 
@@ -156,6 +160,20 @@ namespace AVSI {
     }
 
     any SemanticAnalyzer::NumVisitor(AST* node) { return 0; }
+
+    any SemanticAnalyzer::ReturnVisitor(AST* node)
+    {
+        Return* ret = (Return*)node;
+
+        if(!getStatus(Status_inFunction)) {
+            throw ExceptionFactory(__LogicException, "'return' outside function", 
+                                   ret->getToken().line, ret->getToken().column);
+        }
+
+        if(ret->ret != nullptr) visitor(ret->ret);
+
+        return 0;
+    }
 
     any SemanticAnalyzer::UnaryOpVisitor(AST* node)
     {

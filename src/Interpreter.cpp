@@ -49,11 +49,14 @@ namespace AVSI {
     any Interpreter::visitor(AST* node)
     {
         if(node == &ASTEmpty) return 0;
-        any res = 0;
+        any res;
         string visitorName = node->__AST_name + "Visitor";
 
         map<string, visitNode>::iterator iter = visitorMap.find(visitorName);
         if(iter != visitorMap.end()) res = (this->*((*iter).second))(node);
+
+        if(getStatus(Status_ret) && node->__AST_name == "FunctionCall")
+                clearStatus(Status_ret);
 
         return res;
     }
@@ -75,19 +78,28 @@ namespace AVSI {
     {
         BinOp* op = (BinOp*)node;
 
-        if(op->getOp() == PLUS)
-            return visitor(op->left) + visitor(op->right);
-        if(op->getOp() == MINUS)
-            return visitor(op->left) - visitor(op->right);
-        if(op->getOp() == STAR)
-            return visitor(op->left) * visitor(op->right);
-        if(op->getOp() == SLASH) {
-            any right = visitor(op->right);
-            if(right == 0)
-                throw ExceptionFactory(__MathException, "division by zero",
-                                       op->getToken().line,
-                                       op->getToken().column);
-            return visitor(op->left) / visitor(op->right);
+        try {
+            if(op->getOp() == PLUS)
+                return visitor(op->left) + visitor(op->right);
+            if(op->getOp() == MINUS)
+                return visitor(op->left) - visitor(op->right);
+            if(op->getOp() == STAR)
+                return visitor(op->left) * visitor(op->right);
+            if(op->getOp() == SLASH) {
+                any right = visitor(op->right);
+                if(right == 0)
+                    throw ExceptionFactory(__MathException, "division by zero",
+                                           op->getToken().line,
+                                           op->getToken().column);
+                return visitor(op->left) / visitor(op->right);
+            }
+        } catch(Exception& e) {
+            if(e.type() == "TypeException")
+            {
+                e.line = op->getToken().line;
+                e.column = op->getToken().column;
+            }
+            throw e;
         }
 
         return 0;
@@ -96,10 +108,14 @@ namespace AVSI {
     any Interpreter::CompoundVisitor(AST* node)
     {
         Compound* compound = (Compound*)node;
+        any ret;
+        for(AST* ast : compound->child)
+        {
+            ret = visitor(ast);
+            if(getStatus(Status_ret)) break;
+        }
 
-        for(AST* ast : compound->child) visitor(ast);
-
-        return 0;
+        return ret;
     }
 
     any Interpreter::FunctionDeclVisitor(AST* node)
@@ -160,10 +176,11 @@ namespace AVSI {
             }
         }
         // visit function
-        visitor((AST*)symbol->node_ast);
+        any ret = visitor((AST*)symbol->node_ast);
 
         if(FLAGS_callStack) {
             clog << "CallStack: leave '" + fun->id + "'" << endl;
+            clog << "\033[34mReturn " << ret << "\033[0m" << endl;
             clog << ar->__str__();
         }
 
@@ -171,7 +188,7 @@ namespace AVSI {
         this->currentSymbolTable = this->currentSymbolTable->father;
 
         delete ar;
-        return 0;
+        return ret;
     }
 
     any Interpreter::NumVisitor(AST* node)
@@ -179,6 +196,17 @@ namespace AVSI {
         Num* num = (Num*)node;
 
         return num->getValue();
+    }
+
+    any Interpreter::ReturnVisitor(AST* node)
+    {
+        Return* ret = (Return*)node;
+        any retval;
+
+        if(ret->ret != nullptr) retval = visitor(ret->ret);
+        setStatus(Status_ret);
+
+        return retval;
     }
 
     any Interpreter::UnaryOpVisitor(AST* node)

@@ -20,17 +20,14 @@ namespace AVSI {
     any Token::getValue() { return this->value; }
 
     // TODO: map<TokeType,string>
-    std::string typeName(TokenType type)
+    
+    bool Token::isExpr()
     {
-        switch(type) {
-            case END: return "EOF";
-            case NONE: return "NONE";
-            case INTEGER: return "INTEGER";
-            case PLUS: return "PLUS";
-            case MINUS: return "MINUS";
-            case STAR: return "STAR";
-            case SLASH: return "SLASH";
-            default: return "<NOT A TYPE>"; break;
-        }
+        return  this->type == INTEGER   || \
+                this->type == FLOAT     || \
+                this->type == PLUS      || \
+                this->type == MINUS     || \
+                this->type == ID        || \
+                this->type == LPAR;
     }
 } // namespace AVSI

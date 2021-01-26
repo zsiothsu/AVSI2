@@ -21,12 +21,7 @@ DIR_LIB		:= ./lib
 DIR_OUTPUT	:= ./build
 
 # compiler flags
-CXXFLAGS	:= -Wall -g -O2 --std=c++17 -I$(DIR_INC) \
-#-Wextra \
-#-fno-omit-frame-pointer \
-#-fsanitize=address \
-#-fsanitize-recover=address
-
+CXXFLAGS := -Wall -g --std=c++17 -I$(DIR_INC)
 LDFLAGS		:= -lstdc++ -L/usr/lib\
 #-lasan
 
@@ -38,7 +33,14 @@ BIN := $(TARGET)
 
 MAIN := $(DIR_ROOT)/main.cpp
 
+all: CXXFLAGS += -O2
 all: $(DIR_OUTPUT)/$(BIN)
+
+release: CXXFLAGS += -O2
+release: $(DIR_OUTPUT)/$(BIN)
+
+debug: CXXFLAGS += -O0
+debug: $(DIR_OUTPUT)/$(BIN)
 
 $(DIR_OUTPUT)/$(BIN): $(DIR_OUTPUT)/main.o $(OBJS) $(DIR_LIB)/libgflags_nothreads.a
 	@$(ECHO) "CXX    $<"
@@ -66,7 +68,5 @@ $(DIR_OUTPUT)/%.d: $(DIR_ROOT)/%.cpp
 -include $(OBJS:.o=.d)
 
 .PHONY: clean
-
 clean:
 	$(CD) $(DIR_OUTPUT) && $(LS) | $(GREP) -v ".gitkeep" | $(XARGS) $(RM)
-

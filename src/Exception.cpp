@@ -15,6 +15,7 @@ namespace AVSI {
         this->str = this->eType + ": " + s + " ";
     }
 
+    std::string Exception::type() { return this->eType; }
     const char* Exception::what() { return this->str.c_str(); }
 
     /*******************************************************
@@ -23,12 +24,20 @@ namespace AVSI {
 
     const Exception ExceptionFactory(std::string e)
     {
-        if(e == __SyntaxException) { return SyntaxException(); }
+        if(e == __SyntaxException) {
+            return SyntaxException(); 
+        }
         else if(e == __MathException) {
             return MathException();
         }
+        else if(e == __TypeException) {
+            return TypeException();
+        }
         else if(e == __LogicException) {
             return LogicException();
+        }
+        else if(e == __MissingException) {
+            return MissingException();
         }
         return Exception();
     }

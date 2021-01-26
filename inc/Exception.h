@@ -11,7 +11,9 @@
 
 #define __SyntaxException "SyntaxException"
 #define __MathException "MathException"
+#define __TypeException "TypeException"
 #define __LogicException "LogicException"
+#define __MissingException "MissingException"
 
 namespace AVSI {
     using namespace std;
@@ -31,6 +33,7 @@ namespace AVSI {
         ~Exception(){};
 
         void setMsg(std::string s);
+        std::string type();
         virtual const char* what();
     };
 
@@ -48,11 +51,25 @@ namespace AVSI {
         MathException() : Exception(__MathException){};
     };
 
+    class TypeException : public Exception
+    {
+      public:
+        using Exception::Exception;
+        TypeException() : Exception(__TypeException){};
+    };
+
     class LogicException : public Exception
     {
       public:
         using Exception::Exception;
         LogicException() : Exception(__LogicException){};
+    };
+
+    class MissingException : public Exception
+    {
+      public:
+        using Exception::Exception;
+        MissingException() : Exception(__MissingException){};
     };
 
     const Exception ExceptionFactory(std::string e);

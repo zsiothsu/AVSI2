@@ -4,3 +4,4 @@
 build/Interpreter
 .clang-format
 .idea
+.gitignore
