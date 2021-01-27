@@ -12,8 +12,7 @@ namespace AVSI {
      *******************************************************/
     Parser::Parser(void) {}
 
-    Parser::Parser(Lexer* lexer)
-    {
+    Parser::Parser(Lexer *lexer) {
         this->lexer = lexer;
         this->currentToken = lexer->getNextToken();
     }
@@ -32,106 +31,95 @@ namespace AVSI {
      * @return:         None
      * @throw:          SyntaxException
      */
-    void Parser::eat(TokenType type)
-    {
-        if(type == currentToken.getType()) {
-            if(currentToken.getType() == LPAR)
+    void Parser::eat(TokenType type) {
+        if (type == currentToken.getType()) {
+            if (currentToken.getType() == LPAR)
                 this->parenCnt++;
-            if(currentToken.getType() == RPAR)
+            if (currentToken.getType() == RPAR)
                 this->parenCnt--;
             this->currentToken = this->lexer->getNextToken();
-        }
-        else {
+        } else {
             throw ExceptionFactory(__SyntaxException, "invalid syntax",
                                    this->currentToken.line,
                                    this->currentToken.column);
         }
     }
 
-    AST* Parser::program() { return statementList(); }
+    AST *Parser::program() { return statementList(); }
 
-    AST* Parser::statementList()
-    {
-        Compound* root = new Compound();
-        AST* node;
-        while((node = statement()) != &ASTEmpty) root->child.push_back(node);
+    AST *Parser::statementList() {
+        Compound *root = new Compound();
+        AST *node;
+        while ((node = statement()) != &ASTEmpty) root->child.push_back(node);
         return root;
     }
 
-    AST* Parser::statement()
-    {
-        if(this->currentToken.getType() == FUNCTION) {
+    AST *Parser::statement() {
+        if (this->currentToken.getType() == FUNCTION) {
             return functionDecl();
-        }
-        else if(this->currentToken.getType() == RETURN) {
+        } else if (this->currentToken.getType() == RETURN) {
             return returnExpr();
-        }
-        else if(this->currentToken.getType() == ID &&
-                this->lexer->currentChar == '(') {
-            AST* ast = functionCall();
+        } else if (this->currentToken.getType() == ID &&
+                   this->lexer->currentChar == '(') {
+            AST *ast = functionCall();
             return ast;
-        }
-        else if(this->currentToken.getType() == ID) {
+        } else if (this->currentToken.getType() == ID) {
             return assignment();
         }
         return &ASTEmpty;
     }
 
-    AST* Parser::assignment()
-    {
-        AST* left = variable();
+    AST *Parser::assignment() {
+        AST *left = variable();
         eat(EQUAL);
-        AST* right = expr();
+        AST *right = expr();
         return new Assign(left, right);
     }
 
-    AST* Parser::functionDecl()
-    {
+    AST *Parser::functionDecl() {
         Token token = this->currentToken;
         eat(FUNCTION);
         string id = this->currentToken.getValue().any_cast<string>();
         eat(ID);
 
-        AST* paramList = nullptr;
+        AST *paramList = nullptr;
         eat(LPAR);
-        if(this->currentToken.getType() == ID) paramList = param();
+        if (this->currentToken.getType() == ID) paramList = param();
         eat(RPAR);
 
         eat(LBRACE);
-        AST* compound = statementList();
+        AST *compound = statementList();
         eat(RBRACE);
         return new FunctionDecl(id, paramList, compound, token);
     }
 
-    AST* Parser::functionCall()
-    {
+    AST *Parser::functionCall() {
         Token token = this->currentToken;
         string id = this->currentToken.getValue().any_cast<string>();
         eat(ID);
 
-        vector<AST*> paramList;
+        vector<AST *> paramList;
         eat(LPAR);
-        if(this->currentToken.getType() != RPAR) {
+        if (this->currentToken.getType() != RPAR) {
             paramList.push_back(expr());
-            while(this->currentToken.getType() == COMMA) {
+            while (this->currentToken.getType() == COMMA) {
                 eat(COMMA);
                 paramList.push_back(expr());
             }
         }
         eat(RPAR);
-        FunctionCall* fun = new FunctionCall(id, paramList, token);
+        FunctionCall *fun = new FunctionCall(id, paramList, token);
         return fun;
     }
 
-    AST* Parser::param()
-    {
-        Param* param = new Param();
+    AST *Parser::param() {
+        Param *param = new Param();
         set<string> paramSet;
-        while(this->currentToken.getType() == ID) {
+        while (this->currentToken.getType() == ID) {
             string id = this->currentToken.getValue().any_cast<string>();
-            if(paramSet.find(id) != paramSet.end()) {
+            if (paramSet.find(id) != paramSet.end()) {
                 string msg =
-                    "duplicate argument '" + id + "' in function definition";
+                        "duplicate argument '" + id + "' in function definition";
                 throw ExceptionFactory(__SyntaxException, msg,
                                        this->currentToken.line,
                                        this->currentToken.column);
@@ -139,14 +127,14 @@ namespace AVSI {
             paramSet.insert(id);
             param->paramList.push_back(new Variable(this->currentToken));
             eat(ID);
-            if(this->currentToken.getType() == RPAR) {
+            if (this->currentToken.getType() == RPAR) {
                 return param;
             }
             eat(COMMA);
         }
         throw ExceptionFactory(
-            __SyntaxException, "unexpected symbol in parameter list",
-            this->currentToken.line, this->currentToken.column);
+                __SyntaxException, "unexpected symbol in parameter list",
+                this->currentToken.line, this->currentToken.column);
         return param;
     }
 
@@ -158,21 +146,18 @@ namespace AVSI {
      * @grammar:        expr: term ((ADD | DEC) term)*
      *                  term: Integer;
      */
-    AST* Parser::expr(void)
-    {
-        AST* res = term();
-        while(this->currentToken.getType() == PLUS ||
-              this->currentToken.getType() == MINUS) {
+    AST *Parser::expr(void) {
+        AST *res = term();
+        while (this->currentToken.getType() == PLUS ||
+               this->currentToken.getType() == MINUS) {
             Token opt = this->currentToken;
-            if(opt.getValue() == '+') {
+            if (opt.getValue() == '+') {
                 eat(PLUS);
                 res = new BinOp(res, opt, term());
-            }
-            else if(opt.getValue() == '-') {
+            } else if (opt.getValue() == '-') {
                 eat(MINUS);
                 res = new BinOp(res, opt, term());
-            }
-            else
+            } else
                 throw ExceptionFactory(__SyntaxException,
                                        "unrecognized operator", opt.line,
                                        opt.column);
@@ -186,38 +171,40 @@ namespace AVSI {
      * @return:         factor
      * @grammar:        Integer | LPAREN
      */
-    AST* Parser::factor(void)
-    {
+    AST *Parser::factor(void) {
         Token token = this->currentToken;
-        if(token.getType() == INTEGER || token.getType() == FLOAT) {
+        if (token.getType() == INTEGER || token.getType() == FLOAT) {
             eat(token.getType());
             return new Num(token);
         }
-        if(token.getType() == PLUS) {
+        if (token.getType() == TRUE || token.getType() == FALSE) {
+            eat(token.getType());
+            return new Boolean(token);
+        }
+        if (token.getType() == PLUS) {
             eat(PLUS);
             return new UnaryOp(token, factor());
         }
-        if(token.getType() == MINUS) {
+        if (token.getType() == MINUS) {
             eat(MINUS);
             return new UnaryOp(token, factor());
         }
-        if(token.getType() == ID && this->lexer->currentChar == '(') {
+        if (token.getType() == ID && this->lexer->currentChar == '(') {
             return functionCall();
         }
-        if(token.getType() == ID) { return variable(); }
-        if(token.getType() == LPAR) {
+        if (token.getType() == ID) { return variable(); }
+        if (token.getType() == LPAR) {
             eat(LPAR);
-            AST* res = expr();
+            AST *res = expr();
             eat(RPAR);
             return res;
         }
-        if(token.getType() == RPAR) {
-            if(this->parenCnt <= 0)
+        if (token.getType() == RPAR) {
+            if (this->parenCnt <= 0)
                 throw ExceptionFactory(__SyntaxException, "unmatched ')'",
                                        token.line, token.column);
             return new NoneAST();
-        }
-        else
+        } else
             throw ExceptionFactory(__SyntaxException,
                                    "unrecognized factor in expression",
                                    token.line, token.column);
@@ -228,17 +215,16 @@ namespace AVSI {
      * @param:          None
      * @return:         root of parse result.
      */
-    AST* Parser::parse(void) { return program(); }
+    AST *Parser::parse(void) { return program(); }
 
-    AST* Parser::returnExpr(void)
-    {
+    AST *Parser::returnExpr(void) {
         Token token = this->currentToken;
         eat(RETURN);
 
-        AST* ret = nullptr;
-        if(this->currentToken.isExpr()) ret = expr();
+        AST *ret = nullptr;
+        if (this->currentToken.isExpr()) ret = expr();
 
-        return new Return(token,ret);
+        return new Return(token, ret);
     }
 
     /**
@@ -249,21 +235,18 @@ namespace AVSI {
      * @c:        term: factor ((MUL | DIV) factor)*
      *                  factor: Integer
      */
-    AST* Parser::term(void)
-    {
-        AST* res = factor();
-        while(this->currentToken.getType() == STAR ||
-              this->currentToken.getType() == SLASH) {
+    AST *Parser::term(void) {
+        AST *res = factor();
+        while (this->currentToken.getType() == STAR ||
+               this->currentToken.getType() == SLASH) {
             Token opt = this->currentToken;
-            if(opt.getValue() == '*') {
+            if (opt.getValue() == '*') {
                 eat(STAR);
                 res = new BinOp(res, opt, factor());
-            }
-            else if(opt.getValue() == '/') {
+            } else if (opt.getValue() == '/') {
                 eat(SLASH);
                 res = new BinOp(res, opt, factor());
-            }
-            else
+            } else
                 throw ExceptionFactory(__SyntaxException,
                                        "unrecognized operator", opt.line,
                                        opt.column);
@@ -271,8 +254,7 @@ namespace AVSI {
         return res;
     }
 
-    AST* Parser::variable()
-    {
+    AST *Parser::variable() {
         Token var = this->currentToken;
         eat(ID);
         return new Variable(var);

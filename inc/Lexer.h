@@ -12,26 +12,32 @@
 #include <fstream>
 
 namespace AVSI {
-    class Lexer
-    {
-      private:
-        ifstream* file;
+    class Lexer {
+    private:
+        ifstream *file;
         unsigned int linenum;
         unsigned int cur;
         std::string line;
 
-      public:
+    public:
         char currentChar;
 
         Lexer(void);
-        Lexer(ifstream* file);
+
+        Lexer(ifstream *file);
+
         ~Lexer();
 
         void advance();
+
         Token getNextToken();
+
         Token number();
+
         char peek();
+
         void skipWhiteSpace();
+
         Token Id();
     };
 
@@ -49,8 +55,10 @@ namespace AVSI {
                                             {',', COMMA}};
 
     static map<string, TokenType> reservedKeyword = {
-        {"func", FUNCTION},
-        {"return",RETURN}};
+            {"func",    FUNCTION},
+            {"return",  RETURN},
+            {"true",    TRUE},
+            {"false",  FALSE}};
 } // namespace AVSI
 
 #endif

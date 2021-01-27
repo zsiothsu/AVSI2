@@ -2,6 +2,5 @@
 *.o
 *.d
 build/Interpreter
-.clang-format
 .idea
 .gitignore

@@ -14,47 +14,45 @@ using namespace AVSI;
 DEFINE_bool(scope, false, "print scope information");
 DEFINE_bool(callStack, false, "print call stack");
 
-void setFlags(string name)
-{
+void setFlags(string name) {
     string UsageMessage = name + " file [--scope] [--callStack]";
     google::SetUsageMessage(UsageMessage);
     string VersionString = "0.0.0 (AVSI)";
     google::SetVersionString(VersionString);
 }
 
-int main(int argc, char** argv)
-{
+int main(int argc, char **argv) {
     setFlags(argv[0]);
     google::ParseCommandLineFlags(&argc, &argv, true);
 
-    if(argc == 1) {
+    if (argc == 1) {
         cout << "AVSI: missing target file." << endl;
         return 0;
     }
-    if(argc != 2) {
+    if (argc != 2) {
         cout << "AVSI: too more arguements." << endl;
         return 0;
     }
 
-    char* fileName = argv[1];
+    char *fileName = argv[1];
     ifstream file;
     file.open(fileName, ios::in);
-    if(!file.is_open())
+    if (!file.is_open())
         cout << "AVSI: can't open file '" + string(fileName) + "'" << endl;
 
-    Lexer* lexer = new Lexer(&file);
-    Parser* parser = new Parser(lexer);
-    SemanticAnalyzer* semanticAnalyzer = new SemanticAnalyzer();
+    Lexer *lexer = new Lexer(&file);
+    Parser *parser = new Parser(lexer);
+    SemanticAnalyzer *semanticAnalyzer = new SemanticAnalyzer();
     try {
-        AST* tree = parser->parse();
-        SymbolTable* symbolTable = semanticAnalyzer->SemanticAnalyze(tree);
-        Interpreter* interpreter = new Interpreter(tree, symbolTable);
+        AST *tree = parser->parse();
+        SymbolTable *symbolTable = semanticAnalyzer->SemanticAnalyze(tree);
+        Interpreter *interpreter = new Interpreter(tree, symbolTable);
         interpreter->interpret();
 
         // delete semanticAnalyzer;
         delete interpreter;
     }
-    catch(Exception& e) {
+    catch (Exception &e) {
         std::cerr << e.what() << "\t at line " << e.line << " column "
                   << e.column + 1 << '\n';
     }

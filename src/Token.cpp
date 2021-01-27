@@ -20,14 +20,15 @@ namespace AVSI {
     any Token::getValue() { return this->value; }
 
     // TODO: map<TokeType,string>
-    
-    bool Token::isExpr()
-    {
-        return  this->type == INTEGER   || \
-                this->type == FLOAT     || \
-                this->type == PLUS      || \
-                this->type == MINUS     || \
-                this->type == ID        || \
+
+    bool Token::isExpr() {
+        return this->type == INTEGER || \
+                this->type == FLOAT || \
+                this->type == TRUE  || \
+                this->type == FALSE || \
+                this->type == PLUS || \
+                this->type == MINUS || \
+                this->type == ID || \
                 this->type == LPAR;
     }
 } // namespace AVSI

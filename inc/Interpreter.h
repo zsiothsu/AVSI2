@@ -14,31 +14,43 @@ namespace AVSI {
     using std::map;
     using std::vector;
 
-    class Interpreter : public NodeVisitor
-    {
-      private:
+    class Interpreter : public NodeVisitor {
+    private:
         CallStack callStack;
-        SymbolTable* symbolTable;
-        SymbolTable* currentSymbolTable;
-        AST* root;
+        SymbolTable *symbolTable;
+        SymbolTable *currentSymbolTable;
+        AST *root;
 
-      public:
-        Interpreter(void) : callStack(CallStack()){};
-        Interpreter(AST* root, SymbolTable* symbolTable)
-            : symbolTable(symbolTable), currentSymbolTable(symbolTable),
-              root(root){};
+    public:
+        Interpreter(void) : callStack(CallStack()) {};
+
+        Interpreter(AST *root, SymbolTable *symbolTable)
+                : symbolTable(symbolTable), currentSymbolTable(symbolTable),
+                  root(root) {};
+
         virtual ~Interpreter();
 
-        any visitor(AST* node);
-        any AssignVisitor(AST* node);
-        any BinOpVisitor(AST* node);
-        any CompoundVisitor(AST* node);
-        any FunctionDeclVisitor(AST* node);
-        any FunctionCallVisitor(AST* node);
-        any NumVisitor(AST* node);
-        any ReturnVisitor(AST* node);
-        any UnaryOpVisitor(AST* node);
-        any VariableVisitor(AST* node);
+        any visitor(AST *node);
+
+        any AssignVisitor(AST *node);
+
+        any BinOpVisitor(AST *node);
+
+        any BooleanVisitor(AST *node);
+
+        any CompoundVisitor(AST *node);
+
+        any FunctionDeclVisitor(AST *node);
+
+        any FunctionCallVisitor(AST *node);
+
+        any NumVisitor(AST *node);
+
+        any ReturnVisitor(AST *node);
+
+        any UnaryOpVisitor(AST *node);
+
+        any VariableVisitor(AST *node);
 
         any interpret(void);
     };

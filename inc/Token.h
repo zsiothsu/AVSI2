@@ -37,32 +37,41 @@ namespace AVSI {
         COMMA,
         // reserved keywork
         FUNCTION,
-        RETURN
+        RETURN,
+        TRUE,
+        FALSE
     } TokenType;
 
-    class Token
-    {
-      private:
+    class Token {
+    private:
         any value;
         TokenType type;
 
-      public:
+    public:
         int line;
         int column;
 
-        Token(){};
-        Token(TokenType type, any var) : value(var), type(type){};
+        Token() {};
+
+        Token(TokenType type, any var) : value(var), type(type) {};
+
         Token(TokenType type, any var, int line, int col)
-            : value(var), type(type), line(line), column(col){};
-        ~Token(){};
+                : value(var), type(type), line(line), column(col) {};
+
+        ~Token() {};
 
         static Token empty();
 
         TokenType getType();
+
         any getValue();
+
         any getNum();
+
         char getChar();
+
         std::string getString();
+
         bool isExpr();
         // std::string __str();
     };

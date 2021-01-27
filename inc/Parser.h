@@ -13,33 +13,46 @@
 namespace AVSI {
     using namespace std;
 
-    class Parser
-    {
-      private:
-        Lexer* lexer;
+    class Parser {
+    private:
+        Lexer *lexer;
         Token currentToken;
         int parenCnt = 0;
 
-      public:
+    public:
         Parser(void);
-        Parser(Lexer* lexer);
+
+        Parser(Lexer *lexer);
+
         ~Parser();
 
         void eat(TokenType type);
 
-        AST* program();
-        AST* statementList();
-        AST* statement();
-        AST* assignment();
-        AST* functionDecl();
-        AST* functionCall();
-        AST* param();
-        AST* expr();
-        AST* factor();
-        AST* parse();
-        AST* returnExpr();
-        AST* term();
-        AST* variable();
+        AST *program();
+
+        AST *statementList();
+
+        AST *statement();
+
+        AST *assignment();
+
+        AST *functionDecl();
+
+        AST *functionCall();
+
+        AST *param();
+
+        AST *expr();
+
+        AST *factor();
+
+        AST *parse();
+
+        AST *returnExpr();
+
+        AST *term();
+
+        AST *variable();
     };
 } // namespace AVSI
 

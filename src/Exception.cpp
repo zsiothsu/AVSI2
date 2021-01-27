@@ -10,41 +10,35 @@ namespace AVSI {
     /*******************************************************
      *                    base exception                   *
      *******************************************************/
-    void Exception::setMsg(std::string s)
-    {
+    void Exception::setMsg(std::string s) {
         this->str = this->eType + ": " + s + " ";
     }
 
     std::string Exception::type() { return this->eType; }
-    const char* Exception::what() { return this->str.c_str(); }
+
+    const char *Exception::what() { return this->str.c_str(); }
 
     /*******************************************************
      *                  exception factory                  *
      *******************************************************/
 
-    const Exception ExceptionFactory(std::string e)
-    {
-        if(e == __SyntaxException) {
-            return SyntaxException(); 
-        }
-        else if(e == __MathException) {
+    const Exception ExceptionFactory(std::string e) {
+        if (e == __SyntaxException) {
+            return SyntaxException();
+        } else if (e == __MathException) {
             return MathException();
-        }
-        else if(e == __TypeException) {
+        } else if (e == __TypeException) {
             return TypeException();
-        }
-        else if(e == __LogicException) {
+        } else if (e == __LogicException) {
             return LogicException();
-        }
-        else if(e == __MissingException) {
+        } else if (e == __MissingException) {
             return MissingException();
         }
         return Exception();
     }
 
     const Exception
-    ExceptionFactory(std::string e, std::string c, int line, int column)
-    {
+    ExceptionFactory(std::string e, std::string c, int line, int column) {
         Exception exception = ExceptionFactory(e);
 
         exception.setMsg(c);

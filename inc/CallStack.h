@@ -20,46 +20,54 @@ namespace AVSI {
     using std::ostringstream;
     using std::string;
 
-    typedef enum { program, function } ARType;
+    typedef enum {
+        program, function
+    } ARType;
 
-    class ActivationRecord
-    {
-      private:
+    class ActivationRecord {
+    private:
         string name;
         ARType type;
         map<string, any> members;
 
-      public:
+    public:
         int level;
-        ActivationRecord(void) : members(map<string, any>()){};
+
+        ActivationRecord(void) : members(map<string, any>()) {};
+
         ActivationRecord(string name, ARType type, int level)
-            : name(name),
-              type(type),
-              members(map<string, any>()),
-              level(level){};
-        virtual ~ActivationRecord(){};
+                : name(name),
+                  type(type),
+                  members(map<string, any>()),
+                  level(level) {};
+
+        virtual ~ActivationRecord() {};
 
         void __setitem__(string key, any value);
+
         any __getitem__(string key);
+
         string __str__();
     };
 
-    class CallStack
-    {
-      private:
-        deque<ActivationRecord*> records;
+    class CallStack {
+    private:
+        deque<ActivationRecord *> records;
 
-      public:
-        CallStack(void) : records(deque<ActivationRecord*>()){};
-        virtual ~CallStack(){};
+    public:
+        CallStack(void) : records(deque<ActivationRecord *>()) {};
 
-        void push(ActivationRecord* ar);
-        ActivationRecord* pop();
-        ActivationRecord* peek();
+        virtual ~CallStack() {};
+
+        void push(ActivationRecord *ar);
+
+        ActivationRecord *pop();
+
+        ActivationRecord *peek();
     };
 
     static map<ARType, string> ARTypeMap = {{function, "function"},
-                                            {program, "program"}};
+                                            {program,  "program"}};
 } // namespace AVSI
 
 #endif

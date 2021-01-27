@@ -26,81 +26,114 @@ namespace AVSI {
 
     typedef enum {
         Empty = 0,
-        Char = 1,
-        Integer = 2,
-        Float = 3,
-        String = 4
+        boolean = 10,
+        Char = 20,
+        Integer = 30,
+        Float = 40,
+        String = 50
     } DataType;
 
-    class type_info
-    {
-      private:
+    class type_info {
+    private:
         DataType typeId;
         std::string typeName;
 
-      public:
+    public:
         type_info(void);
+
         type_info(DataType type);
 
         std::string name(void);
+
         DataType type(void);
+
         bool operator==(type_info type);
+
+        bool operator>=(const type_info type) const;
+
+        bool operator<=(const type_info type) const;
     };
 
-    class any
-    {
-      private:
+    class any {
+    private:
+        bool valueBool;
         int valueInt;
         double valueFloat;
         char valueChar;
         string valueString;
         type_info typeInfo;
 
-      public:
+    public:
         any(void);
+
+        any(bool var);
+
         any(char var);
+
         any(int var);
+
         any(double var);
+
         any(string var);
+
         ~any();
 
         DataType type(void);
 
-        template <typename T>
+        template<typename T>
         T any_cast(void);
 
-        template <typename T>
+        template<typename T>
         static T any_cast(any var);
 
+        any operator=(bool var);
+
         any operator=(char var);
+
         any operator=(int var);
+
         any operator=(double var);
+
         any operator=(string var);
-        bool operator==(char var) const;
-        bool operator==(int var) const;
-        bool operator==(double var) const;
-        bool operator==(string var) const;
+
         any operator+(any var);
+
         any operator-(any var);
+
         any operator*(any var);
+
         any operator/(any var);
 
-        friend ostream& operator<<(ostream& output, any& d);
-        friend istream& operator>>(istream& input, any& d);
+        bool operator==(bool var) const;
+
+        bool operator==(char var) const;
+
+        bool operator==(int var) const;
+
+        bool operator==(double var) const;
+
+        bool operator==(string var) const;
+
+        operator bool() const;
+
+        friend ostream &operator<<(ostream &output, any &d);
+
+        friend istream &operator>>(istream &input, any &d);
 
         friend bool checkOperand(DataType left, DataType right, string op);
     };
 
-    static map<DataType, string> typeMap = {{Empty, "empty"},
-                                            {Char, "char"},
+    static map<DataType, string> typeMap = {{Empty,   "empty"},
+                                            {Char,    "char"},
                                             {Integer, "int"},
-                                            {Float, "float"},
-                                            {String, "string"}};
+                                            {Float,   "float"},
+                                            {String,  "string"}};
 
     static const regex numPattern = regex(
-        "^(\\+|-)?(0|[1-9][0-9]*)(\\.[1-9]+)?((e|E)(\\+|-)?(0|[1-9][0-9]*))?$");
+            "^(\\+|-)?(0|[1-9][0-9]*)(\\.[1-9]+)?((e|E)(\\+|-)?(0|[1-9][0-9]*))?$");
 
     static type_info typeEmpty = type_info(Empty);
+    static type_info typeBool = type_info(boolean);
     static type_info typeInt = type_info(Integer);
     static type_info typeFloat = type_info(Float);
     static type_info typeChar = type_info(Char);
@@ -108,32 +141,31 @@ namespace AVSI {
 
     bool checkOperand(DataType left, DataType right, string op);
 
-    template <typename T>
-    T any::any_cast(void)
-    {
-        void* ret = &this->valueChar;
-        if(typeid(T) == typeid(char) && this->typeInfo == typeChar)
+    template<typename T>
+    T (*cast)(void);
+
+    template<typename T>
+    T any::any_cast(void) {
+        void *ret = &this->valueChar;
+        if (typeid(T) == typeid(bool) && this->typeInfo <= typeBool)
+            ret = &this->valueBool;
+        else if (typeid(T) == typeid(char) && this->typeInfo <= typeChar)
             ret = &this->valueChar;
-
-        else if(typeid(T) == typeid(int) &&
-                (this->typeInfo == typeInt || this->typeInfo == typeChar))
+        else if (typeid(T) == typeid(int) && this->typeInfo <= typeInt)
             ret = &this->valueInt;
-
-        else if(typeid(T) == typeid(double) &&
-                (this->typeInfo == typeInt || this->typeInfo == typeChar ||
-                 this->typeInfo == typeFloat))
+        else if (typeid(T) == typeid(double) && this->typeInfo <= typeFloat)
             ret = &this->valueFloat;
-        else if(typeid(T) == typeid(string))
+        else if (typeid(T) == typeid(string))
             ret = &this->valueString;
-        T Tval = *((T*)ret);
+        T Tval = *((T *) ret);
         return Tval;
     }
 
-    template <typename T>
-    T any::any_cast(any var)
-    {
+    template<typename T>
+    T any::any_cast(any var) {
         return var.any_cast<T>();
     }
+
 } // namespace AVSI
 
 #endif

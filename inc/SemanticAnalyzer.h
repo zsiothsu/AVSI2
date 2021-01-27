@@ -14,30 +14,41 @@ namespace AVSI {
 
     using std::clog;
 
-    class SemanticAnalyzer : public NodeVisitor
-    {
-      private:
-        SymbolTable* symbolTable;
-        SymbolTable* currentSymbolTable;
+    class SemanticAnalyzer : public NodeVisitor {
+    private:
+        SymbolTable *symbolTable;
+        SymbolTable *currentSymbolTable;
 
-      public:
+    public:
         SemanticAnalyzer(void)
-            : symbolTable(new SymbolTable(nullptr, "global", 1)),
-              currentSymbolTable(symbolTable){};
+                : symbolTable(new SymbolTable(nullptr, "global", 1)),
+                  currentSymbolTable(symbolTable) {};
+
         virtual ~SemanticAnalyzer();
 
-        any visitor(AST* node);
-        any AssignVisitor(AST* node);
-        any BinOpVisitor(AST* node);
-        any CompoundVisitor(AST* node);
-        any FunctionDeclVisitor(AST* node);
-        any FunctionCallVisitor(AST* node);
-        any NumVisitor(AST* node);
-        any ReturnVisitor(AST* node);
-        any UnaryOpVisitor(AST* node);
-        any VariableVisitor(AST* node);
+        any visitor(AST *node);
 
-        SymbolTable* SemanticAnalyze(AST* root);
+        any AssignVisitor(AST *node);
+
+        any BinOpVisitor(AST *node);
+
+        any BooleanVisitor(AST *node);
+
+        any CompoundVisitor(AST *node);
+
+        any FunctionDeclVisitor(AST *node);
+
+        any FunctionCallVisitor(AST *node);
+
+        any NumVisitor(AST *node);
+
+        any ReturnVisitor(AST *node);
+
+        any UnaryOpVisitor(AST *node);
+
+        any VariableVisitor(AST *node);
+
+        SymbolTable *SemanticAnalyze(AST *root);
     };
 } // namespace AVSI
 

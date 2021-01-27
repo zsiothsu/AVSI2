@@ -12,45 +12,44 @@ namespace AVSI {
      *******************************************************/
 
     Token AST::getToken(void) { return this->token; }
+
     /*******************************************************
      *                    derived syntax                   *
      *******************************************************/
-    Assign::~Assign()
-    {
-        if(this->left != nullptr) { delete this->left; }
-        if(this->right != nullptr) { delete this->right; }
+    Assign::~Assign() {
+        if (this->left != nullptr) { delete this->left; }
+        if (this->right != nullptr) { delete this->right; }
     }
 
     TokenType BinOp::getOp(void) { return this->op.getType(); }
 
-    BinOp::~BinOp()
-    {
-        if(this->left != nullptr) { delete this->left; }
-        if(this->right != nullptr) { delete this->right; }
+    BinOp::~BinOp() {
+        if (this->left != nullptr) { delete this->left; }
+        if (this->right != nullptr) { delete this->right; }
     }
 
-    FunctionDecl::~FunctionDecl()
-    {
-        if(this->compound != nullptr) { delete this->compound; }
-        if(this->paramList != nullptr) { delete this->paramList; }
+    any Boolean::getValue(void) {
+        return this->value;
     }
 
-    FunctionCall::~FunctionCall()
-    {
-        for(auto param : this->paramList) { delete param; }
+    FunctionDecl::~FunctionDecl() {
+        if (this->compound != nullptr) { delete this->compound; }
+        if (this->paramList != nullptr) { delete this->paramList; }
+    }
+
+    FunctionCall::~FunctionCall() {
+        for (auto param : this->paramList) { delete param; }
     }
 
     any Num::getValue(void) { return this->value; }
 
-    UnaryOp::~UnaryOp()
-    {
-        if(this->right != nullptr) { delete this->right; }
+    UnaryOp::~UnaryOp() {
+        if (this->right != nullptr) { delete this->right; }
     }
 
     TokenType UnaryOp::getOp(void) { return this->op.getType(); }
 
-    Compound::~Compound()
-    {
-        for(AST* ast : this->child) delete ast;
+    Compound::~Compound() {
+        for (AST *ast : this->child) delete ast;
     }
 } // namespace AVSI
