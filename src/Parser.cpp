@@ -59,6 +59,8 @@ namespace AVSI {
             return functionDecl();
         } else if (this->currentToken.getType() == RETURN) {
             return returnExpr();
+        } else if (this->currentToken.getType() == ECHO) {
+            return echo();
         } else if (this->currentToken.getType() == ID &&
                    this->lexer->currentChar == '(') {
             AST *ast = functionCall();
@@ -136,6 +138,15 @@ namespace AVSI {
                 __SyntaxException, "unexpected symbol in parameter list",
                 this->currentToken.line, this->currentToken.column);
         return param;
+    }
+
+    AST *Parser::echo(void) {
+        Token token = this->currentToken;
+        eat(ECHO);
+
+        AST* content = expr();
+
+        return new Echo(content,token);
     }
 
     /**

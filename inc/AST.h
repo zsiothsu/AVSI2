@@ -15,16 +15,18 @@
 
 #define __ASSIGN_NAME "Assign"
 #define __BINOP_NAME "BinOp"
-#define __NUM_NAME "Num"
-#define __UNARYTOP_NAME "UnaryOp"
-#define __VARIABLE_NAME "Variable"
+#define __BOOL_NAME "Boolean"
 #define __COMPOUND_NAME "Compound"
-#define __NONEAST_NAME "NoneAST"
-#define __FUNCTIONDECL_NAME "FunctionDecl"
+#define __ECHO_NAME "Echo"
 #define __FUNCTIONCALL_NAME "FunctionCall"
+#define __FUNCTIONDECL_NAME "FunctionDecl"
+#define __NUM_NAME "Num"
 #define __PARAM_NAME "Param"
 #define __RETURN_NAME "Return"
-#define __BOOL_NAME "Boolean"
+#define __UNARYTOP_NAME "UnaryOp"
+#define __VARIABLE_NAME "Variable"
+
+#define __NONEAST_NAME "NoneAST"
 
 namespace AVSI {
     using std::string;
@@ -104,6 +106,15 @@ namespace AVSI {
         virtual ~Boolean() {};
 
         any getValue(void);
+    };
+
+    class Echo : public AST {
+    public:
+        AST* content;
+
+        Echo(void): AST(__ECHO_NAME) {};
+        Echo(AST* content, Token token)
+                : AST(__ECHO_NAME,token), content(content) {};
     };
 
     class FunctionDecl : public AST {

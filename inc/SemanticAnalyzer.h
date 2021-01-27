@@ -36,6 +36,8 @@ namespace AVSI {
 
         any CompoundVisitor(AST *node);
 
+        any EchoVisitor(AST *node);
+
         any FunctionDeclVisitor(AST *node);
 
         any FunctionCallVisitor(AST *node);

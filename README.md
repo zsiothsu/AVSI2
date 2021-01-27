@@ -1,15 +1,9 @@
-<!--
- * @Author: Chipen Hsiao
- * @Date: 2020-05-18
- * @LastEditTime: 2020-05-28 19:20:08
- * @Description: readme
---> 
 # A Very Simple Interpreter
 
 ## Introduce
 AVSI is a project for learning that everyone can use as reference to build your own interpreter.
 
-[Ruslan's Blog](https://ruslanspivak.com/) inspired me.That is a useful and valuable blog for learning.
+[Ruslan's Blog](https://ruslanspivak.com/) inspired me. That is a useful and valuable blog for learning.
 
 The grammar of AVSI is like shell which is suitable for learning to build an Interpreter.
 
@@ -27,11 +21,26 @@ Interpreter file [--scope] [--callStack]
 
 example:
 ```
-./build/Interpreter ./test/pro.sl --scope
+./build/Interpreter ./example/pro.sl --scope
 ```
 
 ## Grammar
 refer to `./example`
+
+## What's working
+
+|  **function**   | **Status**  |
+| :-------------: | :---------: |
+|       I/O       |   partial   |
+|   assignment    |  supported  |
+|   expression    |  supported  |
+|    function     |  supported  |
+|  if statement   | coming soon |
+|  for statement  | unsupported |
+| while statement | unsupported |
+|     boolean     |  supported  |
+|     number      |  supported  |
+|     string      | unsupported |
 
 ## License
 AVSI is licensed under the MIT license

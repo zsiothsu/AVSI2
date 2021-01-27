@@ -83,6 +83,14 @@ namespace AVSI {
         return 0;
     }
 
+    any SemanticAnalyzer::EchoVisitor(AST *node) {
+        Echo *echo = (Echo *)node;
+
+        visitor(echo->content);
+
+        return 0;
+    }
+
     any SemanticAnalyzer::FunctionDeclVisitor(AST *node) {
         FunctionDecl *functionDecl = (FunctionDecl *) node;
 

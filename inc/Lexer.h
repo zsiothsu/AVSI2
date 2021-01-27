@@ -58,7 +58,8 @@ namespace AVSI {
             {"func",    FUNCTION},
             {"return",  RETURN},
             {"true",    TRUE},
-            {"false",  FALSE}};
+            {"false",   FALSE},
+            {"echo",    ECHO}};
 } // namespace AVSI
 
 #endif

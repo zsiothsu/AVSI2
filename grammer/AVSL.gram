@@ -26,6 +26,9 @@ PARAMLIST:
     | NULL
     | a=EXPR b=(','COMMA EXPR)* { vector<AST>(a,b) }
 
+ECHO:
+    | a=EXPR { Echo(a) }
+
 EXPR:
     | a=TERM (b=('+'PLUS | '-'MINUS) c=TERM)* {
         b==NULL ? a : BinOp(a,b,c)
@@ -39,12 +42,13 @@ TERM:
 FACTOR:
     | a=INTEGER { Num(a) }
     | a=FLOAT {Num{a}}
+    | a=(TRUE | FALSE) { Boolean(a) }
     | a='+'PLUS b=FACTOR { UnaryOp(a,b) }
     | a='-'MINUS b=FACTOR { UnaryOp(a,b) }
     | VARIABLE
     | '('LPAR a=EXPR ')'RPAR { a }
     | a=FUNCTIONCALL { a }
-    | SyntaxException
+    | SYNTAXEXCEPTION
 
 RETURNEXPR:
     | RETURN a=EXPR { Return(a) }

@@ -4,8 +4,11 @@ FLOAT
 ID
 
 # reserved keyword
+ECHO
 FUNCTION
 RETURN
+TRUE
+FALSE
 
 # structure
 COMPOUND

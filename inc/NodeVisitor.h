@@ -31,6 +31,8 @@ namespace AVSI {
 
         virtual any CompoundVisitor(AST *node) = 0;
 
+        virtual any EchoVisitor(AST *node) = 0;
+
         virtual any FunctionDeclVisitor(AST *node) = 0;
 
         virtual any FunctionCallVisitor(AST *node) = 0;
@@ -56,7 +58,8 @@ namespace AVSI {
             {"AssignVisitor",       &NodeVisitor::AssignVisitor},
             {"CompoundVisitor",     &NodeVisitor::CompoundVisitor},
             {"VariableVisitor",     &NodeVisitor::VariableVisitor},
-            {"ReturnVisitor",       &NodeVisitor::ReturnVisitor}};
+            {"ReturnVisitor",       &NodeVisitor::ReturnVisitor},
+            {"EchoVisitor",         &NodeVisitor::EchoVisitor}};
 } // namespace AVSI
 
 #endif

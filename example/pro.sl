@@ -1,3 +1,5 @@
+#!/usr/bin/Interpreter
+
 func fun_with_param(a2,b2,c2)
 {
     var0 = 1 - 2
@@ -18,3 +20,5 @@ a = true
 b = false
 c = a + b
 a = fun_without_param()
+
+echo a

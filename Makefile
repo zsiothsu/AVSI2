@@ -8,6 +8,7 @@ export GREP		:= grep
 export XARGS	:= xargs
 export CD		:= cd
 export LS		:= ls
+export CP		:= cp
 
 
 # compiler
@@ -19,9 +20,10 @@ DIR_INC		:= ./inc
 DIR_SRC		:= ./src
 DIR_LIB		:= ./lib
 DIR_OUTPUT	:= ./build
+DIR_SYSEXEC := /usr/bin
 
 # compiler flags
-CXXFLAGS := -Wall -g --std=c++17 -I$(DIR_INC)
+CXXFLAGS 	:= -Wall -g --std=c++17 -I$(DIR_INC)
 LDFLAGS		:= -lstdc++ -L/usr/lib\
 #-lasan
 
@@ -70,3 +72,11 @@ $(DIR_OUTPUT)/%.d: $(DIR_ROOT)/%.cpp
 .PHONY: clean
 clean:
 	$(CD) $(DIR_OUTPUT) && $(LS) | $(GREP) -v ".gitkeep" | $(XARGS) $(RM)
+
+.PHONY: install
+install:
+	@$(CP) $(DIR_OUTPUT)/$(TARGET) $(DIR_SYSEXEC)/
+
+.PHONY: uninstall
+uninstall:
+	@$(RM) $(DIR_SYSEXEC)/$(TARGET)

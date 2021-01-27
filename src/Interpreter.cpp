@@ -116,6 +116,14 @@ namespace AVSI {
         return ret;
     }
 
+    any Interpreter::EchoVisitor(AST *node) {
+        Echo *echo = (Echo *)node;
+
+        cout << visitor(echo->content) << endl;
+
+        return 0;
+    }
+
     any Interpreter::FunctionDeclVisitor(AST *node) {
         // TODO
         return 0;

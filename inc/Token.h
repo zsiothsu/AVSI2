@@ -39,7 +39,8 @@ namespace AVSI {
         FUNCTION,
         RETURN,
         TRUE,
-        FALSE
+        FALSE,
+        ECHO
     } TokenType;
 
     class Token {

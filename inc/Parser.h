@@ -42,6 +42,8 @@ namespace AVSI {
 
         AST *param();
 
+        AST *echo();
+
         AST *expr();
 
         AST *factor();
