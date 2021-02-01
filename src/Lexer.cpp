@@ -86,14 +86,83 @@ namespace AVSI {
             if (isalpha(this->currentChar) || this->currentChar == '_') {
                 return Id();
             }
+            if (this->currentChar == '|') {
+                if (peek() == '|') {
+                    advance(); advance();
+                    return Token(OR, 'o', line, column);
+                }
+                return Token::empty();
+            }
+            if (this->currentChar == '&') {
+                if (peek() == '&') {
+                    advance(); advance();
+                    return Token(AND, 'o', line, column);
+                }
+                return Token::empty();
+            }
             if (this->currentChar == '=') {
                 if (peek() != '=') {
                     advance();
                     return Token(EQUAL, '=', line, column);
                 }
-                    // TODO : eq nep
+                else if(peek() == '=') {
+                    advance();
+                    advance();
+                    return Token(EQ,'o',line,column);
+                }
                 else
                     return Token::empty();
+            }
+            if (this->currentChar == '!') {
+                if (peek() != '=') {
+                    advance();
+                    return Token(NOT, '!', line, column);
+                }
+                if(peek() == '=') {
+                    advance();
+                    advance();
+                    return Token(NE,'o',line,column);
+                }
+                else
+                    return Token::empty();
+            }
+            if (this->currentChar == '>') {
+                if (peek() != '=') {
+                    advance();
+                    return Token(GT, 'o', line, column);
+                }
+                if(peek() == '=') {
+                    advance();
+                    advance();
+                    return Token(GE,'o',line,column);
+                }
+                else
+                    return Token::empty();
+            }
+            if (this->currentChar == '<') {
+                if (peek() != '=') {
+                    advance();
+                    return Token(LT, '!', line, column);
+                }
+                if(peek() == '=') {
+                    advance();
+                    advance();
+                    return Token(LE,'o',line,column);
+                }
+                else
+                    return Token::empty();
+            }
+            if (this->currentChar == '-') {
+                char _peek = peek();
+                string _peek2 = peek2();
+                if(_peek2 == "eq") {advance(); advance(); advance(); return Token(EQ,'o',line,column);}
+                if(_peek2 == "ne") {advance(); advance(); advance(); return Token(NE,'o',line,column);}
+                if(_peek2 == "gt") {advance(); advance(); advance(); return Token(GT,'o',line,column);}
+                if(_peek2 == "lt") {advance(); advance(); advance(); return Token(LT,'o',line,column);}
+                if(_peek2 == "ge") {advance(); advance(); advance(); return Token(GE,'o',line,column);}
+                if(_peek2 == "le") {advance(); advance(); advance(); return Token(LE,'o',line,column);}
+                if(_peek == 'o') {advance(); advance(); return Token(OR,'o',line,column);}
+                if(_peek == 'a') {advance(); advance(); return Token(AND,'o',line,column);}
             }
             map<char, TokenType>::iterator iter =
                     TokenMap.find(this->currentChar);
@@ -156,6 +225,19 @@ namespace AVSI {
         } else {
             return this->currentChar = 0;
         }
+    }
+
+    string Lexer::peek2() {
+        char first = peek();
+        char second;
+
+        if (this->cur + 2 < this->line.length()) {
+            second = this->line[this->cur + 2];
+        } else {
+            second = this->currentChar = 0;
+        }
+
+        return string({first,second});
     }
 
     /**

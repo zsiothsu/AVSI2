@@ -35,7 +35,7 @@ refer to `./example`
 |   assignment    |  supported  |
 |   expression    |  supported  |
 |    function     |  supported  |
-|  if statement   | coming soon |
+|  if statement   |  supported  |
 |  for statement  | unsupported |
 | while statement | unsupported |
 |     boolean     |  supported  |

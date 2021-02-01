@@ -34,7 +34,7 @@ namespace AVSI {
     }
 
     any SemanticAnalyzer::visitor(AST *node) {
-        if (node == &ASTEmpty) return 0;
+        if (node == &ASTEmpty || node == nullptr) return 0;
 
         string visitorName = node->__AST_name + "Visitor";
         map<string, visitNode>::iterator iter = visitorMap.find(visitorName);
@@ -161,6 +161,28 @@ namespace AVSI {
         for (auto paramNode : functionCall->paramList) visitor(paramNode);
 
         return 0;
+    }
+
+    any SemanticAnalyzer::IfVisitor(AST *node) {
+        If *ifStatement = (If *)node;
+
+        // visit expression
+        if(!ifStatement->noCondition) visitor(ifStatement->condition);
+        
+        // mount symbol table
+        SymbolTable *subtable = new SymbolTable(this->currentSymbolTable,"if", (uint64_t)&ifStatement,
+                                                this->currentSymbolTable->level + 1);
+
+        this->currentSymbolTable->mount(subtable);
+        this->currentSymbolTable = subtable;
+
+        visitor(ifStatement->compound);
+
+        this->currentSymbolTable = this->currentSymbolTable->father;
+
+        if(ifStatement->next != nullptr) visitor(ifStatement->next);
+
+        return 0;       
     }
 
     any SemanticAnalyzer::NumVisitor(AST *node) { return 0; }

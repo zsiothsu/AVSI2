@@ -36,6 +36,8 @@ namespace AVSI {
 
         char peek();
 
+        string peek2();
+
         void skipWhiteSpace();
 
         Token Id();
@@ -52,14 +54,20 @@ namespace AVSI {
                                             {'{', LBRACE},
                                             {'}', RBRACE},
                                             {';', SEMI},
-                                            {',', COMMA}};
+                                            {',', COMMA},
+                                            {'$', DOLLAR}};
 
     static map<string, TokenType> reservedKeyword = {
-            {"func",    FUNCTION},
+            {"function",    FUNCTION},
             {"return",  RETURN},
             {"true",    TRUE},
             {"false",   FALSE},
-            {"echo",    ECHO}};
+            {"echo",    ECHO},
+            {"if",      IF},
+            {"else",    ELSE},
+            {"elif",    ELIF},
+            {"fi",      FI},
+            {"then",    THEN}};
 } // namespace AVSI
 
 #endif

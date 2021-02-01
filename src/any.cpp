@@ -219,6 +219,14 @@ namespace AVSI {
 
     bool any::operator==(string var) const { return this->valueString == var; }
 
+    bool any::operator>(any var) const { return (this->valueFloat - var.valueFloat) > 0;}
+
+    bool any::operator<(any var) const { return (this->valueFloat - var.valueFloat) < 0;}
+
+    bool any::operator>=(any var) const { return (this->valueFloat - var.valueFloat) >= 0;}
+
+    bool any::operator<=(any var) const { return (this->valueFloat - var.valueFloat) >= 0;}
+
     any::operator bool() const {
         return this->valueBool;
     }

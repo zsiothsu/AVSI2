@@ -40,6 +40,8 @@ namespace AVSI {
 
         AST *functionCall();
 
+        AST *IfStatement();
+
         AST *param();
 
         AST *echo();

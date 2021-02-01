@@ -19,6 +19,13 @@ MINUS           '-'
 STAR            '*'
 SLASH           '/'
 EQUAL           '='
+NOT             '!'
+EQ              '=='        '-eq'
+NE              '!='        '-ne'
+GT              '>'         '-gt'
+LT              '<'         '-lt'
+GE              '>='        '-ge'
+LE              '<='        '-le'
 
 # symbol
 LPAR            '('
@@ -29,6 +36,7 @@ LBRACE          '{'
 RBRACE          '}'
 SEMI            ';'
 COMMA           ','
+DOLLAR          '$'
 
 # special token for reading program file
 END = EOF

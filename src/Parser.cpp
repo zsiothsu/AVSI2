@@ -67,6 +67,8 @@ namespace AVSI {
             return ast;
         } else if (this->currentToken.getType() == ID) {
             return assignment();
+        } else if (this->currentToken.getType() == IF) {
+            return IfStatement();
         }
         return &ASTEmpty;
     }
@@ -112,6 +114,40 @@ namespace AVSI {
         eat(RPAR);
         FunctionCall *fun = new FunctionCall(id, paramList, token);
         return fun;
+    }
+
+    AST *Parser::IfStatement() {
+        Token token = this->currentToken;
+        TokenType type = this->currentToken.getType();
+        AST* condition = nullptr;
+        bool noCondition = false;
+
+        if(type == FI) {
+            eat(FI);
+            return nullptr;
+        }
+
+        if (type == IF) {
+            eat(IF);
+            eat(LSQB);
+            condition = expr();
+            eat(RSQB);
+            eat(THEN);
+        } else if (type == ELIF) {
+            eat(ELIF);
+            eat(LSQB);
+            condition = expr();
+            eat(RSQB);
+            eat(THEN);
+        } else {
+            eat(ELSE);
+            noCondition = true;
+        }
+
+        AST* compound = statementList();
+        AST* next = IfStatement();
+
+        return new If(condition,noCondition,compound,next,token);
     }
 
     AST *Parser::param() {
@@ -173,6 +209,13 @@ namespace AVSI {
                                        "unrecognized operator", opt.line,
                                        opt.column);
         }
+
+        while (this->currentToken.isReOp()) {
+            Token opt = this->currentToken;
+            eat(opt.getType());
+            res = new BinOp(res, opt, expr());
+        }
+
         return res;
     }
 
@@ -200,10 +243,14 @@ namespace AVSI {
             eat(MINUS);
             return new UnaryOp(token, factor());
         }
+        if (token.getType() == NOT) {
+            eat(NOT);
+            return new UnaryOp(token, factor());
+        }
         if (token.getType() == ID && this->lexer->currentChar == '(') {
             return functionCall();
         }
-        if (token.getType() == ID) { return variable(); }
+        if (token.getType() == ID || token.getType() == DOLLAR) { return variable(); }
         if (token.getType() == LPAR) {
             eat(LPAR);
             AST *res = expr();
@@ -266,6 +313,9 @@ namespace AVSI {
     }
 
     AST *Parser::variable() {
+        if (this->currentToken.getType() == DOLLAR)
+            eat(DOLLAR);
+
         Token var = this->currentToken;
         eat(ID);
         return new Variable(var);

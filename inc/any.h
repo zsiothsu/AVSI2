@@ -114,6 +114,14 @@ namespace AVSI {
 
         bool operator==(string var) const;
 
+        bool operator>(any var) const;
+
+        bool operator<(any var) const;
+
+        bool operator>=(any var) const;
+
+        bool operator<=(any var) const;
+
         operator bool() const;
 
         friend ostream &operator<<(ostream &output, any &d);

@@ -43,6 +43,12 @@ namespace AVSI {
 
     any Num::getValue(void) { return this->value; }
 
+    If::~If() {
+        if (this->condition != nullptr) { delete this->condition; }
+        if (this->compound != nullptr) { delete this->compound; }
+        if (this->next != nullptr) { delete this->next; }
+    }
+
     UnaryOp::~UnaryOp() {
         if (this->right != nullptr) { delete this->right; }
     }

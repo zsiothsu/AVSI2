@@ -55,6 +55,7 @@ int main(int argc, char **argv) {
     catch (Exception &e) {
         std::cerr << e.what() << "\t at line " << e.line << " column "
                   << e.column + 1 << '\n';
+        return 1;
     }
     return 0;
 }

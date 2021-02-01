@@ -60,10 +60,13 @@ namespace AVSI {
     public:
         map<string, Symbol *> symbols;
         string name;
+        uint64_t addr;
 
         SymbolMap(void) : symbols(map<string, Symbol *>()) {};
 
         SymbolMap(string name) : symbols(map<string, Symbol *>()), name(name) {};
+
+        SymbolMap(string name, uint64_t addr) : symbols(map<string, Symbol *>()), name(name), addr(addr) {};
 
         ~SymbolMap();
 
@@ -89,6 +92,12 @@ namespace AVSI {
 
         SymbolTable(SymbolTable *father, string name, int level)
                 : symbolMap(new SymbolMap(name)),
+                  father(father),
+                  child(deque<SymbolTable *>()),
+                  level(level) {};
+
+        SymbolTable(SymbolTable *father, string name, uint64_t addr, int level)
+                : symbolMap(new SymbolMap(name,addr)),
                   father(father),
                   child(deque<SymbolTable *>()),
                   level(level) {};

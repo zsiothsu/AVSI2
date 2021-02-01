@@ -22,13 +22,18 @@ namespace AVSI {
     // TODO: map<TokeType,string>
 
     bool Token::isExpr() {
-        return this->type == INTEGER || \
-                this->type == FLOAT || \
-                this->type == TRUE  || \
-                this->type == FALSE || \
-                this->type == PLUS || \
-                this->type == MINUS || \
-                this->type == ID || \
-                this->type == LPAR;
+        for(auto t : ExprOp){
+            if(this->type == t) return true;
+        }
+
+        return false;
+    }
+
+    bool Token::isReOp() {
+        for(auto t : ReOp){
+            if(this->type == t) return true;
+        }
+
+        return false;
     }
 } // namespace AVSI

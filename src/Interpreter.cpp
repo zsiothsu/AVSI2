@@ -64,8 +64,7 @@ namespace AVSI {
         Variable *var = (Variable *) assign->left;
         any value = visitor(assign->right);
 
-        ActivationRecord *ar = this->callStack.peek();
-        ar->__setitem__(var->id, value);
+        this->callStack.__setitem__(var->id, value);
 
         return value;
     }
@@ -88,6 +87,23 @@ namespace AVSI {
                                            op->getToken().column);
                 return visitor(op->left) / visitor(op->right);
             }
+            if (op->getOp() == EQ)
+                return (bool)visitor(op->left) == (bool)visitor(op->right);
+            if (op->getOp() == NE)
+                return (bool)visitor(op->left) != (bool)visitor(op->right);
+            if (op->getOp() == GT) {
+                bool t = visitor(op->left) > visitor(op->right);
+                return t;}
+            if (op->getOp() == LT)
+                return visitor(op->left) < visitor(op->right);
+            if (op->getOp() == GE)
+                return visitor(op->left) >= visitor(op->right);
+            if (op->getOp() == LE)
+                return visitor(op->left) <= visitor(op->right);
+            if (op->getOp() == OR)
+                return (bool)visitor(op->left) || (bool)visitor(op->right);
+            if (op->getOp() == AND)
+                return (bool)visitor(op->left) && (bool)visitor(op->right);
         } catch (Exception &e) {
             if (e.type() == "TypeException") {
                 e.line = op->getToken().line;
@@ -119,7 +135,8 @@ namespace AVSI {
     any Interpreter::EchoVisitor(AST *node) {
         Echo *echo = (Echo *)node;
 
-        cout << visitor(echo->content) << endl;
+        any out = visitor(echo->content);
+        cout << out << endl;
 
         return 0;
     }
@@ -131,6 +148,7 @@ namespace AVSI {
 
     any Interpreter::FunctionCallVisitor(AST *node) {
         // current function
+        SymbolTable* stBeforeCall = this->currentSymbolTable;
         FunctionCall *fun = (FunctionCall *) node;
         string funName = fun->id;
         fun->symbol_function =
@@ -189,9 +207,57 @@ namespace AVSI {
         }
 
         this->callStack.pop();
-        this->currentSymbolTable = this->currentSymbolTable->father;
+        this->currentSymbolTable = stBeforeCall;
 
         delete ar;
+        return ret;
+    }
+
+    any Interpreter::IfVisitor(AST *node)
+    {
+        If *ifStatement = (If *)node;
+        any ret;
+
+        if((!ifStatement->noCondition && visitor(ifStatement->condition)) ||
+            ifStatement->noCondition)
+        {
+            SymbolTable* stBeforeCall = this->currentSymbolTable;
+            for(SymbolTable *subSymbolTable : this->currentSymbolTable->child)
+            {
+                if(subSymbolTable->symbolMap->name == "if" &&
+                   subSymbolTable->symbolMap->addr == (uint64_t)&ifStatement)
+                {
+                    this->currentSymbolTable = subSymbolTable;
+                    break;
+                }
+            }
+            ActivationRecord *ar = new ActivationRecord(
+                    "if",ifScope,this->callStack.peek()->level + 1);
+
+            if (FLAGS_callStack) {
+            clog << "CallStack: enter 'if' level: " << ar->level
+                 << endl;
+            clog << ar->__str__();
+            
+            }
+
+            this->callStack.push(ar);
+            ret = visitor(ifStatement->compound);
+            this->callStack.pop();
+
+            if (FLAGS_callStack) {
+            clog << "CallStack: leave 'if'" << endl;
+            clog << "\033[34mReturn " << ret << "\033[0m" << endl;
+            clog << ar->__str__();
+            }
+
+            this->currentSymbolTable = stBeforeCall;
+        }
+        else
+        {
+            ret = visitor(ifStatement->next);
+        }
+
         return ret;
     }
 
@@ -216,15 +282,14 @@ namespace AVSI {
 
         if (op->getOp() == PLUS) return (any) 0 + visitor(op->right);
         if (op->getOp() == MINUS) return (any) 0 - visitor(op->right);
-
+        if (op->getOp() == NOT) return !(bool)visitor(op->right);
         return 0;
     }
 
     any Interpreter::VariableVisitor(AST *node) {
         Variable *var = (Variable *) node;
 
-        ActivationRecord *ar = this->callStack.peek();
-        any value = ar->__getitem__(var->id);
+        any value = this->callStack.__getitem__(var->id);
 
         return value;
     }

@@ -37,6 +37,8 @@ namespace AVSI {
 
         virtual any FunctionCallVisitor(AST *node) = 0;
 
+        virtual any IfVisitor(AST *node) = 0;
+
         virtual any NumVisitor(AST *node) = 0;
 
         virtual any ReturnVisitor(AST *node) = 0;
@@ -49,17 +51,18 @@ namespace AVSI {
     typedef any (NodeVisitor::*visitNode)(AST *node);
 
     static map<string, visitNode> visitorMap = {
-            {"NumVisitor",          &NodeVisitor::NumVisitor},
+            {"AssignVisitor",       &NodeVisitor::AssignVisitor},
             {"BinOpVisitor",        &NodeVisitor::BinOpVisitor},
             {"BooleanVisitor",      &NodeVisitor::BooleanVisitor},
-            {"UnaryOpVisitor",      &NodeVisitor::UnaryOpVisitor},
-            {"FunctionDeclVisitor", &NodeVisitor::FunctionDeclVisitor},
-            {"FunctionCallVisitor", &NodeVisitor::FunctionCallVisitor},
-            {"AssignVisitor",       &NodeVisitor::AssignVisitor},
             {"CompoundVisitor",     &NodeVisitor::CompoundVisitor},
-            {"VariableVisitor",     &NodeVisitor::VariableVisitor},
+            {"EchoVisitor",         &NodeVisitor::EchoVisitor},
+            {"FunctionCallVisitor", &NodeVisitor::FunctionCallVisitor},
+            {"FunctionDeclVisitor", &NodeVisitor::FunctionDeclVisitor},
+            {"IfVisitor",           &NodeVisitor::IfVisitor},
+            {"NumVisitor",          &NodeVisitor::NumVisitor},
             {"ReturnVisitor",       &NodeVisitor::ReturnVisitor},
-            {"EchoVisitor",         &NodeVisitor::EchoVisitor}};
+            {"UnaryOpVisitor",      &NodeVisitor::UnaryOpVisitor},
+            {"VariableVisitor",     &NodeVisitor::VariableVisitor}};
 } // namespace AVSI
 
 #endif

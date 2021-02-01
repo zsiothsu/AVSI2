@@ -11,7 +11,13 @@ namespace AVSI {
         this->members[key] = value;
     }
 
-    any ActivationRecord::__getitem__(string key) { return members[key]; }
+    any ActivationRecord::__getitem__(string key) {
+        for(auto it = members.begin();it != members.end();it++)
+        {
+            if(it->first == key) return it->second;
+        }
+        return any();
+    }
 
     string ActivationRecord::__str__() {
         ostringstream str;
@@ -42,4 +48,40 @@ namespace AVSI {
     ActivationRecord *CallStack::CallStack::peek() {
         return this->records.back();
     }
+
+    void CallStack::__setitem__(string key, any value) {
+        auto it = this->records.rbegin();
+        do
+        {
+            any ret = (*it)->__getitem__(key);
+            if(ret.type() != Empty){
+                (*it)->__setitem__(key,value);
+                return;
+            }
+            
+            if ((*it)->type == ifScope){
+                it++;
+            }
+            else break;
+        } while(it != this->records.rend());
+
+        this->records.back()->__setitem__(key,value);
+    }
+
+    any CallStack::__getitem__(string key) {
+        auto it = this->records.rbegin();
+        do
+        {
+            any ret = (*it)->__getitem__(key);
+            if(ret.type() != Empty) return ret;
+
+            if ((*it)->type == ifScope){
+                it++;
+            }
+            else break;
+        } while(it != this->records.rend());
+
+        return any();
+    }
+
 } // namespace AVSI

@@ -26,6 +26,15 @@ namespace AVSI {
         STAR,
         SLASH,
         EQUAL,
+        NOT,
+        EQ,
+        NE,
+        GT,
+        LT,
+        GE,
+        LE,
+        OR,
+        AND,
         // symbol
         LPAR,
         RPAR,
@@ -35,12 +44,18 @@ namespace AVSI {
         RBRACE,
         SEMI,
         COMMA,
+        DOLLAR,
         // reserved keywork
         FUNCTION,
         RETURN,
         TRUE,
         FALSE,
-        ECHO
+        ECHO,
+        IF,
+        ELIF,
+        ELSE,
+        FI,
+        THEN
     } TokenType;
 
     class Token {
@@ -74,10 +89,34 @@ namespace AVSI {
         std::string getString();
 
         bool isExpr();
+
+        bool isReOp();
         // std::string __str();
     };
 
     const static Token emptyToken(NONE, 0);
+
+    const static TokenType ExprOp[] = {
+        INTEGER,
+        FLOAT,
+        TRUE,
+        FALSE,
+        PLUS,
+        MINUS,
+        ID,
+        LPAR,
+        NOT
+    };
+    const static TokenType ReOp[] = {
+        EQ,
+        NE,
+        GT,
+        LT,
+        GE,
+        LE,
+        OR,
+        AND
+    };
 
     std::string typeName(TokenType type);
 } // namespace AVSI

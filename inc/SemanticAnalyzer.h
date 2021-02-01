@@ -42,6 +42,8 @@ namespace AVSI {
 
         any FunctionCallVisitor(AST *node);
 
+        any IfVisitor(AST *node);
+
         any NumVisitor(AST *node);
 
         any ReturnVisitor(AST *node);

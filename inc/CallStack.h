@@ -21,25 +21,25 @@ namespace AVSI {
     using std::string;
 
     typedef enum {
-        program, function
+        program, function, ifScope
     } ARType;
 
     class ActivationRecord {
     private:
         string name;
-        ARType type;
         map<string, any> members;
 
     public:
         int level;
+        ARType type;
 
         ActivationRecord(void) : members(map<string, any>()) {};
 
         ActivationRecord(string name, ARType type, int level)
                 : name(name),
-                  type(type),
                   members(map<string, any>()),
-                  level(level) {};
+                  level(level),
+                  type(type) {};
 
         virtual ~ActivationRecord() {};
 
@@ -64,10 +64,15 @@ namespace AVSI {
         ActivationRecord *pop();
 
         ActivationRecord *peek();
+
+        void __setitem__(string key, any value);
+
+        any __getitem__(string key);
     };
 
     static map<ARType, string> ARTypeMap = {{function, "function"},
-                                            {program,  "program"}};
+                                            {program,  "program"},
+                                            {ifScope, "if"}};
 } // namespace AVSI
 
 #endif

@@ -13,18 +13,19 @@
 #include <typeinfo>
 #include <vector>
 
-#define __ASSIGN_NAME "Assign"
-#define __BINOP_NAME "BinOp"
-#define __BOOL_NAME "Boolean"
-#define __COMPOUND_NAME "Compound"
-#define __ECHO_NAME "Echo"
-#define __FUNCTIONCALL_NAME "FunctionCall"
-#define __FUNCTIONDECL_NAME "FunctionDecl"
-#define __NUM_NAME "Num"
-#define __PARAM_NAME "Param"
-#define __RETURN_NAME "Return"
-#define __UNARYTOP_NAME "UnaryOp"
-#define __VARIABLE_NAME "Variable"
+#define __ASSIGN_NAME           "Assign"
+#define __BINOP_NAME            "BinOp"
+#define __BOOL_NAME             "Boolean"
+#define __COMPOUND_NAME         "Compound"
+#define __ECHO_NAME             "Echo"
+#define __FUNCTIONCALL_NAME     "FunctionCall"
+#define __FUNCTIONDECL_NAME     "FunctionDecl"
+#define __IF_NAME               "If"
+#define __NUM_NAME              "Num"
+#define __PARAM_NAME            "Param"
+#define __RETURN_NAME           "Return"
+#define __UNARYTOP_NAME         "UnaryOp"
+#define __VARIABLE_NAME         "Variable"
 
 #define __NONEAST_NAME "NoneAST"
 
@@ -148,6 +149,21 @@ namespace AVSI {
                 : AST(__FUNCTIONCALL_NAME, token), id(id), paramList(paramList) {};
 
         virtual ~FunctionCall();
+    };
+
+    class If : public AST {
+    public:
+        AST* condition;
+        bool noCondition;
+        AST* compound;
+        AST* next;
+
+        If(void) : AST(__IF_NAME), condition(nullptr), compound(nullptr), next(nullptr) {};
+        If(AST *condition, bool noCondition, AST* compound, AST *next, Token token):
+                AST(__IF_NAME,token), condition(condition), noCondition(noCondition),
+                compound(compound), next(next) {};
+        
+        virtual ~If();
     };
 
     class Num : public AST {
