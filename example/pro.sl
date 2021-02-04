@@ -18,7 +18,7 @@ function max(a, b, c)
         fi
     fi
 
-    return $m
+    return m
 }
 
 function boolean()
@@ -36,7 +36,7 @@ function boolean()
     if [ $a || $b ] then
         echo 444
     fi
-    if [ ! $a && $b ] then
+    if [ ! a && b ] then
         echo 555
     fi
 
@@ -45,5 +45,25 @@ function boolean()
     fi
 }
 
+function printWhile(num)
+{
+    i = 1
+    while i <= num
+    do
+        echo i
+        i = i + 1
+    done
+}
+
+function printFor(num)
+{
+    for (i=1;i <= num;i=i+1)
+    do
+        echo i
+    done
+}
+
 echo max(32,74,46)
 boolean()
+printWhile(5)
+printFor(6)

@@ -18,6 +18,7 @@
 #define __BOOL_NAME             "Boolean"
 #define __COMPOUND_NAME         "Compound"
 #define __ECHO_NAME             "Echo"
+#define __FOR_NAME              "For"
 #define __FUNCTIONCALL_NAME     "FunctionCall"
 #define __FUNCTIONDECL_NAME     "FunctionDecl"
 #define __IF_NAME               "If"
@@ -26,6 +27,7 @@
 #define __RETURN_NAME           "Return"
 #define __UNARYTOP_NAME         "UnaryOp"
 #define __VARIABLE_NAME         "Variable"
+#define __WHILE_NAME            "While"
 
 #define __NONEAST_NAME "NoneAST"
 
@@ -116,6 +118,23 @@ namespace AVSI {
         Echo(void): AST(__ECHO_NAME) {};
         Echo(AST* content, Token token)
                 : AST(__ECHO_NAME,token), content(content) {};
+    };
+
+    class For : public AST {
+    public:
+        AST *initList;
+        AST *condition;
+        AST *adjustment;
+        AST *compound;
+        bool noCondition;
+
+        For(void)
+                : AST(__FOR_NAME), initList(nullptr), condition(nullptr),
+                  adjustment(nullptr), compound(nullptr) {};
+        For(AST *initList, AST *condition, AST *adjustment, AST *compound, bool noCondition, Token token)
+                : AST(__FOR_NAME,token), initList(initList), condition(condition),
+                  adjustment(adjustment), compound(compound), noCondition(noCondition) {};
+        virtual ~For();
     };
 
     class FunctionDecl : public AST {
@@ -235,6 +254,20 @@ namespace AVSI {
         Return(void) : AST(__RETURN_NAME) {};
 
         Return(Token token, AST *ret) : AST(__RETURN_NAME, token), ret(ret) {};
+    };
+
+    class While : public AST {
+    public:
+        AST *condition;
+        AST *compound;
+
+        While(void)
+                : AST(__WHILE_NAME), condition(nullptr), compound(nullptr) {};
+        
+        While(AST *condition, AST *compound, Token token)
+                : AST(__WHILE_NAME,token), condition(condition), compound(compound) {};
+
+        virtual ~While();
     };
 
     class NoneAST : public AST {

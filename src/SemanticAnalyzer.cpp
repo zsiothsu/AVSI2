@@ -91,6 +91,25 @@ namespace AVSI {
         return 0;
     }
 
+    any SemanticAnalyzer::ForVisitor(AST *node) {
+        For *forStatement = (For *)node;
+
+        SymbolTable *subtable = new SymbolTable(this->currentSymbolTable, "for", (uint64_t)&forStatement,
+                                                this->currentSymbolTable->level + 1);
+
+        this->symbolTable->mount(subtable);
+        this->symbolTable = subtable;
+
+        visitor(forStatement->initList);
+        visitor(forStatement->condition);
+        visitor(forStatement->adjustment);
+        visitor(forStatement->compound);
+
+        this->currentSymbolTable = subtable->father;
+
+        return 0;
+    }
+
     any SemanticAnalyzer::FunctionDeclVisitor(AST *node) {
         FunctionDecl *functionDecl = (FunctionDecl *) node;
 
@@ -217,6 +236,24 @@ namespace AVSI {
             throw ExceptionFactory(__LogicException, msg, var->getToken().line,
                                    var->getToken().column);
         }
+
+        return 0;
+    }
+
+    any SemanticAnalyzer::WhileVisitor(AST *node) {
+        While *whileStatement  = (While *)node;
+
+        visitor(whileStatement->condition);
+
+        SymbolTable *subtable = new SymbolTable(this->currentSymbolTable, "while", (uint64_t)&whileStatement,
+                                                this->currentSymbolTable->level + 1);
+
+        this->symbolTable->mount(subtable);
+        this->symbolTable = subtable;
+
+        visitor(whileStatement->compound);
+
+        this->currentSymbolTable = subtable->father;
 
         return 0;
     }

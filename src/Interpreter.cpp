@@ -45,7 +45,7 @@ namespace AVSI {
      *                      visitor                        *
      *******************************************************/
     any Interpreter::visitor(AST *node) {
-        if (node == &ASTEmpty) return 0;
+        if (node == nullptr || node == &ASTEmpty) return 0;
         any res;
         string visitorName = node->__AST_name + "Visitor";
 
@@ -139,6 +139,51 @@ namespace AVSI {
         cout << out << endl;
 
         return 0;
+    }
+
+    any Interpreter::ForVisitor(AST *node) {
+        For *forStatement = (For *)node;
+        any ret;
+
+        SymbolTable *stBeforeCall = this->currentSymbolTable;
+        for(SymbolTable *subSymbolTable : this->currentSymbolTable->child)
+        {
+            if(subSymbolTable->symbolMap->name == "for" &&
+                   subSymbolTable->symbolMap->addr == (uint64_t)&forStatement)
+            {
+                    this->currentSymbolTable = subSymbolTable;
+                    break;
+            }
+        }
+        ActivationRecord *ar = new ActivationRecord(
+                "for", loopScope, this->callStack.peek()->level + 1);
+
+        if (FLAGS_callStack) {
+            clog << "CallStack: enter 'for' level: " << ar->level
+                 << endl;
+            clog << ar->__str__();
+        }
+
+        this->callStack.push(ar);
+
+        for(visitor(forStatement->initList);
+            forStatement->noCondition ? true : (bool)visitor(forStatement->condition);
+            visitor(forStatement->adjustment))
+        {
+            ret = visitor(forStatement->compound);
+        }
+
+        this->callStack.pop();
+
+        if (FLAGS_callStack) {
+            clog << "CallStack: leave 'for'" << endl;
+            clog << "\033[34mReturn " << ret << "\033[0m" << endl;
+            clog << ar->__str__();
+        }
+
+        this->currentSymbolTable = stBeforeCall;
+
+        return ret;
     }
 
     any Interpreter::FunctionDeclVisitor(AST *node) {
@@ -292,5 +337,48 @@ namespace AVSI {
         any value = this->callStack.__getitem__(var->id);
 
         return value;
+    }
+
+    any Interpreter::WhileVisitor(AST *node) {
+        While *whileStatement = (While *)node;
+        any ret;
+
+        SymbolTable *stBeforeCall = this->currentSymbolTable;
+        for(SymbolTable *subSymbolTable : this->currentSymbolTable->child)
+        {
+            if(subSymbolTable->symbolMap->name == "while" &&
+                   subSymbolTable->symbolMap->addr == (uint64_t)&whileStatement)
+            {
+                    this->currentSymbolTable = subSymbolTable;
+                    break;
+            }
+        }
+        ActivationRecord *ar = new ActivationRecord(
+                "while", loopScope, this->callStack.peek()->level + 1);
+
+        if (FLAGS_callStack) {
+            clog << "CallStack: enter 'while' level: " << ar->level
+                 << endl;
+            clog << ar->__str__();
+        }
+
+        this->callStack.push(ar);
+
+        while(visitor(whileStatement->condition))
+        {
+            ret = visitor(whileStatement->compound);
+        }
+
+        this->callStack.pop();
+
+        if (FLAGS_callStack) {
+            clog << "CallStack: leave 'while'" << endl;
+            clog << "\033[34mReturn " << ret << "\033[0m" << endl;
+            clog << ar->__str__();
+        }
+
+        this->currentSymbolTable = stBeforeCall;
+
+        return ret;
     }
 } // namespace AVSI

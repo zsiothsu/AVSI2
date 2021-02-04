@@ -69,6 +69,10 @@ namespace AVSI {
             return assignment();
         } else if (this->currentToken.getType() == IF) {
             return IfStatement();
+        } else if (this->currentToken.getType() == FOR) {
+            return forStatement();
+        } else if (this->currentToken.getType() == WHILE) {
+            return WhileStatement();
         }
         return &ASTEmpty;
     }
@@ -78,6 +82,35 @@ namespace AVSI {
         eat(EQUAL);
         AST *right = expr();
         return new Assign(left, right);
+    }
+
+    AST *Parser::forStatement() {
+        Token token = this->currentToken;
+
+        AST *initList = nullptr;
+        AST *condition = nullptr;
+        AST *adjustment = nullptr;
+        AST *compound = nullptr;
+        bool noCondition = false;
+
+        eat(FOR);
+
+        eat(LPAR);
+        initList = statementList();
+        eat(SEMI);
+        if(this->currentToken.getType() == SEMI)
+            noCondition = true;
+        else
+            condition = expr();
+        eat(SEMI);
+        adjustment = statementList();
+        eat(RPAR);
+
+        eat(DO);
+        compound = statementList();
+        eat(DONE);
+
+        return new For(initList,condition,adjustment,compound,noCondition, token);
     }
 
     AST *Parser::functionDecl() {
@@ -124,7 +157,7 @@ namespace AVSI {
 
         if(type == FI) {
             eat(FI);
-            return nullptr;
+            return &ASTEmpty;
         }
 
         if (type == IF) {
@@ -194,6 +227,8 @@ namespace AVSI {
      *                  term: Integer;
      */
     AST *Parser::expr(void) {
+        if (this->currentToken.getType() == SEMI) return &ASTEmpty;
+
         AST *res = term();
         while (this->currentToken.getType() == PLUS ||
                this->currentToken.getType() == MINUS) {
@@ -320,4 +355,19 @@ namespace AVSI {
         eat(ID);
         return new Variable(var);
     }
+
+    AST *Parser::WhileStatement() {
+        Token token = this->currentToken;
+        AST *condition;
+        AST *compound;
+
+        eat(WHILE);
+        condition = expr();
+        eat(DO);
+        compound = statementList();
+        eat(DONE);
+
+        return new While(condition,compound,token);
+    }
+
 } // namespace AVSI

@@ -59,7 +59,7 @@ namespace AVSI {
                 return;
             }
             
-            if ((*it)->type == ifScope){
+            if ((*it)->type == ifScope || (*it)->type == loopScope){
                 it++;
             }
             else break;
@@ -75,7 +75,7 @@ namespace AVSI {
             any ret = (*it)->__getitem__(key);
             if(ret.type() != Empty) return ret;
 
-            if ((*it)->type == ifScope){
+            if ((*it)->type == ifScope || (*it)->type == loopScope){
                 it++;
             }
             else break;

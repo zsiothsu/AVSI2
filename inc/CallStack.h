@@ -21,7 +21,7 @@ namespace AVSI {
     using std::string;
 
     typedef enum {
-        program, function, ifScope
+        program, function, ifScope, loopScope
     } ARType;
 
     class ActivationRecord {

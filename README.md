@@ -32,12 +32,13 @@ refer to `./example`
 |  **function**   | **Status**  |
 | :-------------: | :---------: |
 |       I/O       |   partial   |
+|      scope      |   partial   |
 |   assignment    |  supported  |
 |   expression    |  supported  |
 |    function     |  supported  |
 |  if statement   |  supported  |
-|  for statement  | unsupported |
-| while statement | unsupported |
+|  for statement  |  supported  |
+| while statement |  supported  |
 |     boolean     |  supported  |
 |     number      |  supported  |
 |     string      | unsupported |

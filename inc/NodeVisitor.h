@@ -33,6 +33,8 @@ namespace AVSI {
 
         virtual any EchoVisitor(AST *node) = 0;
 
+        virtual any ForVisitor(AST *node) = 0;
+
         virtual any FunctionDeclVisitor(AST *node) = 0;
 
         virtual any FunctionCallVisitor(AST *node) = 0;
@@ -46,6 +48,8 @@ namespace AVSI {
         virtual any UnaryOpVisitor(AST *node) = 0;
 
         virtual any VariableVisitor(AST *node) = 0;
+
+        virtual any WhileVisitor(AST *node) = 0;
     };
 
     typedef any (NodeVisitor::*visitNode)(AST *node);
@@ -56,13 +60,15 @@ namespace AVSI {
             {"BooleanVisitor",      &NodeVisitor::BooleanVisitor},
             {"CompoundVisitor",     &NodeVisitor::CompoundVisitor},
             {"EchoVisitor",         &NodeVisitor::EchoVisitor},
+            {"ForVisitor",          &NodeVisitor::ForVisitor},
             {"FunctionCallVisitor", &NodeVisitor::FunctionCallVisitor},
             {"FunctionDeclVisitor", &NodeVisitor::FunctionDeclVisitor},
             {"IfVisitor",           &NodeVisitor::IfVisitor},
             {"NumVisitor",          &NodeVisitor::NumVisitor},
             {"ReturnVisitor",       &NodeVisitor::ReturnVisitor},
             {"UnaryOpVisitor",      &NodeVisitor::UnaryOpVisitor},
-            {"VariableVisitor",     &NodeVisitor::VariableVisitor}};
+            {"VariableVisitor",     &NodeVisitor::VariableVisitor},
+            {"WhileVisitor",        &NodeVisitor::WhileVisitor}};
 } // namespace AVSI
 
 #endif

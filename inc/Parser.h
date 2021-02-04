@@ -36,6 +36,8 @@ namespace AVSI {
 
         AST *assignment();
 
+        AST *forStatement();
+
         AST *functionDecl();
 
         AST *functionCall();
@@ -57,6 +59,8 @@ namespace AVSI {
         AST *term();
 
         AST *variable();
+
+        AST *WhileStatement();
     };
 } // namespace AVSI
 

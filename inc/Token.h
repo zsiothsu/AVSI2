@@ -55,7 +55,11 @@ namespace AVSI {
         ELIF,
         ELSE,
         FI,
-        THEN
+        THEN,
+        FOR,
+        WHILE,
+        DO,
+        DONE
     } TokenType;
 
     class Token {

@@ -32,6 +32,13 @@ namespace AVSI {
         return this->value;
     }
 
+    For::~For() {
+        if (this->initList != nullptr) delete this->initList;
+        if (this->condition != nullptr) delete this->condition;
+        if (this->adjustment != nullptr) delete this->adjustment;
+        if (this->compound != nullptr) delete this->compound;
+    }
+
     FunctionDecl::~FunctionDecl() {
         if (this->compound != nullptr) { delete this->compound; }
         if (this->paramList != nullptr) { delete this->paramList; }
@@ -57,5 +64,10 @@ namespace AVSI {
 
     Compound::~Compound() {
         for (AST *ast : this->child) delete ast;
+    }
+
+    While::~While() {
+        if (this->condition != nullptr) delete this->condition;
+        if (this->compound != nullptr) delete this->compound;
     }
 } // namespace AVSI

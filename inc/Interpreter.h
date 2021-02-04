@@ -42,6 +42,8 @@ namespace AVSI {
 
         any EchoVisitor(AST *node);
 
+        any ForVisitor(AST *node);
+
         any FunctionDeclVisitor(AST *node);
 
         any FunctionCallVisitor(AST *node);
@@ -55,6 +57,8 @@ namespace AVSI {
         any UnaryOpVisitor(AST *node);
 
         any VariableVisitor(AST *node);
+
+        any WhileVisitor(AST *node);
 
         any interpret(void);
     };

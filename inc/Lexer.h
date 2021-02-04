@@ -67,7 +67,11 @@ namespace AVSI {
             {"else",    ELSE},
             {"elif",    ELIF},
             {"fi",      FI},
-            {"then",    THEN}};
+            {"then",    THEN},
+            {"for",     FOR},
+            {"while",   WHILE},
+            {"do",      DO},
+            {"done",    DONE}};
 } // namespace AVSI
 
 #endif
