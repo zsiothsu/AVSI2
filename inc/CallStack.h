@@ -27,9 +27,9 @@ namespace AVSI {
     class ActivationRecord {
     private:
         string name;
-        map<string, any> members;
 
     public:
+        map<string, any> members;
         int level;
         ARType type;
 
@@ -64,6 +64,8 @@ namespace AVSI {
         ActivationRecord *pop();
 
         ActivationRecord *peek();
+
+        ActivationRecord *global();
 
         void __setitem__(string key, any value);
 

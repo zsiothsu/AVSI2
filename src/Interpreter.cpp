@@ -258,6 +258,22 @@ namespace AVSI {
         return ret;
     }
 
+    any Interpreter::GlobalVisitor(AST *node) {
+        Global *global = (Global *)node;
+        Variable *var = (Variable *)(global->var);
+        ActivationRecord *gar = this->callStack.global();
+
+        if (gar->members.find(var->id) == gar->members.end()) {
+            string msg = "name '" + var->id + "' is not defined in global scope";
+            throw ExceptionFactory(__LogicException, msg, var->getToken().line,
+                                   var->getToken().column);
+        }
+
+        // TODO : Link
+
+        return 0;
+    }
+
     any Interpreter::IfVisitor(AST *node)
     {
         If *ifStatement = (If *)node;
@@ -306,10 +322,31 @@ namespace AVSI {
         return ret;
     }
 
+    any Interpreter::InputVisitor(AST *node) {
+        Input *input = (Input *)node;
+        Variable *var = (Variable *)input->var;
+
+        any val;
+        std::cin >> val;
+
+        this->callStack.__setitem__(var->id, val);
+
+        return val;
+    }
+
     any Interpreter::NumVisitor(AST *node) {
         Num *num = (Num *) node;
 
         return num->getValue();
+    }
+
+    any Interpreter::PrintfVisitor(AST *node) {
+        Printf *output = (Printf *)node;
+
+        any out = visitor(output->content);
+        cout << out;
+
+        return 0;
     }
 
     any Interpreter::ReturnVisitor(AST *node) {
@@ -320,6 +357,12 @@ namespace AVSI {
         setStatus(Status_ret);
 
         return retval;
+    }
+
+    any Interpreter::StringVisitor(AST *node) {
+        class String *ret = (class String *)node;
+        
+        return ret->getValue();
     }
 
     any Interpreter::UnaryOpVisitor(AST *node) {

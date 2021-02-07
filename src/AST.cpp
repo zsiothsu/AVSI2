@@ -48,7 +48,13 @@ namespace AVSI {
         for (auto param : this->paramList) { delete param; }
     }
 
+    Global::~Global() {
+        if (this->var != nullptr) delete this->var;
+    }
+
     any Num::getValue(void) { return this->value; }
+
+    any String::getValue(void) { return this->value; }
 
     If::~If() {
         if (this->condition != nullptr) { delete this->condition; }

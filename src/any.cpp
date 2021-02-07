@@ -102,9 +102,11 @@ namespace AVSI {
         return this->valueString = var;
     }
 
-    // TODO: string
     any any::operator+(any var) {
         checkOperand(this->type(), var.type(), "+");
+
+        if (this->typeInfo == typeString) return any(string(this->valueString + (string)var));
+        if (var.typeInfo == typeString) return any(string((string)(*this) + var.valueString));
 
         if (this->typeInfo.type() >= var.typeInfo.type()) {
             if (this->typeInfo == typeBool)
@@ -227,16 +229,26 @@ namespace AVSI {
 
     bool any::operator<=(any var) const { return (this->valueFloat - var.valueFloat) <= 0;}
 
-    any::operator bool() const {
+    any::operator bool() {
         return this->valueBool;
     }
 
-    ostream &operator<<(ostream &output, AVSI::any &d) { // TODO:string
+    any::operator string() {
+        if (this->typeInfo == typeBool) return string((this->valueBool == true) ? "true" : "false");
+        else if (this->typeInfo == typeChar) return to_string(this->valueChar);
+        else if (this->typeInfo == typeInt) return to_string(this->valueInt);
+        else if (this->typeInfo == typeFloat) return to_string(this->valueFloat);
+        else if (this->typeInfo == typeString) return this->valueString;
+        else return string();
+    }
+
+    ostream &operator<<(ostream &output, AVSI::any &d) {
         if (d.typeInfo == typeEmpty) output << "None";
         else if (d.typeInfo == typeBool) output << (d.any_cast<bool>() == true ? "True" : "False");
         else if (d.typeInfo == typeChar) output << d.any_cast<char>();
         else if (d.typeInfo == typeInt) output << d.any_cast<int>();
         else if (d.typeInfo == typeFloat) output << d.any_cast<double>();
+        else if (d.typeInfo == typeString) output << d.valueString;
         return output;
     }
 

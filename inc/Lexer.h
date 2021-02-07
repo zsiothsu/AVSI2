@@ -40,38 +40,44 @@ namespace AVSI {
 
         void skipWhiteSpace();
 
+        Token str();
+
         Token Id();
     };
 
-    static map<char, TokenType> TokenMap = {{'+', PLUS},
-                                            {'-', MINUS},
-                                            {'*', STAR},
-                                            {'/', SLASH},
-                                            {'(', LPAR},
-                                            {')', RPAR},
-                                            {'[', LSQB},
-                                            {']', RSQB},
-                                            {'{', LBRACE},
-                                            {'}', RBRACE},
-                                            {';', SEMI},
-                                            {',', COMMA},
-                                            {'$', DOLLAR}};
+    static map<char, TokenType> TokenMap = {
+            {'+',   PLUS},
+            {'-',   MINUS},
+            {'*',   STAR},
+            {'/',   SLASH},
+            {'(',   LPAR},
+            {')',   RPAR},
+            {'[',   LSQB},
+            {']',   RSQB},
+            {'{',   LBRACE},
+            {'}',   RBRACE},
+            {';',   SEMI},
+            {',',   COMMA},
+            {'$',   DOLLAR}};
 
     static map<string, TokenType> reservedKeyword = {
             {"function",    FUNCTION},
-            {"return",  RETURN},
-            {"true",    TRUE},
-            {"false",   FALSE},
-            {"echo",    ECHO},
-            {"if",      IF},
-            {"else",    ELSE},
-            {"elif",    ELIF},
-            {"fi",      FI},
-            {"then",    THEN},
-            {"for",     FOR},
-            {"while",   WHILE},
-            {"do",      DO},
-            {"done",    DONE}};
+            {"return",      RETURN},
+            {"true",        TRUE},
+            {"false",       FALSE},
+            {"echo",        ECHO},
+            {"if",          IF},
+            {"else",        ELSE},
+            {"elif",        ELIF},
+            {"fi",          FI},
+            {"then",        THEN},
+            {"for",         FOR},
+            {"while",       WHILE},
+            {"do",          DO},
+            {"done",        DONE},
+            {"global",      GLOBAL},
+            {"input",       INPUT},
+            {"printf",      PRINTF}};
 } // namespace AVSI
 
 #endif

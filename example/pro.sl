@@ -1,5 +1,7 @@
 #!/bin/Interpreter
 
+echo "Hello World!"
+
 function max(a, b, c)
 {
     m=0
@@ -26,14 +28,14 @@ function boolean()
     a=true
     b=false
     
-    if [ $a == false ] then
+    if [ a == false ] then
         echo 111
-    elif [ $b == true ] then
+    elif [ b == true ] then
         echo 222
     else
         echo 333
     fi
-    if [ $a || $b ] then
+    if [ a || b ] then
         echo 444
     fi
     if [ ! a && b ] then
@@ -63,7 +65,17 @@ function printFor(num)
     done
 }
 
+function self(n)
+{
+    if [n >= 0]
+    then
+        echo n
+        self(n-1)
+    fi
+}
+
 echo max(32,74,46)
 boolean()
 printWhile(5)
 printFor(6)
+self(3)

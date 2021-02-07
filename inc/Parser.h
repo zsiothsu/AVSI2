@@ -42,11 +42,17 @@ namespace AVSI {
 
         AST *functionCall();
 
+        AST *global();
+
         AST *IfStatement();
+
+        AST *input();
 
         AST *param();
 
         AST *echo();
+
+        AST *print();
 
         AST *expr();
 

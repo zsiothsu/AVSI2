@@ -39,11 +39,19 @@ namespace AVSI {
 
         virtual any FunctionCallVisitor(AST *node) = 0;
 
+        virtual any GlobalVisitor(AST *node) = 0;
+
         virtual any IfVisitor(AST *node) = 0;
+
+        virtual any InputVisitor(AST *node) = 0;
 
         virtual any NumVisitor(AST *node) = 0;
 
+        virtual any PrintfVisitor(AST *node) = 0;
+
         virtual any ReturnVisitor(AST *node) = 0;
+
+        virtual any StringVisitor(AST *node) = 0;
 
         virtual any UnaryOpVisitor(AST *node) = 0;
 
@@ -63,9 +71,13 @@ namespace AVSI {
             {"ForVisitor",          &NodeVisitor::ForVisitor},
             {"FunctionCallVisitor", &NodeVisitor::FunctionCallVisitor},
             {"FunctionDeclVisitor", &NodeVisitor::FunctionDeclVisitor},
+            {"GlobalVisitor",       &NodeVisitor::GlobalVisitor},
             {"IfVisitor",           &NodeVisitor::IfVisitor},
+            {"InputVisitor",         &NodeVisitor::InputVisitor},
             {"NumVisitor",          &NodeVisitor::NumVisitor},
+            {"PrintfVisitor",       &NodeVisitor::PrintfVisitor},
             {"ReturnVisitor",       &NodeVisitor::ReturnVisitor},
+            {"StringVisitor",       &NodeVisitor::StringVisitor},
             {"UnaryOpVisitor",      &NodeVisitor::UnaryOpVisitor},
             {"VariableVisitor",     &NodeVisitor::VariableVisitor},
             {"WhileVisitor",        &NodeVisitor::WhileVisitor}};

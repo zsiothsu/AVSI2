@@ -31,8 +31,8 @@ refer to `./example`
 
 |  **function**   | **Status**  |
 | :-------------: | :---------: |
-|       I/O       |   partial   |
-|      scope      |   partial   |
+|       I/O       |  supported  |
+|      scope      |  *partial   |
 |   assignment    |  supported  |
 |   expression    |  supported  |
 |    function     |  supported  |
@@ -41,7 +41,10 @@ refer to `./example`
 | while statement |  supported  |
 |     boolean     |  supported  |
 |     number      |  supported  |
-|     string      | unsupported |
+|     string      |  *partial   |
+
+*: global variable is not supported now
+*: without format
 
 ## License
 AVSI is licensed under the MIT license

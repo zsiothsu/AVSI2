@@ -21,10 +21,14 @@
 #define __FOR_NAME              "For"
 #define __FUNCTIONCALL_NAME     "FunctionCall"
 #define __FUNCTIONDECL_NAME     "FunctionDecl"
+#define __GLOBAL_NAME           "Global"
 #define __IF_NAME               "If"
+#define __INPUT_NAME            "Input"
 #define __NUM_NAME              "Num"
 #define __PARAM_NAME            "Param"
+#define __PRINTF_NAME           "Printf"
 #define __RETURN_NAME           "Return"
+#define __STRING_NAME           "String"
 #define __UNARYTOP_NAME         "UnaryOp"
 #define __VARIABLE_NAME         "Variable"
 #define __WHILE_NAME            "While"
@@ -170,6 +174,17 @@ namespace AVSI {
         virtual ~FunctionCall();
     };
 
+    class Global : public AST {
+    public:
+        AST* var;
+
+        Global(void) : AST(__GLOBAL_NAME) {};
+        Global(AST* var, Token token)
+                : AST(__GLOBAL_NAME,token), var(var) {};
+
+        virtual ~Global();
+    };
+
     class If : public AST {
     public:
         AST* condition;
@@ -183,6 +198,15 @@ namespace AVSI {
                 compound(compound), next(next) {};
         
         virtual ~If();
+    };
+
+    class Input : public AST {
+    public:
+        AST *var;
+
+        Input(void) : AST(__INPUT_NAME) {};
+        Input(AST *var, Token token)
+                : AST(__INPUT_NAME,token), var(var) {};
     };
 
     class Num : public AST {
@@ -247,6 +271,15 @@ namespace AVSI {
         Param(void) : AST(__PARAM_NAME), paramList(vector<Variable *>()) {};
     };
 
+    class Printf : public AST {
+    public:
+        AST* content;
+
+        Printf(void): AST(__PRINTF_NAME) {};
+        Printf(AST* content, Token token)
+                : AST(__PRINTF_NAME,token), content(content) {};
+    };
+
     class Return : public AST {
     public:
         AST *ret;
@@ -254,6 +287,19 @@ namespace AVSI {
         Return(void) : AST(__RETURN_NAME) {};
 
         Return(Token token, AST *ret) : AST(__RETURN_NAME, token), ret(ret) {};
+    };
+
+    class String : public AST {
+    private:
+        any value;
+
+    public:
+        String(void) : AST(__STRING_NAME) {};
+
+        String(Token token) : AST(__STRING_NAME, token), value(token.getValue()) {};
+
+
+        any getValue(void);
     };
 
     class While : public AST {

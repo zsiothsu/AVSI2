@@ -44,11 +44,19 @@ namespace AVSI {
 
         any FunctionCallVisitor(AST *node);
 
+        any GlobalVisitor(AST *node);
+
         any IfVisitor(AST *node);
+
+        any InputVisitor(AST *node);
 
         any NumVisitor(AST *node);
 
+        any PrintfVisitor(AST *node);
+
         any ReturnVisitor(AST *node);
+
+        any StringVisitor(AST *node);
 
         any UnaryOpVisitor(AST *node);
 

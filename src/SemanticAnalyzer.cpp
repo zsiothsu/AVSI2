@@ -72,6 +72,7 @@ namespace AVSI {
     }
 
     any SemanticAnalyzer::BooleanVisitor(AST *node) {
+        // pass
         return 0;
     }
 
@@ -182,6 +183,24 @@ namespace AVSI {
         return 0;
     }
 
+    any SemanticAnalyzer::GlobalVisitor(AST *node) {
+        Global *global = (Global *)node;
+
+        Variable *var = (Variable *)global->var;
+        
+        Symbol *definedSymbol = this->currentSymbolTable->find(var->id);
+        if ((definedSymbol != nullptr) && (definedSymbol->type == function_t)) {
+            string msg =
+                    "symbol '" + var->id + "' has beed defined as function";
+            throw ExceptionFactory(__LogicException, msg, var->getToken().line,
+                                   var->getToken().column);
+        }
+
+        this->currentSymbolTable->insert(new Symbol(var->id, variable_t));
+
+        return 0;
+    }
+
     any SemanticAnalyzer::IfVisitor(AST *node) {
         If *ifStatement = (If *)node;
 
@@ -204,7 +223,26 @@ namespace AVSI {
         return 0;       
     }
 
-    any SemanticAnalyzer::NumVisitor(AST *node) { return 0; }
+    any SemanticAnalyzer::InputVisitor(AST *node) {
+        Input *input = (Input *)node;
+
+        visitor(input->var);
+
+        return 0;
+    }
+
+    any SemanticAnalyzer::PrintfVisitor(AST *node) {
+        Printf *output = (Printf *)node;
+
+        visitor(output->content);
+
+        return 0;
+    }
+
+    any SemanticAnalyzer::NumVisitor(AST *node) {
+        // pass
+        return 0;
+    }
 
     any SemanticAnalyzer::ReturnVisitor(AST *node) {
         Return *ret = (Return *) node;
@@ -216,6 +254,11 @@ namespace AVSI {
 
         if (ret->ret != nullptr) visitor(ret->ret);
 
+        return 0;
+    }
+
+    any SemanticAnalyzer::StringVisitor(AST *node) {
+        // pass
         return 0;
     }
 

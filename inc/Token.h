@@ -18,6 +18,7 @@ namespace AVSI {
         // terminal
         INTEGER,
         FLOAT,
+        STRING,
         COMPOUND,
         ID,
         // operator
@@ -45,12 +46,16 @@ namespace AVSI {
         SEMI,
         COMMA,
         DOLLAR,
+        DQUO,
+        SQUO,
         // reserved keywork
         FUNCTION,
         RETURN,
         TRUE,
         FALSE,
+        PRINTF,
         ECHO,
+        INPUT,
         IF,
         ELIF,
         ELSE,
@@ -59,7 +64,8 @@ namespace AVSI {
         FOR,
         WHILE,
         DO,
-        DONE
+        DONE,
+        GLOBAL
     } TokenType;
 
     class Token {
@@ -103,6 +109,7 @@ namespace AVSI {
     const static TokenType ExprOp[] = {
         INTEGER,
         FLOAT,
+        STRING,
         TRUE,
         FALSE,
         PLUS,

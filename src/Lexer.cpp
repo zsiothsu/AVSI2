@@ -86,6 +86,7 @@ namespace AVSI {
             if (isalpha(this->currentChar) || this->currentChar == '_') {
                 return Id();
             }
+            if (this->currentChar == '"') { return str(); }
             if (this->currentChar == '|') {
                 if (peek() == '|') {
                     advance(); advance();
@@ -249,6 +250,18 @@ namespace AVSI {
         while ((this->currentChar != EOF) && (this->currentChar == ' ')) {
             advance();
         }
+    }
+
+    Token Lexer::str() {
+        int line = this->linenum, column = this->cur;
+        std::string str;
+        advance();
+        while (this->currentChar != '"') {
+            str = str + this->currentChar;
+            advance();
+        }
+        advance();
+        return Token(STRING, str, line, column);
     }
 
     Token Lexer::Id() {

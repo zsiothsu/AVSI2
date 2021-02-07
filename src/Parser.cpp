@@ -61,6 +61,10 @@ namespace AVSI {
             return returnExpr();
         } else if (this->currentToken.getType() == ECHO) {
             return echo();
+        } else if (this->currentToken.getType() == INPUT) {
+            return input();
+        } else if (this->currentToken.getType() == PRINTF) {
+            return print();
         } else if (this->currentToken.getType() == ID &&
                    this->lexer->currentChar == '(') {
             AST *ast = functionCall();
@@ -73,6 +77,8 @@ namespace AVSI {
             return forStatement();
         } else if (this->currentToken.getType() == WHILE) {
             return WhileStatement();
+        } else if (this->currentToken.getType() == GLOBAL) {
+            return global();
         }
         return &ASTEmpty;
     }
@@ -149,6 +155,15 @@ namespace AVSI {
         return fun;
     }
 
+    AST *Parser::global() {
+        Token token = this->currentToken;
+        eat(GLOBAL);
+
+        AST *var = variable();
+
+        return new Global(var,token);
+    }
+
     AST *Parser::IfStatement() {
         Token token = this->currentToken;
         TokenType type = this->currentToken.getType();
@@ -181,6 +196,15 @@ namespace AVSI {
         AST* next = IfStatement();
 
         return new If(condition,noCondition,compound,next,token);
+    }
+
+    AST *Parser::input() {
+        Token token = this->currentToken;
+        eat(INPUT);
+
+        AST *var = variable();
+
+        return new Input(var, token);
     }
 
     AST *Parser::param() {
@@ -216,6 +240,16 @@ namespace AVSI {
         AST* content = expr();
 
         return new Echo(content,token);
+    }
+
+    AST *Parser::print() {
+        Token token = this->currentToken;
+        eat(PRINTF);
+
+        /* TODO: expr() -> string() */
+        AST* content = expr();
+
+        return new Printf(content, token);
     }
 
     /**
@@ -262,6 +296,10 @@ namespace AVSI {
      */
     AST *Parser::factor(void) {
         Token token = this->currentToken;
+        if (token.getType() == STRING) {
+            eat(STRING);
+            return new class String(token);
+        }
         if (token.getType() == INTEGER || token.getType() == FLOAT) {
             eat(token.getType());
             return new Num(token);

@@ -49,6 +49,10 @@ namespace AVSI {
         return this->records.back();
     }
 
+    ActivationRecord *CallStack::global() {
+        return this->records.front();
+    }
+
     void CallStack::__setitem__(string key, any value) {
         auto it = this->records.rbegin();
         do

@@ -122,7 +122,9 @@ namespace AVSI {
 
         bool operator<=(any var) const;
 
-        operator bool() const;
+        operator bool();
+
+        operator string();
 
         friend ostream &operator<<(ostream &output, any &d);
 
