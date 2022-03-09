@@ -7,6 +7,18 @@
 #ifndef ___AST_H___
 #define ___AST_H___
 
+#include "llvm/ADT/APFloat.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Type.h"
+#include "llvm/IR/Verifier.h"
+
 #include "Exception.h"
 #include "SymbolTable.h"
 #include "Token.h"
@@ -38,6 +50,8 @@
 namespace AVSI {
     using std::string;
     using std::vector;
+    using std::unique_ptr;
+    using std::map;
 
     /*******************************************************
      *                       AST base                      *
@@ -56,6 +70,8 @@ namespace AVSI {
         AST(string name, Token token) : token(token), __AST_name(name) {};
 
         virtual ~AST() {};
+
+//        virtual llvm::Value *codeGen();
 
         Token getToken(void);
     };
@@ -104,11 +120,11 @@ namespace AVSI {
     class Boolean : public AST {
     private:
         any value;
-    
-    public:
-        Boolean(void): AST(__BOOL_NAME) {};
 
-        Boolean(Token token): AST(__BOOL_NAME, token), value((token.getType() == TRUE) ? true : false) {};
+    public:
+        Boolean(void) : AST(__BOOL_NAME) {};
+
+        Boolean(Token token) : AST(__BOOL_NAME, token), value((token.getType() == TRUE) ? true : false) {};
 
         virtual ~Boolean() {};
 
@@ -117,11 +133,12 @@ namespace AVSI {
 
     class Echo : public AST {
     public:
-        AST* content;
+        AST *content;
 
-        Echo(void): AST(__ECHO_NAME) {};
-        Echo(AST* content, Token token)
-                : AST(__ECHO_NAME,token), content(content) {};
+        Echo(void) : AST(__ECHO_NAME) {};
+
+        Echo(AST *content, Token token)
+                : AST(__ECHO_NAME, token), content(content) {};
     };
 
     class For : public AST {
@@ -135,9 +152,11 @@ namespace AVSI {
         For(void)
                 : AST(__FOR_NAME), initList(nullptr), condition(nullptr),
                   adjustment(nullptr), compound(nullptr) {};
+
         For(AST *initList, AST *condition, AST *adjustment, AST *compound, bool noCondition, Token token)
-                : AST(__FOR_NAME,token), initList(initList), condition(condition),
+                : AST(__FOR_NAME, token), initList(initList), condition(condition),
                   adjustment(adjustment), compound(compound), noCondition(noCondition) {};
+
         virtual ~For();
     };
 
@@ -176,27 +195,29 @@ namespace AVSI {
 
     class Global : public AST {
     public:
-        AST* var;
+        AST *var;
 
         Global(void) : AST(__GLOBAL_NAME) {};
-        Global(AST* var, Token token)
-                : AST(__GLOBAL_NAME,token), var(var) {};
+
+        Global(AST *var, Token token)
+                : AST(__GLOBAL_NAME, token), var(var) {};
 
         virtual ~Global();
     };
 
     class If : public AST {
     public:
-        AST* condition;
+        AST *condition;
         bool noCondition;
-        AST* compound;
-        AST* next;
+        AST *compound;
+        AST *next;
 
         If(void) : AST(__IF_NAME), condition(nullptr), compound(nullptr), next(nullptr) {};
-        If(AST *condition, bool noCondition, AST* compound, AST *next, Token token):
-                AST(__IF_NAME,token), condition(condition), noCondition(noCondition),
+
+        If(AST *condition, bool noCondition, AST *compound, AST *next, Token token) :
+                AST(__IF_NAME, token), condition(condition), noCondition(noCondition),
                 compound(compound), next(next) {};
-        
+
         virtual ~If();
     };
 
@@ -205,8 +226,9 @@ namespace AVSI {
         AST *var;
 
         Input(void) : AST(__INPUT_NAME) {};
+
         Input(AST *var, Token token)
-                : AST(__INPUT_NAME,token), var(var) {};
+                : AST(__INPUT_NAME, token), var(var) {};
     };
 
     class Num : public AST {
@@ -221,6 +243,8 @@ namespace AVSI {
         virtual ~Num() {};
 
         any getValue(void);
+
+//        llvm::Value *codeGen();
     };
 
     class UnaryOp : public AST {
@@ -273,11 +297,12 @@ namespace AVSI {
 
     class Printf : public AST {
     public:
-        AST* content;
+        AST *content;
 
-        Printf(void): AST(__PRINTF_NAME) {};
-        Printf(AST* content, Token token)
-                : AST(__PRINTF_NAME,token), content(content) {};
+        Printf(void) : AST(__PRINTF_NAME) {};
+
+        Printf(AST *content, Token token)
+                : AST(__PRINTF_NAME, token), content(content) {};
     };
 
     class Return : public AST {
@@ -309,9 +334,9 @@ namespace AVSI {
 
         While(void)
                 : AST(__WHILE_NAME), condition(nullptr), compound(nullptr) {};
-        
+
         While(AST *condition, AST *compound, Token token)
-                : AST(__WHILE_NAME,token), condition(condition), compound(compound) {};
+                : AST(__WHILE_NAME, token), condition(condition), compound(compound) {};
 
         virtual ~While();
     };

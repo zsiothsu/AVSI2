@@ -34,16 +34,16 @@ namespace AVSI {
 
             if (symbolType == variable_t)
                 str += "    <" + symbolName + "," +
-                       symbolTypeName.find(variable_t)->second + ">\n";
+                       symbol_typeName.find(variable_t)->second + ">\n";
             else if (symbolType == function_t) {
                 Symbol_function *fun = (Symbol_function *) (symbol.second);
 
                 str += "    <" + symbolName + "," +
-                       symbolTypeName.find(function_t)->second;
+                       symbol_typeName.find(function_t)->second;
 
-                if (!(fun->formalVariable.empty())) {
+                if (!(fun->formal_variable.empty())) {
                     str += ",param{";
-                    for (auto param : fun->formalVariable) {
+                    for (auto param : fun->formal_variable) {
                         str += param->name + ",";
                     }
                     str += "\b}";
@@ -55,7 +55,7 @@ namespace AVSI {
     }
 
     SymbolTable::~SymbolTable() {
-        if (this->symbolMap != nullptr) delete this->symbolMap;
+        if (this->symbol_map != nullptr) delete this->symbol_map;
         if (!this->child.empty()) {
             for (auto subtable : this->child) {
                 if (subtable != nullptr) delete subtable;
@@ -64,13 +64,13 @@ namespace AVSI {
     }
 
     void SymbolTable::insert(Symbol *symbol) {
-        this->symbolMap->insert(symbol);
+        this->symbol_map->insert(symbol);
     }
 
     Symbol *SymbolTable::find(string name) {
         SymbolTable *ptr = this;
         while (ptr != nullptr) {
-            Symbol *symbol = ptr->symbolMap->find(name);
+            Symbol *symbol = ptr->symbol_map->find(name);
             if (symbol != nullptr)
                 return symbol;
             else
@@ -87,18 +87,18 @@ namespace AVSI {
     void SymbolTable::__str() {
         if (FLAGS_scope == true) {
             // header
-            clog << "\033[34mscope: " << symbolMap->name
+            clog << "\033[34mscope: " << symbol_map->name
                  << " level: " << to_string(this->level) << endl;
 
             clog << "\033[32m";
-            for (int i = 0; i <= 14 + (int) (symbolMap->name.length()) +
+            for (int i = 0; i <= 14 + (int) (symbol_map->name.length()) +
                                  (int) (to_string(this->level).length());
                  i++)
                 clog << '-';
             clog << endl;
             clog << "\033[0m";
             // contents
-            string str = this->symbolMap->__str();
+            string str = this->symbol_map->__str();
             clog << str << endl;
             // child
             for (auto subtable : this->child) { subtable->__str(); }

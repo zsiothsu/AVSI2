@@ -8,7 +8,6 @@
 #define ___NODEVISITOR_H___
 
 #include "Parser.h"
-#include "SymbolTable.h"
 #include "StatusCode.h"
 
 namespace AVSI {

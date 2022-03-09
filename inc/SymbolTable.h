@@ -44,15 +44,15 @@ namespace AVSI {
 
     class Symbol_function : public Symbol {
     public:
-        deque<Symbol *> formalVariable;
+        deque<Symbol *> formal_variable;
         void *node_ast;
 
         Symbol_function(void)
-                : formalVariable(deque<Symbol *>()), node_ast(nullptr) {};
+                : formal_variable(deque<Symbol *>()), node_ast(nullptr) {};
 
         Symbol_function(string name, SymbolType type)
                 : Symbol(name, type),
-                  formalVariable(deque<Symbol *>()),
+                  formal_variable(deque<Symbol *>()),
                   node_ast(nullptr) {};
     };
 
@@ -79,25 +79,25 @@ namespace AVSI {
 
     class SymbolTable {
     public:
-        SymbolMap *symbolMap;
+        SymbolMap *symbol_map;
         SymbolTable *father;
         deque<SymbolTable *> child;
         int level;
 
         SymbolTable(void)
-                : symbolMap(nullptr),
+                : symbol_map(nullptr),
                   father(nullptr),
                   child(deque<SymbolTable *>()),
                   level(1) {};
 
         SymbolTable(SymbolTable *father, string name, int level)
-                : symbolMap(new SymbolMap(name)),
+                : symbol_map(new SymbolMap(name)),
                   father(father),
                   child(deque<SymbolTable *>()),
                   level(level) {};
 
         SymbolTable(SymbolTable *father, string name, uint64_t addr, int level)
-                : symbolMap(new SymbolMap(name,addr)),
+                : symbol_map(new SymbolMap(name, addr)),
                   father(father),
                   child(deque<SymbolTable *>()),
                   level(level) {};
@@ -113,9 +113,9 @@ namespace AVSI {
         void __str();
     };
 
-    static map<SymbolType, string> symbolTypeName = {{variable_t, "variable"},
-                                                     {function_t, "function"},
-                                                     {null_t,     "null"}};
+    static map<SymbolType, string> symbol_typeName = {{variable_t, "variable"},
+                                                      {function_t, "function"},
+                                                      {null_t,     "null"}};
 } // namespace AVSI
 
 #endif

@@ -1,6 +1,0 @@
-.vscode
-*.o
-*.d
-build/Interpreter
-.idea
-.gitignore

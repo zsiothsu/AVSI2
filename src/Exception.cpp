@@ -33,6 +33,8 @@ namespace AVSI {
             return LogicException();
         } else if (e == __MissingException) {
             return MissingException();
+        } else if (e == __IRErrException) {
+            return IRErrException();
         }
         return Exception();
     }

@@ -159,7 +159,7 @@ namespace AVSI {
                                            var->getToken().column);
                 }
                 Symbol *paramSymbol = new Symbol(var->id, variable_t);
-                fun->formalVariable.push_back(paramSymbol);
+                fun->formal_variable.push_back(paramSymbol);
                 this->currentSymbolTable->insert(paramSymbol);
             }
         }

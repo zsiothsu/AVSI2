@@ -24,7 +24,7 @@ DIR_SYSEXEC := /usr/bin
 
 # compiler flags
 CXXFLAGS 	:= -Wall -g --std=c++17 -I$(DIR_INC)
-LDFLAGS		:= -lstdc++ -L/usr/lib\
+LDFLAGS		:= -lstdc++ -lLLVM -L/usr/lib\
 #-lasan
 
 # important file

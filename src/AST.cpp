@@ -8,9 +8,21 @@
 
 namespace AVSI {
     /*******************************************************
+     *                      llvm base                      *
+     *******************************************************/
+    static llvm::LLVMContext the_context;
+    static llvm::IRBuilder<> builder(the_context);
+    static unique_ptr<llvm::Module> the_module;
+    static map<string, llvm::Value*> named_values;
+
+    llvm::Value *logErrorV(const char* msg) {
+        throw IRErrException(msg);
+        return nullptr;
+    }
+
+    /*******************************************************
      *                       AST base                      *
      *******************************************************/
-
     Token AST::getToken(void) { return this->token; }
 
     /*******************************************************
@@ -45,7 +57,7 @@ namespace AVSI {
     }
 
     FunctionCall::~FunctionCall() {
-        for (auto param : this->paramList) { delete param; }
+        for (auto param: this->paramList) { delete param; }
     }
 
     Global::~Global() {
@@ -69,11 +81,21 @@ namespace AVSI {
     TokenType UnaryOp::getOp(void) { return this->op.getType(); }
 
     Compound::~Compound() {
-        for (AST *ast : this->child) delete ast;
+        for (AST *ast: this->child) delete ast;
     }
 
     While::~While() {
         if (this->condition != nullptr) delete this->condition;
         if (this->compound != nullptr) delete this->compound;
     }
+
+    /*******************************************************
+     *                  llvm ir generation                 *
+     *******************************************************/
+//    llvm::Value *Num::codeGen() {
+//        return llvm::ConstantFP::get(the_context, llvm::APFloat(float(this->value)));
+//    }
+
+
+
 } // namespace AVSI

@@ -9,11 +9,12 @@
 
 #include <string>
 
-#define __SyntaxException "SyntaxException"
-#define __MathException "MathException"
-#define __TypeException "TypeException"
-#define __LogicException "LogicException"
-#define __MissingException "MissingException"
+#define __SyntaxException   "SyntaxException"
+#define __MathException     "MathException"
+#define __TypeException     "TypeException"
+#define __LogicException    "LogicException"
+#define __MissingException  "MissingException"
+#define __IRErrException    "IRErrException"
 
 namespace AVSI {
     using namespace std;
@@ -73,6 +74,13 @@ namespace AVSI {
         using Exception::Exception;
 
         MissingException() : Exception(__MissingException) {};
+    };
+
+    class IRErrException: public Exception {
+    public:
+        using Exception::Exception;
+
+        IRErrException() : Exception(__IRErrException) {};
     };
 
     const Exception ExceptionFactory(std::string e);

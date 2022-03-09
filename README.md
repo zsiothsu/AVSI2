@@ -1,4 +1,4 @@
-# A Very Simple Interpreter
+# A Very Simple Interpreter 2
 
 ## Introduce
 AVSI is a project for learning that everyone can use as reference to build your own interpreter.
@@ -7,44 +7,11 @@ AVSI is a project for learning that everyone can use as reference to build your 
 
 The grammar of AVSI is like shell which is suitable for learning to build an Interpreter.
 
+Instead of running on AST, AVSI2 runs with llvm.
 
-## Build Instructions
-On Unix and Linux, using the command `make` to build project.
-[*For windows*],Unix shell tools([msys](http://www.mingw.org/wiki/MSYS), [Cygwin](http://www.cygwin.com/), [GNUwin32](http://gnuwin32.sourceforge.net/)) are needed
-
-Executable file is `./build/Interpreter`
-
-## Usage
-```
-Interpreter file [--scope] [--callStack]
-```
-
-example:
-```
-./build/Interpreter ./example/pro.sl --scope
-```
 
 ## Grammar
 refer to `./example`
 
-## What's working
-
-|  **function**   | **Status**  |
-| :-------------: | :---------: |
-|       I/O       |  supported  |
-|      scope      |  *partial   |
-|   assignment    |  supported  |
-|   expression    |  supported  |
-|    function     |  supported  |
-|  if statement   |  supported  |
-|  for statement  |  supported  |
-| while statement |  supported  |
-|     boolean     |  supported  |
-|     number      |  supported  |
-|     string      |  *partial   |
-
-*: global variable is not supported now
-*: without format
-
 ## License
-AVSI is licensed under the MIT license
+AVSI2 is licensed under the MIT license

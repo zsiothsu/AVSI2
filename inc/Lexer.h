@@ -7,11 +7,17 @@
 #ifndef ___LEXER_H___
 #define ___LEXER_H___
 
-#include "AST.h"
 #include <cstdlib>
 #include <fstream>
+#include <iostream>
+#include <string>
+
+#include "Token.h"
 
 namespace AVSI {
+    using std::ifstream;
+    using std::string;
+
     class Lexer {
     private:
         ifstream *file;

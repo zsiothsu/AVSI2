@@ -148,8 +148,8 @@ namespace AVSI {
         SymbolTable *stBeforeCall = this->currentSymbolTable;
         for(SymbolTable *subSymbolTable : this->currentSymbolTable->child)
         {
-            if(subSymbolTable->symbolMap->name == "for" &&
-                   subSymbolTable->symbolMap->addr == (uint64_t)&forStatement)
+            if(subSymbolTable->symbol_map->name == "for" &&
+               subSymbolTable->symbol_map->addr == (uint64_t)&forStatement)
             {
                     this->currentSymbolTable = subSymbolTable;
                     break;
@@ -210,7 +210,7 @@ namespace AVSI {
         Symbol_function *symbol = fun->symbol_function;
 
         // formal and actual paremeters
-        deque<Symbol *> formalParams = symbol->formalVariable;
+        deque<Symbol *> formalParams = symbol->formal_variable;
         vector<AST *> actualParams = fun->paramList;
 
         if ((int) (formalParams.size()) != (int) (actualParams.size())) {
@@ -237,7 +237,7 @@ namespace AVSI {
         // load symboltable
         this->callStack.push(ar);
         for (auto subSymbolTable : this->currentSymbolTable->child) {
-            if (subSymbolTable->symbolMap->name == funName) {
+            if (subSymbolTable->symbol_map->name == funName) {
                 this->currentSymbolTable = subSymbolTable;
                 break;
             }
@@ -285,8 +285,8 @@ namespace AVSI {
             SymbolTable* stBeforeCall = this->currentSymbolTable;
             for(SymbolTable *subSymbolTable : this->currentSymbolTable->child)
             {
-                if(subSymbolTable->symbolMap->name == "if" &&
-                   subSymbolTable->symbolMap->addr == (uint64_t)&ifStatement)
+                if(subSymbolTable->symbol_map->name == "if" &&
+                   subSymbolTable->symbol_map->addr == (uint64_t)&ifStatement)
                 {
                     this->currentSymbolTable = subSymbolTable;
                     break;
@@ -389,8 +389,8 @@ namespace AVSI {
         SymbolTable *stBeforeCall = this->currentSymbolTable;
         for(SymbolTable *subSymbolTable : this->currentSymbolTable->child)
         {
-            if(subSymbolTable->symbolMap->name == "while" &&
-                   subSymbolTable->symbolMap->addr == (uint64_t)&whileStatement)
+            if(subSymbolTable->symbol_map->name == "while" &&
+               subSymbolTable->symbol_map->addr == (uint64_t)&whileStatement)
             {
                     this->currentSymbolTable = subSymbolTable;
                     break;

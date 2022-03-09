@@ -7,8 +7,10 @@
 #ifndef ___PARSER_H___
 #define ___PARSER_H___
 
-#include "Lexer.h"
 #include <set>
+
+#include "AST.h"
+#include "Lexer.h"
 
 namespace AVSI {
     using namespace std;
