@@ -9,7 +9,6 @@ The grammar of AVSI is like shell which is suitable for learning to build an Int
 
 Instead of running on AST, AVSI2 runs with llvm.
 
-
 ## Grammar
 refer to `./example`
 

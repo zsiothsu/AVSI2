@@ -4,8 +4,9 @@
  * @LastEditTime: 2020-06-02 15:46:03
  * @Description: entry for interpreter
  */
-#include "./inc/Interpreter.h"
-#include "./inc/SemanticAnalyzer.h"
+//#include "./inc/Interpreter.h"
+//#include "./inc/SemanticAnalyzer.h"
+#include "./inc/Parser.h"
 #include "./inc/flags.h"
 
 using namespace std;
@@ -42,15 +43,15 @@ int main(int argc, char **argv) {
 
     Lexer *lexer = new Lexer(&file);
     Parser *parser = new Parser(lexer);
-    SemanticAnalyzer *semanticAnalyzer = new SemanticAnalyzer();
+//    SemanticAnalyzer *semanticAnalyzer = new SemanticAnalyzer();
     try {
         AST *tree = parser->parse();
-        SymbolTable *symbolTable = semanticAnalyzer->SemanticAnalyze(tree);
-        Interpreter *interpreter = new Interpreter(tree, symbolTable);
-        interpreter->interpret();
+//        SymbolTable *symbolTable = semanticAnalyzer->SemanticAnalyze(tree);
+//        Interpreter *interpreter = new Interpreter(tree, symbolTable);
+//        interpreter->interpret();
 
         // delete semanticAnalyzer;
-        delete interpreter;
+//        delete interpreter;
     }
     catch (Exception &e) {
         std::cerr << e.what() << "\t at line " << e.line << " column "

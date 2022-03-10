@@ -20,7 +20,6 @@
 #include "llvm/IR/Verifier.h"
 
 #include "Exception.h"
-#include "SymbolTable.h"
 #include "Token.h"
 #include <typeinfo>
 #include <vector>
@@ -182,7 +181,6 @@ namespace AVSI {
     public:
         string id;
         vector<AST *> paramList;
-        Symbol_function *symbol_function;
 
         FunctionCall(void)
                 : AST(__FUNCTIONCALL_NAME), paramList(vector<AST *>()) {};
