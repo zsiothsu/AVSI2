@@ -43,15 +43,12 @@ int main(int argc, char **argv) {
 
     Lexer *lexer = new Lexer(&file);
     Parser *parser = new Parser(lexer);
-//    SemanticAnalyzer *semanticAnalyzer = new SemanticAnalyzer();
     try {
         AST *tree = parser->parse();
-//        SymbolTable *symbolTable = semanticAnalyzer->SemanticAnalyze(tree);
-//        Interpreter *interpreter = new Interpreter(tree, symbolTable);
-//        interpreter->interpret();
-
-        // delete semanticAnalyzer;
-//        delete interpreter;
+        tree->codeGen();
+        printIR();
+//        llvm::Module *the_module = getModule();
+//        the_module->print(llvm::errs(), nullptr);
     }
     catch (Exception &e) {
         std::cerr << e.what() << "\t at line " << e.line << " column "

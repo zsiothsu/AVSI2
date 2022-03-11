@@ -70,7 +70,7 @@ namespace AVSI {
 
         virtual ~AST() {};
 
-//        virtual llvm::Value *codeGen();
+        virtual llvm::Value *codeGen() {return nullptr;};
 
         Token getToken(void);
     };
@@ -92,6 +92,8 @@ namespace AVSI {
                   right(right) {};
 
         virtual ~Assign();
+
+        llvm::Value *codeGen() override;
     };
 
     class BinOp : public AST {
@@ -114,6 +116,8 @@ namespace AVSI {
         virtual ~BinOp();
 
         TokenType getOp(void);
+
+        llvm::Value *codeGen() override;
     };
 
     class Boolean : public AST {
@@ -175,6 +179,8 @@ namespace AVSI {
                   compound(compound) {};
 
         virtual ~FunctionDecl();
+
+        llvm::Value *codeGen() override;
     };
 
     class FunctionCall : public AST {
@@ -201,6 +207,8 @@ namespace AVSI {
                 : AST(__GLOBAL_NAME, token), var(var) {};
 
         virtual ~Global();
+
+        llvm::Value *codeGen() override;
     };
 
     class If : public AST {
@@ -242,7 +250,7 @@ namespace AVSI {
 
         any getValue(void);
 
-//        llvm::Value *codeGen();
+        llvm::Value *codeGen() override;
     };
 
     class UnaryOp : public AST {
@@ -260,6 +268,8 @@ namespace AVSI {
         virtual ~UnaryOp();
 
         TokenType getOp(void);
+
+        llvm::Value *codeGen() override;
     };
 
     class Variable : public AST {
@@ -273,6 +283,8 @@ namespace AVSI {
                   id(var.getValue().any_cast<std::string>()) {};
 
         ~Variable() {};
+
+        llvm::Value *codeGen() override;
     };
 
     class Compound : public AST {
@@ -284,6 +296,8 @@ namespace AVSI {
                   child(vector<AST *>()) {};
 
         virtual ~Compound();
+
+        llvm::Value *codeGen() override;
     };
 
     class Param : public AST {
@@ -310,6 +324,8 @@ namespace AVSI {
         Return(void) : AST(__RETURN_NAME) {};
 
         Return(Token token, AST *ret) : AST(__RETURN_NAME, token), ret(ret) {};
+
+        llvm::Value *codeGen() override;
     };
 
     class String : public AST {
@@ -347,6 +363,8 @@ namespace AVSI {
     };
 
     static AST ASTEmpty = NoneAST();
+
+    void printIR();
 } // namespace AVSI
 
 #endif

@@ -40,10 +40,10 @@ namespace AVSI {
     }
 
     const Exception
-    ExceptionFactory(std::string e, std::string c, int line, int column) {
+    ExceptionFactory(std::string e, std::string msg, int line, int column) {
         Exception exception = ExceptionFactory(e);
 
-        exception.setMsg(c);
+        exception.setMsg(msg);
         exception.line = line;
         exception.column = column;
 

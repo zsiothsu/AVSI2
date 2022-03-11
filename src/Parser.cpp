@@ -104,7 +104,7 @@ namespace AVSI {
         eat(LPAR);
         initList = statementList();
         eat(SEMI);
-        if(this->currentToken.getType() == SEMI)
+        if (this->currentToken.getType() == SEMI)
             noCondition = true;
         else
             condition = expr();
@@ -116,7 +116,7 @@ namespace AVSI {
         compound = statementList();
         eat(DONE);
 
-        return new For(initList,condition,adjustment,compound,noCondition, token);
+        return new For(initList, condition, adjustment, compound, noCondition, token);
     }
 
     AST *Parser::functionDecl() {
@@ -127,13 +127,17 @@ namespace AVSI {
 
         AST *paramList = nullptr;
         eat(LPAR);
-        if (this->currentToken.getType() == ID) paramList = param();
+        paramList = param();
         eat(RPAR);
 
-        eat(LBRACE);
-        AST *compound = statementList();
-        eat(RBRACE);
-        return new FunctionDecl(id, paramList, compound, token);
+        if (this->currentToken.getType() == LBRACE) {
+            eat(LBRACE);
+            AST *compound = statementList();
+            eat(RBRACE);
+            return new FunctionDecl(id, paramList, compound, token);
+        } else {
+            return new FunctionDecl(id, paramList, nullptr, token);
+        }
     }
 
     AST *Parser::functionCall() {
@@ -161,16 +165,16 @@ namespace AVSI {
 
         AST *var = variable();
 
-        return new Global(var,token);
+        return new Global(var, token);
     }
 
     AST *Parser::IfStatement() {
         Token token = this->currentToken;
         TokenType type = this->currentToken.getType();
-        AST* condition = nullptr;
+        AST *condition = nullptr;
         bool noCondition = false;
 
-        if(type == FI) {
+        if (type == FI) {
             eat(FI);
             return &ASTEmpty;
         }
@@ -192,10 +196,10 @@ namespace AVSI {
             noCondition = true;
         }
 
-        AST* compound = statementList();
-        AST* next = IfStatement();
+        AST *compound = statementList();
+        AST *next = IfStatement();
 
-        return new If(condition,noCondition,compound,next,token);
+        return new If(condition, noCondition, compound, next, token);
     }
 
     AST *Parser::input() {
@@ -227,6 +231,9 @@ namespace AVSI {
             }
             eat(COMMA);
         }
+        if (this->currentToken.getType() == RPAR) {
+            return param;
+        }
         throw ExceptionFactory(
                 __SyntaxException, "unexpected symbol in parameter list",
                 this->currentToken.line, this->currentToken.column);
@@ -237,9 +244,9 @@ namespace AVSI {
         Token token = this->currentToken;
         eat(ECHO);
 
-        AST* content = expr();
+        AST *content = expr();
 
-        return new Echo(content,token);
+        return new Echo(content, token);
     }
 
     AST *Parser::print() {
@@ -247,7 +254,7 @@ namespace AVSI {
         eat(PRINTF);
 
         /* TODO: expr() -> string() */
-        AST* content = expr();
+        AST *content = expr();
 
         return new Printf(content, token);
     }
@@ -405,7 +412,7 @@ namespace AVSI {
         compound = statementList();
         eat(DONE);
 
-        return new While(condition,compound,token);
+        return new While(condition, compound, token);
     }
 
 } // namespace AVSI

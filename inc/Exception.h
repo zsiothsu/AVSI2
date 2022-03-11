@@ -86,7 +86,7 @@ namespace AVSI {
     const Exception ExceptionFactory(std::string e);
 
     const Exception
-    ExceptionFactory(std::string e, std::string c, int line, int column);
+    ExceptionFactory(std::string e, std::string msg, int line, int column);
 } // namespace AVSI
 
 #endif
