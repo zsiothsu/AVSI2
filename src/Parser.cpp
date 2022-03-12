@@ -61,8 +61,6 @@ namespace AVSI {
             return returnExpr();
         } else if (this->currentToken.getType() == ECHO) {
             return echo();
-        } else if (this->currentToken.getType() == INPUT) {
-            return input();
         } else if (this->currentToken.getType() == PRINTF) {
             return print();
         } else if (this->currentToken.getType() == ID &&
@@ -200,15 +198,6 @@ namespace AVSI {
         AST *next = IfStatement();
 
         return new If(condition, noCondition, compound, next, token);
-    }
-
-    AST *Parser::input() {
-        Token token = this->currentToken;
-        eat(INPUT);
-
-        AST *var = variable();
-
-        return new Input(var, token);
     }
 
     AST *Parser::param() {

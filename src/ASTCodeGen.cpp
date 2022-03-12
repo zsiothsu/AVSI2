@@ -3,6 +3,8 @@
  * @Date: 2022-03-11
  * @Description: llvm code generator
  */
+#include <cstdlib>
+
 #include "../inc/AST.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/FileSystem.h"
@@ -17,11 +19,13 @@ namespace AVSI {
     /*******************************************************
      *                      llvm base                      *
      *******************************************************/
-    static unique_ptr<llvm::LLVMContext> the_context = make_unique<llvm::LLVMContext>();
-    static unique_ptr<llvm::Module> the_module = make_unique<llvm::Module>("program", *the_context);
+//    static unique_ptr<llvm::LLVMContext> the_context = make_unique<llvm::LLVMContext>();
+//    static unique_ptr<llvm::Module> the_module = make_unique<llvm::Module>("program", *the_context);
+    static llvm::LLVMContext *the_context = new llvm::LLVMContext();
+    static llvm::Module *the_module = new llvm::Module("program", *the_context);
     static unique_ptr<llvm::IRBuilder<>> builder = make_unique<llvm::IRBuilder<>>(*the_context);
     static unique_ptr<llvm::legacy::FunctionPassManager> the_fpm = make_unique<llvm::legacy::FunctionPassManager>(
-            the_module.get());
+            the_module);
     map<string, llvm::AllocaInst *> named_values;
     map<std::string, llvm::FunctionType *> function_protos;
     llvm::TargetMachine *TheTargetMachine = nullptr;
@@ -66,6 +70,19 @@ namespace AVSI {
                 Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
 
         the_module->setDataLayout(TheTargetMachine->createDataLayout());
+
+        llvm::FunctionType *FT = llvm::FunctionType::get(
+                llvm::Type::getDoubleTy(*the_context),
+                vector<llvm::Type *>(),
+                false
+        );
+
+        llvm::Function *main = llvm::Function::Create(
+                FT,
+                llvm::Function::ExternalLinkage,
+                "entry",
+                the_module
+        );
     }
 
     void llvm_obj_output() {
@@ -162,6 +179,7 @@ namespace AVSI {
                 cmp_value_boolean = builder->CreateFCmpOLE(lv, rv, "cmpLETmp");
                 return builder->CreateUIToFP(cmp_value_boolean, llvm::Type::getDoubleTy(*the_context), "boolTmp");
             case OR:
+                //TODO: double to bool
                 cmp_value_boolean = builder->CreateOr(lv, rv, "boolOrTmp");
                 return builder->CreateUIToFP(cmp_value_boolean, llvm::Type::getDoubleTy(*the_context), "boolTmp");
             case AND:
@@ -192,6 +210,8 @@ namespace AVSI {
         llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(*the_context, "loop.body", the_function);
         llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*the_context, "loop.end", the_function);
 
+        builder->CreateBr(headBB);
+
         the_function->getBasicBlockList().push_back(headBB);
         builder->SetInsertPoint(headBB);
 
@@ -201,6 +221,7 @@ namespace AVSI {
         }
         cond = builder->CreateFCmpONE(cond, llvm::ConstantFP::get(*the_context, llvm::APFloat(0.0)));
         builder->CreateCondBr(cond, loopBB, mergeBB);
+        headBB = builder->GetInsertBlock();
 
         the_function->getBasicBlockList().push_back(loopBB);
         builder->SetInsertPoint(loopBB);
@@ -214,6 +235,7 @@ namespace AVSI {
             return nullptr;
         }
         builder->CreateBr(headBB);
+        loopBB = builder->GetInsertBlock();
 
         the_function->getBasicBlockList().push_back(mergeBB);
         builder->SetInsertPoint(mergeBB);
@@ -251,7 +273,7 @@ namespace AVSI {
                     FT,
                     llvm::Function::ExternalLinkage,
                     this->id,
-                    the_module.get()
+                    the_module
             );
             function_protos[this->id] = FT;
 
@@ -278,7 +300,8 @@ namespace AVSI {
             }
 
             if (this->compound->codeGen()) {
-                llvm::verifyFunction(*the_function);
+                builder->CreateRet(llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context), 0.0));
+                llvm::verifyFunction(*the_function, &llvm::errs());
                 the_fpm->run(*the_function);
                 return the_function;
             }
@@ -469,6 +492,8 @@ namespace AVSI {
         llvm::BasicBlock *headBB = llvm::BasicBlock::Create(*the_context, "loop.head", the_function);
         llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(*the_context, "loop.body", the_function);
         llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*the_context, "loop.end", the_function);
+
+        builder->CreateBr(headBB);
 
         the_function->getBasicBlockList().push_back(headBB);
         builder->SetInsertPoint(headBB);

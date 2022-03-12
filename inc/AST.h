@@ -242,16 +242,6 @@ namespace AVSI {
         llvm::Value *codeGen() override;
     };
 
-    class Input : public AST {
-    public:
-        AST *var;
-
-        Input(void) : AST(__INPUT_NAME) {};
-
-        Input(AST *var, Token token)
-                : AST(__INPUT_NAME, token), var(var) {};
-    };
-
     class Num : public AST {
     private:
         any value;

@@ -82,7 +82,6 @@ namespace AVSI {
             {"do",          DO},
             {"done",        DONE},
             {"global",      GLOBAL},
-            {"input",       INPUT},
             {"printf",      PRINTF}};
 } // namespace AVSI
 

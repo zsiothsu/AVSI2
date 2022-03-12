@@ -48,8 +48,6 @@ namespace AVSI {
 
         AST *IfStatement();
 
-        AST *input();
-
         AST *param();
 
         AST *echo();
