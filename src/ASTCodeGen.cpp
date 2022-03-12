@@ -12,6 +12,8 @@ namespace AVSI {
     unique_ptr<llvm::LLVMContext> the_context = make_unique<llvm::LLVMContext>();
     unique_ptr<llvm::Module> the_module = make_unique<llvm::Module>("program", *the_context);
     unique_ptr<llvm::IRBuilder<>> builder = make_unique<llvm::IRBuilder<>>(*the_context);
+    unique_ptr<llvm::legacy::FunctionPassManager> the_fpm = make_unique<llvm::legacy::FunctionPassManager>(
+            the_module.get());
     map<string, llvm::AllocaInst *> named_values;
     std::map<std::string, llvm::FunctionType *> function_protos;
 
@@ -20,7 +22,16 @@ namespace AVSI {
         return nullptr;
     }
 
-    void printIR() {
+    void llvm_module_fpm_init() {
+//        the_fpm->add(llvm::createInstructionCombiningPass());
+//        the_fpm->add(llvm::createReassociatePass());
+//        the_fpm->add(llvm::createGVNPass());
+//        the_fpm->add(llvm::createCFGSimplificationPass());
+
+        the_fpm->doInitialization();
+    }
+
+    void llvm_module_printIR() {
         the_module->print(llvm::errs(), nullptr);
     }
 
@@ -42,12 +53,14 @@ namespace AVSI {
 
     llvm::Value *Assign::codeGen() {
         llvm::Value *rv = this->right->codeGen();
-        string lname = ((Variable*)this->left)->id;
-        if(named_values.find(lname) != named_values.end()) {
-            // TODO assign
+        string lname = ((Variable *) this->left)->id;
+        if (named_values.find(lname) != named_values.end()) {
             return builder->CreateStore(rv, named_values[lname]);
         } else {
-            //TODO
+            llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
+            llvm::AllocaInst *new_var_alloca = allocaBlockEntry(the_scope, lname);
+            named_values[lname] = new_var_alloca;
+            return builder->CreateStore(rv, new_var_alloca);
         }
     }
 
@@ -110,32 +123,38 @@ namespace AVSI {
                 false
         );
 
-        // check is re-definition
-        auto funType = function_protos.find(this->id);
-        if (funType != function_protos.end() && (funType->second != FT)) {
-            throw ExceptionFactory(
-                    __LogicException,
-                    "function redefined there",
-                    this->token.line, this->token.column
+        if (the_module->getFunction(this->id) == nullptr) {
+            // check is re-definition
+            auto funType = function_protos.find(this->id);
+            if (funType != function_protos.end() && (
+                    (funType->second != FT) || (the_module->getFunction(this->id) != nullptr)
+            )) {
+                throw ExceptionFactory(
+                        __LogicException,
+                        "function redefined there",
+                        this->token.line, this->token.column
+                );
+            }
+
+            // create function
+            llvm::Function *the_function = llvm::Function::Create(
+                    FT,
+                    llvm::Function::ExternalLinkage,
+                    this->id,
+                    the_module.get()
             );
-        }
+            function_protos[this->id] = FT;
 
-        // create function
-        llvm::Function *the_function = llvm::Function::Create(
-                FT,
-                llvm::Function::ExternalLinkage,
-                this->id,
-                the_module.get()
-        );
-        function_protos[this->id] = FT;
-
-        uint8_t param_index = 0;
-        for (auto &arg: the_function->args()) {
-            Variable *var = ((Param *) this->paramList)->paramList[param_index++];
-            arg.setName(var->id);
+            uint8_t param_index = 0;
+            for (auto &arg: the_function->args()) {
+                Variable *var = ((Param *) this->paramList)->paramList[param_index++];
+                arg.setName(var->id);
+            }
         }
 
         if (this->compound != nullptr) {
+            llvm::Function *the_function = the_module->getFunction(this->id);
+
             // create body
             llvm::BasicBlock *BB = llvm::BasicBlock::Create(*the_context, "entry", the_function);
             builder->SetInsertPoint(BB);
@@ -148,13 +167,59 @@ namespace AVSI {
                 named_values[string(arg.getName())] = alloca;
             }
 
-            if(this->compound->codeGen()) {
+            if (this->compound->codeGen()) {
                 llvm::verifyFunction(*the_function);
+                the_fpm->run(*the_function);
                 return the_function;
             }
         }
 
         return nullptr;
+    }
+
+    llvm::Value *FunctionCall::codeGen() {
+        llvm::Function *fun = the_module->getFunction(this->id);
+
+        if (!fun) {
+            throw ExceptionFactory(
+                    __MissingException,
+                    "undefined reference '" + this->id + "'",
+                    this->token.line, this->token.column
+            );
+        }
+
+        if (fun->arg_size() != this->paramList.size()) {
+            throw ExceptionFactory(
+                    __LogicException,
+                    "candidate function not viable: requires " + \
+                to_string(fun->arg_size()) + \
+                "arguments, but " + \
+                to_string(this->paramList.size()) + \
+                " were provided",
+                    this->token.line, this->token.column
+            );
+        }
+
+        vector<llvm::Value *> args;
+//        for (AST *arg: this->paramList) {
+//            llvm::Value *v = arg->codeGen();
+//            if (!v) {
+//                return nullptr;
+//            }
+//
+//            args.push_back(v);
+//        }
+        for (int i = 0; i < this->paramList.size(); i++) {
+            AST *arg = paramList[i];
+            llvm::Value *v = arg->codeGen();
+            if (!v) {
+                return nullptr;
+            }
+
+            args.push_back(v);
+        }
+
+        return builder->CreateCall(fun, args, "callTmp");
     }
 
     llvm::Value *Global::codeGen() {
@@ -164,7 +229,9 @@ namespace AVSI {
     }
 
     llvm::Value *Num::codeGen() {
-        return llvm::ConstantFP::get(*the_context, llvm::APFloat(this->value.any_cast<float>()));
+//        auto t = llvm::ConstantFP::get(*the_context, llvm::APFloat((double)this->value));
+        auto t = llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context), this->getValue().any_cast<double>());
+        return t;
     }
 
     llvm::Value *UnaryOp::codeGen() {

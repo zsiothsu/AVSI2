@@ -45,10 +45,10 @@ int main(int argc, char **argv) {
     Parser *parser = new Parser(lexer);
     try {
         AST *tree = parser->parse();
+
+        llvm_module_fpm_init();
         tree->codeGen();
-        printIR();
-//        llvm::Module *the_module = getModule();
-//        the_module->print(llvm::errs(), nullptr);
+        llvm_module_printIR();
     }
     catch (Exception &e) {
         std::cerr << e.what() << "\t at line " << e.line << " column "

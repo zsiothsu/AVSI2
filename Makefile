@@ -12,7 +12,7 @@ export CP		:= cp
 
 
 # compiler
-CXX			:= g++
+CXX			:= clang
 
 # project basic path
 DIR_ROOT	:= .
@@ -24,7 +24,7 @@ DIR_SYSEXEC := /usr/bin
 
 # compiler flags
 CXXFLAGS 	:= -Wall -g --std=c++17 -I$(DIR_INC)
-LDFLAGS		:= -lstdc++ -lLLVM -L/usr/lib\
+LDFLAGS		:= -lstdc++ -lLLVM -lm -L/usr/lib\
 #-lasan
 
 # important file

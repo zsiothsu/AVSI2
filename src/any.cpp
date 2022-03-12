@@ -5,6 +5,8 @@
  * @Description: "AVSI::any" is a data type which can store variable of basic
  * type
  */
+#include <cmath>
+
 #include "../inc/any.h"
 #include "../inc/Exception.h"
 

@@ -15,9 +15,16 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Scalar/GVN.h"
+#include "llvm/Pass.h"
 
 #include "Exception.h"
 #include "Token.h"
@@ -195,6 +202,8 @@ namespace AVSI {
                 : AST(__FUNCTIONCALL_NAME, token), id(id), paramList(paramList) {};
 
         virtual ~FunctionCall();
+
+        llvm::Value *codeGen() override;
     };
 
     class Global : public AST {
@@ -364,7 +373,9 @@ namespace AVSI {
 
     static AST ASTEmpty = NoneAST();
 
-    void printIR();
+    void llvm_module_fpm_init();
+
+    void llvm_module_printIR();
 } // namespace AVSI
 
 #endif
