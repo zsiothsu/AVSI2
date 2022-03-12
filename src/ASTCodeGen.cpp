@@ -4,31 +4,92 @@
  * @Description: llvm code generator
  */
 #include "../inc/AST.h"
+#include "llvm/Support/TargetRegistry.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/Host.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
+
 
 namespace AVSI {
     /*******************************************************
      *                      llvm base                      *
      *******************************************************/
-    unique_ptr<llvm::LLVMContext> the_context = make_unique<llvm::LLVMContext>();
-    unique_ptr<llvm::Module> the_module = make_unique<llvm::Module>("program", *the_context);
-    unique_ptr<llvm::IRBuilder<>> builder = make_unique<llvm::IRBuilder<>>(*the_context);
-    unique_ptr<llvm::legacy::FunctionPassManager> the_fpm = make_unique<llvm::legacy::FunctionPassManager>(
+    static unique_ptr<llvm::LLVMContext> the_context = make_unique<llvm::LLVMContext>();
+    static unique_ptr<llvm::Module> the_module = make_unique<llvm::Module>("program", *the_context);
+    static unique_ptr<llvm::IRBuilder<>> builder = make_unique<llvm::IRBuilder<>>(*the_context);
+    static unique_ptr<llvm::legacy::FunctionPassManager> the_fpm = make_unique<llvm::legacy::FunctionPassManager>(
             the_module.get());
     map<string, llvm::AllocaInst *> named_values;
-    std::map<std::string, llvm::FunctionType *> function_protos;
-
-    llvm::Value *logErrorV(const char *msg) {
-        throw IRErrException(msg);
-        return nullptr;
-    }
+    map<std::string, llvm::FunctionType *> function_protos;
+    llvm::TargetMachine *TheTargetMachine = nullptr;
 
     void llvm_module_fpm_init() {
-//        the_fpm->add(llvm::createInstructionCombiningPass());
 //        the_fpm->add(llvm::createReassociatePass());
 //        the_fpm->add(llvm::createGVNPass());
+//        the_fpm->add(llvm::createInstructionCombiningPass());
 //        the_fpm->add(llvm::createCFGSimplificationPass());
 
         the_fpm->doInitialization();
+    }
+
+    void llvm_machine_init() {
+        // Initialize the target registry etc.
+        llvm::InitializeAllTargetInfos();
+        llvm::InitializeAllTargets();
+        llvm::InitializeAllTargetMCs();
+        llvm::InitializeAllAsmParsers();
+        llvm::InitializeAllAsmPrinters();
+
+        auto TargetTriple = llvm::sys::getDefaultTargetTriple();
+        the_module->setTargetTriple(TargetTriple);
+
+        std::string Error;
+        auto Target = llvm::TargetRegistry::lookupTarget(TargetTriple, Error);
+
+        // Print an error and exit if we couldn't find the requested target.
+        // This generally occurs if we've forgotten to initialise the
+        // TargetRegistry or we have a bogus target triple.
+        if (!Target) {
+            llvm::errs() << Error;
+            return;
+        }
+
+        auto CPU = "generic";
+        auto Features = "";
+
+        llvm::TargetOptions opt;
+        auto RM = llvm::Optional<llvm::Reloc::Model>();
+        TheTargetMachine =
+                Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
+
+        the_module->setDataLayout(TheTargetMachine->createDataLayout());
+    }
+
+    void llvm_obj_output() {
+        auto Filename = "a.o";
+        std::error_code EC;
+        llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
+
+        if (EC) {
+            llvm::errs() << "Could not open file: " << EC.message();
+            return;
+        }
+
+        llvm::legacy::PassManager pass;
+        auto FileType = llvm::CGFT_ObjectFile;
+
+        if (TheTargetMachine->addPassesToEmitFile(pass, dest, nullptr, FileType)) {
+            llvm::errs() << "TheTargetMachine can't emit a file of this type";
+            return;
+        }
+
+        pass.run(*the_module);
+        dest.flush();
+
+        llvm::outs() << "Wrote " << Filename << "\n";
     }
 
     void llvm_module_printIR() {
@@ -109,6 +170,55 @@ namespace AVSI {
             default:
                 return nullptr;
         }
+    }
+
+    llvm::Value *Boolean::codeGen() {
+        if (this->value == true) {
+            return llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context), 1.0);
+        } else {
+            return llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context), 0.0);
+        }
+    }
+
+    llvm::Value *For::codeGen() {
+        llvm::Value *start = this->initList->codeGen();
+        if (!start) {
+            return nullptr;
+        }
+
+        llvm::Function *the_function = builder->GetInsertBlock()->getParent();
+
+        llvm::BasicBlock *headBB = llvm::BasicBlock::Create(*the_context, "loop.head", the_function);
+        llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(*the_context, "loop.body", the_function);
+        llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*the_context, "loop.end", the_function);
+
+        the_function->getBasicBlockList().push_back(headBB);
+        builder->SetInsertPoint(headBB);
+
+        llvm::Value *cond = this->condition->codeGen();
+        if (!cond) {
+            return nullptr;
+        }
+        cond = builder->CreateFCmpONE(cond, llvm::ConstantFP::get(*the_context, llvm::APFloat(0.0)));
+        builder->CreateCondBr(cond, loopBB, mergeBB);
+
+        the_function->getBasicBlockList().push_back(loopBB);
+        builder->SetInsertPoint(loopBB);
+
+        llvm::Value *body = this->compound->codeGen();
+        if (!body) {
+            return nullptr;
+        }
+        llvm::Value *adjust = this->adjustment->codeGen();
+        if (!adjust) {
+            return nullptr;
+        }
+        builder->CreateBr(headBB);
+
+        the_function->getBasicBlockList().push_back(mergeBB);
+        builder->SetInsertPoint(mergeBB);
+
+        return llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*the_context));
     }
 
     llvm::Value *FunctionDecl::codeGen() {
@@ -228,6 +338,56 @@ namespace AVSI {
         return llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*the_context));
     }
 
+    llvm::Value *If::codeGen() {
+        if (!this->noCondition) {
+            llvm::Value *cond = this->condition->codeGen();
+            if (!cond) {
+                return nullptr;
+            }
+            cond = builder->CreateFCmpONE(cond, llvm::ConstantFP::get(*the_context, llvm::APFloat(0.0)));
+
+            llvm::Function *the_function = builder->GetInsertBlock()->getParent();
+
+            llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(*the_context, "if.then", the_function);
+            llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(*the_context, "if.else", the_function);
+            llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*the_context, "if.end", the_function);
+
+            builder->CreateCondBr(cond, thenBB, elseBB);
+
+            the_function->getBasicBlockList().push_back(thenBB);
+            builder->SetInsertPoint(thenBB);
+            llvm::Value *thenv = nullptr;
+            thenv = this->compound->codeGen();
+            if (!thenv) {
+                return nullptr;
+            }
+            builder->CreateBr(mergeBB);
+            thenBB = builder->GetInsertBlock();
+
+            the_function->getBasicBlockList().push_back(elseBB);
+            builder->SetInsertPoint(elseBB);
+            llvm::Value *elsev = nullptr;
+//        if(this->compound != nullptr) {
+            elsev = this->next->codeGen();
+            if (!elsev) {
+                return nullptr;
+            }
+            builder->CreateBr(mergeBB);
+            elseBB = builder->GetInsertBlock();
+//        }
+
+            the_function->getBasicBlockList().push_back(mergeBB);
+            builder->SetInsertPoint(mergeBB);
+            llvm::PHINode *PN = builder->CreatePHI(llvm::Type::getDoubleTy(*the_context), 2, "ifTmp");
+            PN->addIncoming(thenv, thenBB);
+            PN->addIncoming(elsev, elseBB);
+
+            return PN;
+        } else {
+            return this->compound->codeGen();
+        }
+    }
+
     llvm::Value *Num::codeGen() {
 //        auto t = llvm::ConstantFP::get(*the_context, llvm::APFloat((double)this->value));
         auto t = llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context), this->getValue().any_cast<double>());
@@ -301,5 +461,36 @@ namespace AVSI {
         } else {
             return builder->CreateRetVoid();
         }
+    }
+
+    llvm::Value *While::codeGen() {
+        llvm::Function *the_function = builder->GetInsertBlock()->getParent();
+
+        llvm::BasicBlock *headBB = llvm::BasicBlock::Create(*the_context, "loop.head", the_function);
+        llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(*the_context, "loop.body", the_function);
+        llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*the_context, "loop.end", the_function);
+
+        the_function->getBasicBlockList().push_back(headBB);
+        builder->SetInsertPoint(headBB);
+
+        llvm::Value *cond = this->condition->codeGen();
+        if (!cond) {
+            return nullptr;
+        }
+        cond = builder->CreateFCmpONE(cond, llvm::ConstantFP::get(*the_context, llvm::APFloat(0.0)));
+        builder->CreateCondBr(cond, loopBB, mergeBB);
+
+        the_function->getBasicBlockList().push_back(loopBB);
+        builder->SetInsertPoint(loopBB);
+        llvm::Value *body = this->compound->codeGen();
+        if (!body) {
+            return nullptr;
+        }
+        builder->CreateBr(headBB);
+
+        the_function->getBasicBlockList().push_back(mergeBB);
+        builder->SetInsertPoint(mergeBB);
+
+        return llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*the_context));
     }
 }

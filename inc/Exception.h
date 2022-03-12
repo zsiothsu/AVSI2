@@ -38,7 +38,8 @@ namespace AVSI {
 
         std::string type();
 
-        virtual const char *what();
+        using exception::what;
+        const char *what();
     };
 
     class SyntaxException : public Exception {

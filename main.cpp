@@ -4,8 +4,11 @@
  * @LastEditTime: 2020-06-02 15:46:03
  * @Description: entry for interpreter
  */
-//#include "./inc/Interpreter.h"
-//#include "./inc/SemanticAnalyzer.h"
+#include <cstdlib>
+#include <system_error>
+#include <utility>
+#include <memory>
+
 #include "./inc/Parser.h"
 #include "./inc/flags.h"
 
@@ -46,9 +49,11 @@ int main(int argc, char **argv) {
     try {
         AST *tree = parser->parse();
 
+        llvm_machine_init();
         llvm_module_fpm_init();
         tree->codeGen();
-        llvm_module_printIR();
+//        llvm_module_printIR();
+        llvm_obj_output();
     }
     catch (Exception &e) {
         std::cerr << e.what() << "\t at line " << e.line << " column "

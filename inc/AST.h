@@ -139,6 +139,8 @@ namespace AVSI {
         virtual ~Boolean() {};
 
         any getValue(void);
+
+        llvm::Value *codeGen() override;
     };
 
     class Echo : public AST {
@@ -168,6 +170,8 @@ namespace AVSI {
                   adjustment(adjustment), compound(compound), noCondition(noCondition) {};
 
         virtual ~For();
+
+        llvm::Value *codeGen() override;
     };
 
     class FunctionDecl : public AST {
@@ -234,6 +238,8 @@ namespace AVSI {
                 compound(compound), next(next) {};
 
         virtual ~If();
+
+        llvm::Value *codeGen() override;
     };
 
     class Input : public AST {
@@ -362,6 +368,8 @@ namespace AVSI {
                 : AST(__WHILE_NAME, token), condition(condition), compound(compound) {};
 
         virtual ~While();
+
+        llvm::Value *codeGen() override;
     };
 
     class NoneAST : public AST {
@@ -374,6 +382,10 @@ namespace AVSI {
     static AST ASTEmpty = NoneAST();
 
     void llvm_module_fpm_init();
+
+    void llvm_machine_init();
+
+    void llvm_obj_output();
 
     void llvm_module_printIR();
 } // namespace AVSI
