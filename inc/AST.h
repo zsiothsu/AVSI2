@@ -379,6 +379,8 @@ namespace AVSI {
 
     void llvm_obj_output();
 
+    void llvm_asm_output();
+
     void llvm_module_printIR();
 } // namespace AVSI
 

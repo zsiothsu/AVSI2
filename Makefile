@@ -44,7 +44,7 @@ release: $(DIR_OUTPUT)/$(BIN)
 debug: CXXFLAGS += -O0
 debug: $(DIR_OUTPUT)/$(BIN)
 
-$(DIR_OUTPUT)/$(BIN): $(DIR_OUTPUT)/main.o $(OBJS) $(DIR_LIB)/libgflags_nothreads.a
+$(DIR_OUTPUT)/$(BIN): $(DIR_OUTPUT)/main.o $(OBJS)
 	@$(ECHO) "CXX    $<"
 	@$(CXX) $(LDFLAGS) $^ -o $@
 

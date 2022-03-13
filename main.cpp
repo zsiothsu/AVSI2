@@ -5,9 +5,10 @@
  * @Description: entry for interpreter
  */
 #include <cstdlib>
-#include <system_error>
-#include <utility>
+#include <unistd.h>
 #include <memory>
+#include <getopt.h>
+#include <bits/getopt_ext.h>
 
 #include "./inc/Parser.h"
 #include "./inc/flags.h"
@@ -15,34 +16,84 @@
 using namespace std;
 using namespace AVSI;
 
-DEFINE_bool(scope, false, "print scope information");
-DEFINE_bool(callStack, false, "print call stack");
+/*******************************************************
+ *                 options handler                     *
+ *******************************************************/
+extern int optind, opterr, optopt;
+extern char *optarg;
+static int opt = 0, lopt = 0, loidx = 0;
 
-void setFlags(string name) {
-    string UsageMessage = name + " file [--scope] [--callStack]";
-    google::SetUsageMessage(UsageMessage);
-    string VersionString = "0.0.0 (AVSI)";
-    google::SetVersionString(VersionString);
+static struct option long_options[] = {
+        {"ir",   no_argument, &lopt, 1},
+        {"asm",  no_argument, &lopt, 2},
+        {"help", no_argument, &lopt, 3},
+        {0, 0,                0,     0}
+};
+
+static bool opt_ir = false;
+static bool opt_asm = false;
+static bool opt_help = false;
+
+void printHelp(void) {
+    string msg = \
+    "usage:\n"
+    "    avsi [options] file\n"
+    "options:\n"
+    "    -l     --ir        Generate LLVM IR.\n"
+    "    -S     --asm       Generate assembly file.\n"
+    "    -h     --help      Display available options.\n";
+
+    printf("%s", msg.c_str());
 }
 
+void getOption(int argc, char **argv) {
+    while ((opt = getopt_long(argc, argv, "lSh", long_options, &loidx)) != -1) {
+        if (opt == 0) {
+            opt = lopt;
+        }
+        switch (opt) {
+            case 'l':
+            case 1:
+                opt_ir = true;
+                break;
+            case 'S':
+            case 2:
+                opt_asm = true;
+                break;
+            case 'h':
+            case 3:
+                opt_help = true;
+                break;
+            default:
+                printf("error: unsupported option");
+                break;
+        }
+    }
+}
+
+/*******************************************************
+ *                  program entry                      *
+ *******************************************************/
 int main(int argc, char **argv) {
-    setFlags(argv[0]);
-    google::ParseCommandLineFlags(&argc, &argv, true);
+    getOption(argc, argv);
 
-    if (argc == 1) {
-        cout << "AVSI: missing target file." << endl;
-        return 0;
-    }
-    if (argc != 2) {
-        cout << "AVSI: too more arguements." << endl;
+    if (opt_help) {
+        printHelp();
         return 0;
     }
 
-    char *fileName = argv[1];
+    if (optind >= argc) {
+        cout << "AVSI: no input file" << endl;
+        return -1;
+    }
+
+    char *fileName = argv[optind];
     ifstream file;
     file.open(fileName, ios::in);
-    if (!file.is_open())
+    if (!file.is_open()) {
         cout << "AVSI: can't open file '" + string(fileName) + "'" << endl;
+        return -1;
+    }
 
     Lexer *lexer = new Lexer(&file);
     Parser *parser = new Parser(lexer);
@@ -52,8 +103,9 @@ int main(int argc, char **argv) {
         llvm_machine_init();
         llvm_module_fpm_init();
         tree->codeGen();
-        llvm_module_printIR();
-        llvm_obj_output();
+        if (opt_ir) llvm_module_printIR();
+        if (opt_asm) llvm_asm_output();
+        if (!(opt_ir || opt_asm))llvm_obj_output();
     }
     catch (Exception &e) {
         std::cerr << e.what() << "\t at line " << e.line << " column "

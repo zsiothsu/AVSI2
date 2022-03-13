@@ -14,7 +14,6 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 
-
 namespace AVSI {
     /*******************************************************
      *                      llvm base                      *
@@ -72,12 +71,6 @@ namespace AVSI {
                 Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
 
         the_module->setDataLayout(TheTargetMachine->createDataLayout());
-
-        llvm::FunctionType *FT = llvm::FunctionType::get(
-                llvm::Type::getDoubleTy(*the_context),
-                vector<llvm::Type *>(),
-                false
-        );
     }
 
     void llvm_obj_output() {
@@ -104,11 +97,36 @@ namespace AVSI {
         llvm::outs() << "Wrote " << Filename << "\n";
     }
 
+    void llvm_asm_output() {
+        auto Filename = "a.s";
+        std::error_code EC;
+        llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
+
+        if (EC) {
+            llvm::errs() << "Could not open file: " << EC.message();
+            return;
+        }
+
+        llvm::legacy::PassManager pass;
+        auto FileType = llvm::CGFT_AssemblyFile;
+
+        if (TheTargetMachine->addPassesToEmitFile(pass, dest, nullptr, FileType)) {
+            llvm::errs() << "TheTargetMachine can't emit a file of this type";
+            return;
+        }
+
+        pass.run(*the_module);
+        dest.flush();
+
+        llvm::outs() << "Wrote " << Filename << "\n";
+    }
+
     void llvm_module_printIR() {
         auto Filename = "a.ll";
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
         the_module->print(dest, nullptr);
+        llvm::outs() << "Wrote " << Filename << "\n";
     }
 
     /*******************************************************
