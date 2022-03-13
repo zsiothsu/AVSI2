@@ -1,6 +1,6 @@
 #!/usr/bin/make
 
-PROJECT_NAME	:= Interpreter
+PROJECT_NAME	:= avsi
 
 export ECHO		:= echo
 export RM		:= rm

@@ -9,6 +9,22 @@ The grammar of AVSI is like shell which is suitable for learning to build an Int
 
 Instead of running on AST, AVSI2 runs with llvm.
 
+## Usage
+use `avsi [source file]` , it will generate `a.ll` and `a.o`
+```shell
+$ avsi yourcode.sl
+```
+
+use `clang` to link obj file generated and `libavsi.a`
+```shell
+$ clang a.o -L [Path to libavsi.a] -lavsi
+```
+
+run executable file
+```asm
+$ ./a.out
+```
+
 ## Grammar
 refer to `./example`
 
