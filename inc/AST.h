@@ -77,7 +77,7 @@ namespace AVSI {
 
         virtual ~AST() {};
 
-        virtual llvm::Value *codeGen() {return nullptr;};
+        virtual llvm::Value *codeGen();
 
         Token getToken(void);
     };
@@ -367,6 +367,8 @@ namespace AVSI {
         NoneAST(void) : AST(__NONEAST_NAME, Token(NONE, 0)) {};
 
         virtual ~NoneAST() {};
+
+        llvm::Value *codeGen() override;
     };
 
     static AST ASTEmpty = NoneAST();

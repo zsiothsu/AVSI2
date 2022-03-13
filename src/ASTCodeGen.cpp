@@ -31,10 +31,12 @@ namespace AVSI {
     llvm::TargetMachine *TheTargetMachine = nullptr;
 
     void llvm_module_fpm_init() {
-//        the_fpm->add(llvm::createReassociatePass());
+        the_fpm->add(llvm::createReassociatePass());
 //        the_fpm->add(llvm::createGVNPass());
 //        the_fpm->add(llvm::createInstructionCombiningPass());
-//        the_fpm->add(llvm::createCFGSimplificationPass());
+        the_fpm->add(llvm::createCFGSimplificationPass());
+        the_fpm->add(llvm::createDeadCodeEliminationPass());
+        the_fpm->add(llvm::createFlattenCFGPass());
 
         the_fpm->doInitialization();
     }
@@ -76,13 +78,6 @@ namespace AVSI {
                 vector<llvm::Type *>(),
                 false
         );
-
-        llvm::Function *main = llvm::Function::Create(
-                FT,
-                llvm::Function::ExternalLinkage,
-                "entry",
-                the_module
-        );
     }
 
     void llvm_obj_output() {
@@ -110,7 +105,10 @@ namespace AVSI {
     }
 
     void llvm_module_printIR() {
-        the_module->print(llvm::errs(), nullptr);
+        auto Filename = "a.ll";
+        std::error_code EC;
+        llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
+        the_module->print(dest, nullptr);
     }
 
     /*******************************************************
@@ -127,6 +125,10 @@ namespace AVSI {
                 0,
                 name
         );
+    }
+
+    llvm::Value *AST::codeGen() {
+        return llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*the_context));
     }
 
     llvm::Value *Assign::codeGen() {
@@ -151,6 +153,8 @@ namespace AVSI {
         }
 
         llvm::Value *cmp_value_boolean;
+        llvm::Value *lv_bool;
+        llvm::Value *rv_bool;
         switch (this->op.getType()) {
             case PLUS:
                 return builder->CreateFAdd(lv, rv, "addTmp");
@@ -161,29 +165,34 @@ namespace AVSI {
             case SLASH:
                 return builder->CreateFDiv(lv, rv, "divTmp");
             case EQ:
-                cmp_value_boolean = builder->CreateFCmpOEQ(lv, rv, "cmpEQTmp");
+                cmp_value_boolean = builder->CreateFCmpUEQ(lv, rv, "cmpEQTmp");
                 return builder->CreateUIToFP(cmp_value_boolean, llvm::Type::getDoubleTy(*the_context), "boolTmp");
             case NE:
-                cmp_value_boolean = builder->CreateFCmpONE(lv, rv, "cmpNETmp");
+                cmp_value_boolean = builder->CreateFCmpUNE(lv, rv, "cmpNETmp");
                 return builder->CreateUIToFP(cmp_value_boolean, llvm::Type::getDoubleTy(*the_context), "boolTmp");
             case GT:
-                cmp_value_boolean = builder->CreateFCmpOGT(lv, rv, "cmpGTTmp");
+                cmp_value_boolean = builder->CreateFCmpUGT(lv, rv, "cmpGTTmp");
                 return builder->CreateUIToFP(cmp_value_boolean, llvm::Type::getDoubleTy(*the_context), "boolTmp");
             case LT:
-                cmp_value_boolean = builder->CreateFCmpOLT(lv, rv, "cmpLTTmp");
+                cmp_value_boolean = builder->CreateFCmpULT(lv, rv, "cmpLTTmp");
                 return builder->CreateUIToFP(cmp_value_boolean, llvm::Type::getDoubleTy(*the_context), "boolTmp");
             case GE:
-                cmp_value_boolean = builder->CreateFCmpOGE(lv, rv, "cmpGETmp");
+                cmp_value_boolean = builder->CreateFCmpUGE(lv, rv, "cmpGETmp");
                 return builder->CreateUIToFP(cmp_value_boolean, llvm::Type::getDoubleTy(*the_context), "boolTmp");
             case LE:
-                cmp_value_boolean = builder->CreateFCmpOLE(lv, rv, "cmpLETmp");
+                cmp_value_boolean = builder->CreateFCmpULE(lv, rv, "cmpLETmp");
                 return builder->CreateUIToFP(cmp_value_boolean, llvm::Type::getDoubleTy(*the_context), "boolTmp");
             case OR:
-                //TODO: double to bool
-                cmp_value_boolean = builder->CreateOr(lv, rv, "boolOrTmp");
+                lv_bool = builder->CreateFPToUI(lv, llvm::Type::getInt1Ty(*the_context), "boolTmp");
+                rv_bool = builder->CreateFPToUI(rv, llvm::Type::getInt1Ty(*the_context), "boolTmp");
+                cmp_value_boolean = builder->CreateOr(lv_bool, rv_bool, "boolOrTmp");
+//                cmp_value_boolean = builder->CreateOr(lv, rv, "boolOrTmp");
                 return builder->CreateUIToFP(cmp_value_boolean, llvm::Type::getDoubleTy(*the_context), "boolTmp");
             case AND:
-                cmp_value_boolean = builder->CreateAnd(lv, rv, "boolAndTmp");
+                lv_bool = builder->CreateFPToUI(lv, llvm::Type::getInt1Ty(*the_context), "boolTmp");
+                rv_bool = builder->CreateFPToUI(rv, llvm::Type::getInt1Ty(*the_context), "boolTmp");
+                cmp_value_boolean = builder->CreateAnd(lv_bool, rv_bool, "boolAndTmp");
+//                cmp_value_boolean = builder->CreateAnd(lv, rv, "boolAndTmp");
                 return builder->CreateUIToFP(cmp_value_boolean, llvm::Type::getDoubleTy(*the_context), "boolTmp");
             default:
                 return nullptr;
@@ -220,6 +229,19 @@ namespace AVSI {
             return nullptr;
         }
         cond = builder->CreateFCmpONE(cond, llvm::ConstantFP::get(*the_context, llvm::APFloat(0.0)));
+        llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
+        llvm::IRBuilder<> blockEntry(
+                &the_scope->getEntryBlock(),
+                the_scope->getEntryBlock().begin()
+        );
+        llvm::AllocaInst *new_var_alloca = blockEntry.CreateAlloca(
+                llvm::Type::getInt1Ty(*the_context),
+                0,
+                "ifCondAlloca"
+        );
+        builder->CreateStore(cond, new_var_alloca);
+
+        cond = builder->CreateLoad(llvm::Type::getInt1Ty(*the_context), new_var_alloca);
         builder->CreateCondBr(cond, loopBB, mergeBB);
         headBB = builder->GetInsertBlock();
 
@@ -234,7 +256,10 @@ namespace AVSI {
         if (!adjust) {
             return nullptr;
         }
-        builder->CreateBr(headBB);
+        auto t = builder->GetInsertBlock()->getTerminator();
+        if (!t) {
+            builder->CreateBr(headBB);
+        }
         loopBB = builder->GetInsertBlock();
 
         the_function->getBasicBlockList().push_back(mergeBB);
@@ -300,7 +325,8 @@ namespace AVSI {
             }
 
             if (this->compound->codeGen()) {
-                builder->CreateRet(llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context), 0.0));
+                auto t = builder->GetInsertBlock()->getTerminator();
+                if (!t) builder->CreateRet(llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context), 0.0));
                 llvm::verifyFunction(*the_function, &llvm::errs());
                 the_fpm->run(*the_function);
                 return the_function;
@@ -326,7 +352,7 @@ namespace AVSI {
                     __LogicException,
                     "candidate function not viable: requires " + \
                 to_string(fun->arg_size()) + \
-                "arguments, but " + \
+                " arguments, but " + \
                 to_string(this->paramList.size()) + \
                 " were provided",
                     this->token.line, this->token.column
@@ -367,43 +393,78 @@ namespace AVSI {
             if (!cond) {
                 return nullptr;
             }
-            cond = builder->CreateFCmpONE(cond, llvm::ConstantFP::get(*the_context, llvm::APFloat(0.0)));
+
+            /*
+                store cont to local variable
+                I don't know why I must add these code... but it will cause error if remove allco
+                For example:
+                    if [ 0.0 ] then
+                    fi
+                1. IR code generated without alloca: (error)
+                    br i1 ture, label %if.then, label %if.else
+                2. IR code generated without alloca: (pass)
+                    %ifCondAlloca = alloca double, align 8
+                    store i1 true, double* %ifCondAlloca, align 1
+                    %0 = load i1, double* %ifCondAlloca, align 1
+                    br i1 %0, label %if.then, label %if.else
+            */
+            cond = builder->CreateFCmpUNE(cond, llvm::ConstantFP::get(*the_context, llvm::APFloat(0.0)), "ifCond");
+            llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
+            llvm::IRBuilder<> blockEntry(
+                    &the_scope->getEntryBlock(),
+                    the_scope->getEntryBlock().begin()
+            );
+            llvm::AllocaInst *new_var_alloca = blockEntry.CreateAlloca(
+                    llvm::Type::getInt1Ty(*the_context),
+                    0,
+                    "ifCondAlloca"
+            );
+            builder->CreateStore(cond, new_var_alloca);
 
             llvm::Function *the_function = builder->GetInsertBlock()->getParent();
 
             llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(*the_context, "if.then", the_function);
             llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(*the_context, "if.else", the_function);
             llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*the_context, "if.end", the_function);
+            uint8_t non_ret_block_then = 0;
+            uint8_t non_ret_block_else = 0;
 
+            cond = builder->CreateLoad(llvm::Type::getInt1Ty(*the_context), new_var_alloca);
             builder->CreateCondBr(cond, thenBB, elseBB);
 
             the_function->getBasicBlockList().push_back(thenBB);
             builder->SetInsertPoint(thenBB);
-            llvm::Value *thenv = nullptr;
-            thenv = this->compound->codeGen();
+            llvm::Value *thenv = this->compound->codeGen();
             if (!thenv) {
                 return nullptr;
             }
-            builder->CreateBr(mergeBB);
+            auto t = builder->GetInsertBlock()->getTerminator();
+            if (!t) {
+                builder->CreateBr(mergeBB);
+                non_ret_block_then = 1;
+            }
             thenBB = builder->GetInsertBlock();
 
             the_function->getBasicBlockList().push_back(elseBB);
             builder->SetInsertPoint(elseBB);
-            llvm::Value *elsev = nullptr;
-//        if(this->compound != nullptr) {
-            elsev = this->next->codeGen();
+            llvm::Value *elsev = this->next->codeGen();
             if (!elsev) {
                 return nullptr;
             }
-            builder->CreateBr(mergeBB);
+            t = builder->GetInsertBlock()->getTerminator();
+            if (!t) {
+                builder->CreateBr(mergeBB);
+                non_ret_block_else = 1;
+            }
             elseBB = builder->GetInsertBlock();
-//        }
 
             the_function->getBasicBlockList().push_back(mergeBB);
             builder->SetInsertPoint(mergeBB);
-            llvm::PHINode *PN = builder->CreatePHI(llvm::Type::getDoubleTy(*the_context), 2, "ifTmp");
-            PN->addIncoming(thenv, thenBB);
-            PN->addIncoming(elsev, elseBB);
+
+            llvm::PHINode *PN = builder->CreatePHI(llvm::Type::getDoubleTy(*the_context),
+                                                   non_ret_block_then + non_ret_block_else, "ifTmp");
+            if (non_ret_block_then) PN->addIncoming(thenv, thenBB);
+            if (non_ret_block_else) PN->addIncoming(elsev, elseBB);
 
             return PN;
         } else {
@@ -413,7 +474,7 @@ namespace AVSI {
 
     llvm::Value *Num::codeGen() {
 //        auto t = llvm::ConstantFP::get(*the_context, llvm::APFloat((double)this->value));
-        auto t = llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context), this->getValue().any_cast<double>());
+        auto t = llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context), (double)this->getValue().any_cast<double>());
         return t;
     }
 
@@ -429,18 +490,19 @@ namespace AVSI {
 
         if (this->op.getType() == MINUS) {
             return builder->CreateFSub(
-                    llvm::ConstantFP::get(*the_context, llvm::APFloat(0.0f)),
+                    llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context), 0.0),
                     rv,
                     "unaryAddTmp"
             );
         } else if (this->op.getType() == PLUS) {
             return builder->CreateFAdd(
-                    llvm::ConstantFP::get(*the_context, llvm::APFloat(0.0f)),
+                    llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context), 0.0),
                     rv,
                     "unarySubTmp"
             );
         } else if (this->op.getType() == NOT) {
-            llvm::Value *v = builder->CreateNot(rv, "unaryNotTmp");
+            llvm::Value *rv_bool = builder->CreateFPToUI(rv, llvm::Type::getInt1Ty(*the_context), "boolTmp");
+            llvm::Value *v = builder->CreateNot(rv_bool, "unaryNotTmp");
             return builder->CreateUIToFP(v, llvm::Type::getDoubleTy(*the_context), "boolTmp");
         } else {
             return nullptr;
@@ -503,6 +565,18 @@ namespace AVSI {
             return nullptr;
         }
         cond = builder->CreateFCmpONE(cond, llvm::ConstantFP::get(*the_context, llvm::APFloat(0.0)));
+        llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
+        llvm::IRBuilder<> blockEntry(
+                &the_scope->getEntryBlock(),
+                the_scope->getEntryBlock().begin()
+        );
+        llvm::AllocaInst *new_var_alloca = blockEntry.CreateAlloca(
+                llvm::Type::getInt1Ty(*the_context),
+                0,
+                "ifCondAlloca"
+        );
+        builder->CreateStore(cond, new_var_alloca);
+        cond = builder->CreateLoad(llvm::Type::getInt1Ty(*the_context), new_var_alloca);
         builder->CreateCondBr(cond, loopBB, mergeBB);
 
         the_function->getBasicBlockList().push_back(loopBB);
@@ -511,11 +585,18 @@ namespace AVSI {
         if (!body) {
             return nullptr;
         }
-        builder->CreateBr(headBB);
+        auto t = builder->GetInsertBlock()->getTerminator();
+        if (!t) {
+            builder->CreateBr(headBB);
+        }
 
         the_function->getBasicBlockList().push_back(mergeBB);
         builder->SetInsertPoint(mergeBB);
 
+        return llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*the_context));
+    }
+
+    llvm::Value *NoneAST::codeGen() {
         return llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*the_context));
     }
 }

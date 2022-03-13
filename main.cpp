@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
         llvm_machine_init();
         llvm_module_fpm_init();
         tree->codeGen();
-//        llvm_module_printIR();
+        llvm_module_printIR();
         llvm_obj_output();
     }
     catch (Exception &e) {
