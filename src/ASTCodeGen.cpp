@@ -357,15 +357,8 @@ namespace AVSI {
     llvm::Value *FunctionCall::codeGen() {
         llvm::Function *fun = the_module->getFunction(this->id);
 
-        if (!fun) {
-            throw ExceptionFactory(
-                    __MissingException,
-                    "undefined reference '" + this->id + "'",
-                    this->token.line, this->token.column
-            );
-        }
-
-        if (fun->arg_size() != this->paramList.size()) {
+        if (fun && (fun->arg_size() != this->paramList.size())) {
+            // if function has declared, check parameters' size
             throw ExceptionFactory(
                     __LogicException,
                     "candidate function not viable: requires " + \
@@ -377,26 +370,42 @@ namespace AVSI {
             );
         }
 
-        vector<llvm::Value *> args;
-//        for (AST *arg: this->paramList) {
-//            llvm::Value *v = arg->codeGen();
-//            if (!v) {
-//                return nullptr;
-//            }
-//
-//            args.push_back(v);
-//        }
+        vector < llvm::Value * > args;
         for (int i = 0; i < this->paramList.size(); i++) {
             AST *arg = paramList[i];
             llvm::Value *v = arg->codeGen();
             if (!v) {
                 return nullptr;
             }
-
             args.push_back(v);
         }
 
-        return builder->CreateCall(fun, args, "callTmp");
+        if (fun) {
+            // for function have declared
+            return builder->CreateCall(fun, args, "callLocal");
+        } else {
+            // function not declared, create call linked to external function
+            vector < llvm::Type * > types;
+            types.reserve(args.size());
+            for (llvm::Value *i: args) {
+                types.push_back(i->getType());
+            }
+
+            llvm::FunctionType *FT = llvm::FunctionType::get(
+                llvm::Type::getDoubleTy(*the_context),
+                types,
+                false
+            );
+
+            llvm::Function *link_function = llvm::Function::Create(
+                    FT,
+                    llvm::Function::ExternalLinkage,
+                    this->id,
+                    the_module
+            );
+
+            return builder->CreateCall(FT, link_function, args, "callExternal");
+        }
     }
 
     llvm::Value *Global::codeGen() {
@@ -492,7 +501,8 @@ namespace AVSI {
 
     llvm::Value *Num::codeGen() {
 //        auto t = llvm::ConstantFP::get(*the_context, llvm::APFloat((double)this->value));
-        auto t = llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context), (double)this->getValue().any_cast<double>());
+        auto t = llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context),
+                                       (double) this->getValue().any_cast<double>());
         return t;
     }
 

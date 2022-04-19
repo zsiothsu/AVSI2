@@ -49,6 +49,13 @@ $(OBJS): $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	@$(CC) -c $< -o $@
 	@$(EECHO) CC $(<F)
 
+$(OBJDIR)/%.d: $(SRCDIR)/%.c
+	@set -e; rm -f $@; $(CC) -MM $< $(CFLAGS) > $@.$$$$; \
+	sed 's,\($*\)\.o[ :]*,$(DIR_BUILD)/\1.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
+
+-include $(OBJS:.o=.d)
+
 .PHONY: clean
 clean:
 	@$(RM) -r $(OBJDIR)
