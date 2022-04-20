@@ -8,6 +8,12 @@
 
 namespace AVSI {
     /*******************************************************
+     *                 external variable                   *
+     *******************************************************/
+    extern llvm::LLVMContext *the_context;
+    extern llvm::Module *the_module;
+
+    /*******************************************************
      *                    constructor                      *
      *******************************************************/
     Parser::Parser(void) {}
@@ -55,6 +61,7 @@ namespace AVSI {
     }
 
     AST *Parser::statement() {
+        // TODO Structre
         if (this->currentToken.getType() == FUNCTION) {
             return functionDecl();
         } else if (this->currentToken.getType() == RETURN) {
@@ -77,6 +84,8 @@ namespace AVSI {
             return WhileStatement();
         } else if (this->currentToken.getType() == GLOBAL) {
             return global();
+        } else if (this->currentToken.getType() == OBJ) {
+            return object();
         }
         return &ASTEmpty;
     }
@@ -123,9 +132,18 @@ namespace AVSI {
         string id = this->currentToken.getValue().any_cast<string>();
         eat(ID);
 
-        AST *paramList = nullptr;
         eat(LPAR);
-        paramList = param();
+        Param* paramList = (Param*)param();
+        // check types
+        for (Variable *i: paramList->paramList) {
+            if (i->Ty.first == nullptr) {
+                throw ExceptionFactory(
+                        __SyntaxException,
+                        "missing type of member '" + i->id + "'",
+                        i->getToken().line, i->getToken().column
+                );
+            }
+        }
         eat(RPAR);
 
         if (this->currentToken.getType() == LBRACE) {
@@ -166,6 +184,33 @@ namespace AVSI {
         return new Global(var, token);
     }
 
+    AST *Parser::object() {
+        string id;
+        Token token = this->currentToken;
+
+        eat(OBJ);
+        id = this->currentToken.getValue().any_cast<string>();
+        eat(ID);
+        eat(LBRACE);
+
+        Param *members_list = (Param *) param();
+        vector<Variable *> &li = members_list->paramList;
+        // check types
+        for (Variable *i: li) {
+            if (i->Ty.first == nullptr) {
+                throw ExceptionFactory(
+                        __SyntaxException,
+                        "missing type of member '" + i->id + "'",
+                        i->getToken().line, i->getToken().column
+                );
+            }
+        }
+
+        eat(RBRACE);
+
+        return new Object(token, members_list->paramList);
+    }
+
     AST *Parser::IfStatement() {
         Token token = this->currentToken;
         TokenType type = this->currentToken.getType();
@@ -204,23 +249,33 @@ namespace AVSI {
         Param *param = new Param();
         set<string> paramSet;
         while (this->currentToken.getType() == ID) {
+            Variable *var = new Variable(this->currentToken);
             string id = this->currentToken.getValue().any_cast<string>();
             if (paramSet.find(id) != paramSet.end()) {
                 string msg =
-                        "duplicate argument '" + id + "' in function definition";
+                        "duplicate variable '" + id + "' in parameters";
                 throw ExceptionFactory(__SyntaxException, msg,
                                        this->currentToken.line,
                                        this->currentToken.column);
             }
             paramSet.insert(id);
-            param->paramList.push_back(new Variable(this->currentToken));
+            var->id = id;
             eat(ID);
-            if (this->currentToken.getType() == RPAR) {
+
+            // type is offered, or the first member of Type will be nullptr
+            if (this->currentToken.getType() == COLON) {
+                eat(COLON);
+                Type Ty = eatType();
+                var->Ty = Ty;
+            }
+
+            param->paramList.push_back(var);
+            if (this->currentToken.getType() != ID) {
                 return param;
             }
             eat(COMMA);
         }
-        if (this->currentToken.getType() == RPAR) {
+        if (this->currentToken.getType() != ID) {
             return param;
         }
         throw ExceptionFactory(
@@ -402,6 +457,52 @@ namespace AVSI {
         eat(DONE);
 
         return new While(condition, compound, token);
+    }
+
+    Type Parser::eatType() {
+        if (this->currentToken.getType() == REAL) {
+            eat(REAL);
+            return Type(llvm::Type::getDoubleTy(*the_context), "real");
+        } else if (this->currentToken.getType() == VEC) {
+            eat(VEC);
+            eat(LSQB);
+            if (this->currentToken.getType() != RSQB) {
+                // Type can be any types, even another vector
+                Type nest = eatType();
+                eat(SEMI);
+                int array_size = 0;
+                if (this->currentToken.getType() == INTEGER) {
+                    array_size = this->currentToken.getValue().any_cast<int>();
+                    eat(INTEGER);
+                } else {
+                    throw ExceptionFactory(
+                            __SyntaxException,
+                            "array size must be provided",
+                            this->currentToken.line, this->currentToken.column
+                    );
+                }
+                eat(RSQB);
+                llvm::Type *Ty = llvm::ArrayType::get(nest.first, array_size);
+                return Type(Ty, "vec");
+            }
+            throw ExceptionFactory(
+                    __SyntaxException,
+                    "array type and size must be provided",
+                    this->currentToken.line, this->currentToken.column
+            );
+        } else if (this->currentToken.getType() == ID) {
+            // this StructType is not the real type in generated IR code.
+            // it will be replaced to more detailed type in code generation.
+            Type Ty = Type(llvm::StructType::get(*the_context), this->currentToken.getValue().any_cast<string>());
+            eat(ID);
+            return Ty;
+        } else {
+            throw ExceptionFactory(
+                    __SyntaxException,
+                    "type is unrecognized",
+                    this->currentToken.line, this->currentToken.column
+            );
+        }
     }
 
 } // namespace AVSI

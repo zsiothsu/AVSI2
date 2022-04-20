@@ -43,6 +43,7 @@
 #define __IF_NAME               "If"
 #define __INPUT_NAME            "Input"
 #define __NUM_NAME              "Num"
+#define __OBJECT_NAME           "Object"
 #define __PARAM_NAME            "Param"
 #define __PRINTF_NAME           "Printf"
 #define __RETURN_NAME           "Return"
@@ -58,6 +59,8 @@ namespace AVSI {
     using std::vector;
     using std::unique_ptr;
     using std::map;
+
+    using Type = pair<llvm::Type *, string>;
 
     /*******************************************************
      *                       AST base                      *
@@ -139,6 +142,19 @@ namespace AVSI {
         virtual ~Boolean() {};
 
         any getValue(void);
+
+        llvm::Value *codeGen() override;
+    };
+
+    class Compound : public AST {
+    public:
+        vector<AST *> child;
+
+        Compound(void)
+                : AST(__COMPOUND_NAME, Token(COMPOUND, 0)),
+                  child(vector<AST *>()) {};
+
+        virtual ~Compound();
 
         llvm::Value *codeGen() override;
     };
@@ -258,49 +274,41 @@ namespace AVSI {
         llvm::Value *codeGen() override;
     };
 
-    class UnaryOp : public AST {
-    private:
-        Token op;
-
-    public:
-        AST *right;
-
-        UnaryOp(void) : AST(__UNARYTOP_NAME) {};
-
-        UnaryOp(Token op, AST *right)
-                : AST(__UNARYTOP_NAME, op), op(op), right(right) {};
-
-        virtual ~UnaryOp();
-
-        TokenType getOp(void);
-
-        llvm::Value *codeGen() override;
-    };
-
     class Variable : public AST {
     public:
         std::string id;
+        Type Ty;
 
-        Variable(void) : AST(__VARIABLE_NAME) {};
+        Variable(void)
+                : AST(__VARIABLE_NAME),
+                  id(""), Ty(Type(nullptr, "")) {};
 
         Variable(Token var)
                 : AST(__VARIABLE_NAME, var),
-                  id(var.getValue().any_cast<std::string>()) {};
+                  id(var.getValue().any_cast<std::string>()),
+                  Ty(Type(nullptr, "")) {};
+
+        Variable(Token var, Type ty)
+                : AST(__VARIABLE_NAME, var),
+                  id(var.getValue().any_cast<std::string>()),
+                  Ty(ty) {};
 
         ~Variable() {};
 
         llvm::Value *codeGen() override;
     };
 
-    class Compound : public AST {
+    class Object : public AST {
     public:
-        vector<AST *> child;
+        vector<Variable *> memberList;
 
-        Compound(void)
-                : AST(__COMPOUND_NAME, Token(COMPOUND, 0)),
-                  child(vector<AST *>()) {};
+        Object(void) : AST(__OBJECT_NAME), memberList(vector<Variable *>()) {};
 
-        virtual ~Compound();
+        Object(Token token) : AST(__OBJECT_NAME, token), memberList(vector<Variable *>()) {};
+
+        Object(Token token, vector<Variable *>)
+                : AST(__OBJECT_NAME, token),
+                  memberList(vector<Variable *>()) {};
 
         llvm::Value *codeGen() override;
     };
@@ -344,6 +352,25 @@ namespace AVSI {
 
 
         any getValue(void);
+    };
+
+    class UnaryOp : public AST {
+    private:
+        Token op;
+
+    public:
+        AST *right;
+
+        UnaryOp(void) : AST(__UNARYTOP_NAME) {};
+
+        UnaryOp(Token op, AST *right)
+                : AST(__UNARYTOP_NAME, op), op(op), right(right) {};
+
+        virtual ~UnaryOp();
+
+        TokenType getOp(void);
+
+        llvm::Value *codeGen() override;
     };
 
     class While : public AST {

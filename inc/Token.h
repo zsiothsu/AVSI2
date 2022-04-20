@@ -46,6 +46,7 @@ namespace AVSI {
         SEMI,
         COMMA,
         DOLLAR,
+        COLON,
         DQUO,
         SQUO,
         // reserved keywork
@@ -64,7 +65,12 @@ namespace AVSI {
         WHILE,
         DO,
         DONE,
-        GLOBAL
+        GLOBAL,
+        IMPORT,
+        EXPORT,
+        REAL,
+        VEC,
+        OBJ
     } TokenType;
 
     class Token {

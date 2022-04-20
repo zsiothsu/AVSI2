@@ -5,6 +5,7 @@
  * @Description: include some exception types for interpreter
  */
 #include "../inc/Exception.h"
+#include <iostream>
 
 namespace AVSI {
     /*******************************************************
@@ -48,5 +49,10 @@ namespace AVSI {
         exception.column = column;
 
         return exception;
+    }
+
+    void Warning(std::string type, std::string msg, int line, int column) {
+        std::cerr << __COLOR_YELLOW << type << ": " << msg \
+                  << "\t at line " << line << " column " << column  << __COLOR_RESET << std::endl;
     }
 } // namespace AVSI

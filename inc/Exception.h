@@ -16,6 +16,13 @@
 #define __MissingException  "MissingException"
 #define __IRErrException    "IRErrException"
 
+#define __Warning           "Warning"
+
+
+#define __COLOR_RESET       "\033[0m"
+#define __COLOR_RED         "\033[31m"
+#define __COLOR_YELLOW      "\033[33m"
+
 namespace AVSI {
     using namespace std;
 
@@ -88,6 +95,8 @@ namespace AVSI {
 
     const Exception
     ExceptionFactory(std::string e, std::string msg, int line, int column);
+
+    void Warning(std::string type, std::string msg, int line, int column);
 } // namespace AVSI
 
 #endif

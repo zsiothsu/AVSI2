@@ -20,8 +20,8 @@ namespace AVSI {
      *******************************************************/
 //    static unique_ptr<llvm::LLVMContext> the_context = make_unique<llvm::LLVMContext>();
 //    static unique_ptr<llvm::Module> the_module = make_unique<llvm::Module>("program", *the_context);
-    static llvm::LLVMContext *the_context = new llvm::LLVMContext();
-    static llvm::Module *the_module = new llvm::Module("program", *the_context);
+    llvm::LLVMContext *the_context = new llvm::LLVMContext();
+    llvm::Module *the_module = new llvm::Module("program", *the_context);
     static unique_ptr<llvm::IRBuilder<>> builder = make_unique<llvm::IRBuilder<>>(*the_context);
     static unique_ptr<llvm::legacy::FunctionPassManager> the_fpm = make_unique<llvm::legacy::FunctionPassManager>(
             the_module);
@@ -370,7 +370,7 @@ namespace AVSI {
             );
         }
 
-        vector < llvm::Value * > args;
+        vector<llvm::Value *> args;
         for (int i = 0; i < this->paramList.size(); i++) {
             AST *arg = paramList[i];
             llvm::Value *v = arg->codeGen();
@@ -384,17 +384,20 @@ namespace AVSI {
             // for function have declared
             return builder->CreateCall(fun, args, "callLocal");
         } else {
+            Warning(__Warning,
+                    "function '" + this->id + "' is not declared in this scope",
+                    this->token.line, this->token.column);
             // function not declared, create call linked to external function
-            vector < llvm::Type * > types;
+            vector<llvm::Type *> types;
             types.reserve(args.size());
             for (llvm::Value *i: args) {
                 types.push_back(i->getType());
             }
 
             llvm::FunctionType *FT = llvm::FunctionType::get(
-                llvm::Type::getDoubleTy(*the_context),
-                types,
-                false
+                    llvm::Type::getDoubleTy(*the_context),
+                    types,
+                    false
             );
 
             llvm::Function *link_function = llvm::Function::Create(
@@ -504,6 +507,10 @@ namespace AVSI {
         auto t = llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context),
                                        (double) this->getValue().any_cast<double>());
         return t;
+    }
+
+    llvm::Value *Object::codeGen() {
+        //TODO codegen
     }
 
     llvm::Value *UnaryOp::codeGen() {

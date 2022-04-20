@@ -14,6 +14,7 @@
 
 namespace AVSI {
     using namespace std;
+    using Type = pair<llvm::Type*, string>;
 
     class Parser {
     private:
@@ -46,6 +47,8 @@ namespace AVSI {
 
         AST *global();
 
+        AST *object();
+
         AST *IfStatement();
 
         AST *param();
@@ -67,6 +70,8 @@ namespace AVSI {
         AST *variable();
 
         AST *WhileStatement();
+
+        Type eatType();
     };
 } // namespace AVSI
 
