@@ -11,7 +11,6 @@
 #include <bits/getopt_ext.h>
 
 #include "./inc/Parser.h"
-#include "./inc/flags.h"
 
 using namespace std;
 using namespace AVSI;

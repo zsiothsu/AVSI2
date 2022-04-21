@@ -54,8 +54,6 @@ namespace AVSI {
         RETURN,
         TRUE,
         FALSE,
-        PRINTF,
-        ECHO,
         IF,
         ELIF,
         ELSE,

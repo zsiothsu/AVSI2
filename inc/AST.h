@@ -159,16 +159,6 @@ namespace AVSI {
         llvm::Value *codeGen() override;
     };
 
-    class Echo : public AST {
-    public:
-        AST *content;
-
-        Echo(void) : AST(__ECHO_NAME) {};
-
-        Echo(AST *content, Token token)
-                : AST(__ECHO_NAME, token), content(content) {};
-    };
-
     class For : public AST {
     public:
         AST *initList;
@@ -320,16 +310,6 @@ namespace AVSI {
         vector<Variable *> paramList;
 
         Param(void) : AST(__PARAM_NAME), paramList(vector<Variable *>()) {};
-    };
-
-    class Printf : public AST {
-    public:
-        AST *content;
-
-        Printf(void) : AST(__PRINTF_NAME) {};
-
-        Printf(AST *content, Token token)
-                : AST(__PRINTF_NAME, token), content(content) {};
     };
 
     class Return : public AST {
