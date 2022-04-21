@@ -8,7 +8,7 @@
 
 namespace AVSI {
     /*******************************************************
-     *                 external variable                   *
+     *                     variable                        *
      *******************************************************/
     extern llvm::LLVMContext *the_context;
     extern llvm::Module *the_module;
@@ -61,25 +61,27 @@ namespace AVSI {
     }
 
     AST *Parser::statement() {
-        if (this->currentToken.getType() == FUNCTION) {
+        TokenType token_type = this->currentToken.getType();
+
+        if (token_type == FUNCTION) {
             return functionDecl();
-        } else if (this->currentToken.getType() == RETURN) {
+        } else if (token_type == RETURN) {
             return returnExpr();
-        } else if (this->currentToken.getType() == ID &&
+        } else if (token_type == ID &&
                    this->lexer->currentChar == '(') {
             AST *ast = functionCall();
             return ast;
-        } else if (this->currentToken.getType() == ID) {
+        } else if (token_type == ID) {
             return assignment();
-        } else if (this->currentToken.getType() == IF) {
+        } else if (token_type == IF) {
             return IfStatement();
-        } else if (this->currentToken.getType() == FOR) {
+        } else if (token_type == FOR) {
             return forStatement();
-        } else if (this->currentToken.getType() == WHILE) {
+        } else if (token_type == WHILE) {
             return WhileStatement();
-        } else if (this->currentToken.getType() == GLOBAL) {
+        } else if (token_type == GLOBAL) {
             return global();
-        } else if (this->currentToken.getType() == OBJ) {
+        } else if (token_type == OBJ) {
             return object();
         }
         return &ASTEmpty;
@@ -87,9 +89,10 @@ namespace AVSI {
 
     AST *Parser::assignment() {
         AST *left = variable();
+        Token token = this->currentToken;
         eat(EQUAL);
         AST *right = expr();
-        return new Assign(left, right);
+        return new Assign(token, left, right);
     }
 
     AST *Parser::forStatement() {
@@ -128,7 +131,7 @@ namespace AVSI {
         eat(ID);
 
         eat(LPAR);
-        Param* paramList = (Param*)param();
+        Param *paramList = (Param *) param();
         // check types
         for (Variable *i: paramList->paramList) {
             if (i->Ty.first == nullptr) {
@@ -141,13 +144,20 @@ namespace AVSI {
         }
         eat(RPAR);
 
+        Type retTy = Type(llvm::Type::getVoidTy(*the_context), "void");
+
+        if (this->currentToken.getType() == TO) {
+            eat(TO);
+            retTy = eatType();
+        }
+
         if (this->currentToken.getType() == LBRACE) {
             eat(LBRACE);
             AST *compound = statementList();
             eat(RBRACE);
-            return new FunctionDecl(id, paramList, compound, token);
+            return new FunctionDecl(id, retTy, paramList, compound, token);
         } else {
-            return new FunctionDecl(id, paramList, nullptr, token);
+            return new FunctionDecl(id, retTy, paramList, nullptr, token);
         }
     }
 
@@ -265,7 +275,7 @@ namespace AVSI {
             }
 
             param->paramList.push_back(var);
-            if(this->currentToken.getType() == COMMA) {
+            if (this->currentToken.getType() == COMMA) {
                 eat(COMMA);
             } else if (this->currentToken.getType() != ID) {
                 return param;
@@ -419,7 +429,19 @@ namespace AVSI {
 
         Token var = this->currentToken;
         eat(ID);
-        return new Variable(var);
+
+        /*
+          the void type only represent the initial type in source code
+          and show to code generator. the variable type in right value
+          will be ignored.
+        */
+        Type Ty = Type(llvm::Type::getVoidTy(*the_context), "void");
+        if (this->currentToken.getType() == COLON) {
+            eat(COLON);
+            Ty = eatType();
+        }
+
+        return new Variable(var, Ty);
     }
 
     AST *Parser::WhileStatement() {

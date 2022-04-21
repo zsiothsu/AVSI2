@@ -96,8 +96,8 @@ namespace AVSI {
 
         Assign(void) : AST(__ASSIGN_NAME), left(nullptr), right(nullptr) {};
 
-        Assign(AST *left, AST *right)
-                : AST(__ASSIGN_NAME, Token(EQUAL, '=')),
+        Assign(Token token, AST *left, AST *right)
+                : AST(__ASSIGN_NAME, token),
                   left(left),
                   right(right) {};
 
@@ -183,15 +183,17 @@ namespace AVSI {
     class FunctionDecl : public AST {
     public:
         string id;
+        Type retTy;
         AST *paramList;
         AST *compound;
 
         FunctionDecl(void)
-                : AST(__FUNCTIONDECL_NAME), paramList(nullptr), compound(nullptr) {};
+                : AST(__FUNCTIONDECL_NAME), retTy(Type()), paramList(nullptr), compound(nullptr) {};
 
-        FunctionDecl(string id, AST *paramList, AST *compound, Token token)
+        FunctionDecl(string id, Type retTy, AST *paramList, AST *compound, Token token)
                 : AST(__FUNCTIONDECL_NAME, token),
                   id(id),
+                  retTy(retTy),
                   paramList(paramList),
                   compound(compound) {};
 

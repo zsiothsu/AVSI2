@@ -47,6 +47,7 @@ namespace AVSI {
         COMMA,
         DOLLAR,
         COLON,
+        TO,
         DQUO,
         SQUO,
         // reserved keywork

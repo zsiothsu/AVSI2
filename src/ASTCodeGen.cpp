@@ -4,6 +4,7 @@
  * @Description: llvm code generator
  */
 #include <cstdlib>
+#include <set>
 
 #include "../inc/AST.h"
 #include "llvm/Support/TargetRegistry.h"
@@ -13,6 +14,8 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
+
+#define STRUCT(x) "struct."+(x)
 
 namespace AVSI {
     /*******************************************************
@@ -28,14 +31,20 @@ namespace AVSI {
     llvm::TargetMachine *TheTargetMachine = nullptr;
 
     /*******************************************************
-     *                       protos                        *
+     *               protos & definition                   *
      *******************************************************/
-    llvm::Type *REAL_TY =  llvm::Type::getDoubleTy(*the_context);
+    llvm::Type *REAL_TY = llvm::Type::getDoubleTy(*the_context);
+    llvm::Type *VOID_TY = llvm::Type::getVoidTy(*the_context);
 
     map<string, llvm::AllocaInst *> named_values;
     map<string, llvm::StructType *> struct_types;
     map<std::string, llvm::FunctionType *> function_protos;
 
+    set<string> simple_types = {"void", "real", "vec"};
+
+    /*******************************************************
+     *                     function                        *
+     *******************************************************/
     void llvm_module_fpm_init() {
         the_fpm->add(llvm::createReassociatePass());
 //        the_fpm->add(llvm::createGVNPass());
@@ -139,7 +148,7 @@ namespace AVSI {
     /*******************************************************
      *                    IR generator                     *
      *******************************************************/
-    llvm::AllocaInst *allocaBlockEntry(llvm::Function *fun, llvm::StringRef name, llvm::Type *Ty) {
+    llvm::AllocaInst *allocaBlockEntry(llvm::Function *fun, string name, llvm::Type *Ty) {
         llvm::IRBuilder<> blockEntry(
                 &fun->getEntryBlock(),
                 fun->getEntryBlock().begin()
@@ -148,22 +157,22 @@ namespace AVSI {
         return blockEntry.CreateAlloca(
                 Ty,
                 0,
-                name
+                name.c_str()
         );
     }
 
-    llvm::AllocaInst *allocaBlockEntry(llvm::BasicBlock *TheBB, llvm::StringRef name, llvm::Type *Ty) {
-        llvm::IRBuilder<> blockEntry(
-                TheBB,
-                TheBB->begin()
-        );
-
-        return blockEntry.CreateAlloca(
-                Ty,
-                0,
-                name
-        );
-    }
+//    llvm::AllocaInst *allocaBlockEntry(llvm::BasicBlock *TheBB, llvm::StringRef name, llvm::Type *Ty) {
+//        llvm::IRBuilder<> blockEntry(
+//                TheBB,
+//                TheBB->begin()
+//        );
+//
+//        return blockEntry.CreateAlloca(
+//                Ty,
+//                0,
+//                name
+//        );
+//    }
 
     llvm::Value *AST::codeGen() {
         return llvm::Constant::getNullValue(REAL_TY);
@@ -171,12 +180,22 @@ namespace AVSI {
 
     llvm::Value *Assign::codeGen() {
         llvm::Value *rv = this->right->codeGen();
+        llvm::Type *Ty = rv->getType();
+
+        if (Ty == VOID_TY) {
+            throw ExceptionFactory(
+                    __LogicException,
+                    "cannot assign void to variable",
+                    this->getToken().line, this->getToken().column
+            );
+        }
+
         string lname = ((Variable *) this->left)->id;
-        if (named_values.find(lname) != named_values.end()) {
+        if ((named_values.find(lname) != named_values.end()) && (named_values[lname]->getAllocatedType() == Ty)) {
             return builder->CreateStore(rv, named_values[lname]);
         } else {
             llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
-            llvm::AllocaInst *new_var_alloca = allocaBlockEntry(the_scope, lname, rv->getType());
+            llvm::AllocaInst *new_var_alloca = allocaBlockEntry(the_scope, lname, Ty);
             named_values[lname] = new_var_alloca;
             return builder->CreateStore(rv, new_var_alloca);
         }
@@ -307,25 +326,38 @@ namespace AVSI {
     }
 
     llvm::Value *FunctionDecl::codeGen() {
-        // create function type
+        // create function parameters' type
         std::vector<llvm::Type *> Tys;
         for (Variable *i: ((Param *) (this->paramList))->paramList) {
-            if (i->Ty.second != "real" && i->Ty.second != "vec") {
-                if (struct_types.find(i->Ty.second) == struct_types.end()) {
+            if (simple_types.find(i->Ty.second) == simple_types.end()) {
+                if (struct_types.find(STRUCT(i->Ty.second)) == struct_types.end()) {
                     throw ExceptionFactory(
                             __MissingException,
                             "missing type '" + i->Ty.second + "'",
                             i->getToken().line, i->getToken().column
                     );
                 } else {
-                    i->Ty.first = struct_types[i->Ty.second];
+                    i->Ty.first = struct_types[STRUCT(i->Ty.second)];
                 }
             }
             Tys.push_back(i->Ty.first);
         }
 
+        // check return type
+        if (simple_types.find(this->retTy.second) == simple_types.end()) {
+            if (struct_types.find(STRUCT(this->retTy.second)) == struct_types.end()) {
+                throw ExceptionFactory(
+                        __MissingException,
+                        "unknown return type '" + this->retTy.second + "'",
+                        this->getToken().line, this->getToken().column
+                );
+            } else {
+                this->retTy.first = struct_types[STRUCT(this->retTy.second)];
+            }
+        }
+
         llvm::FunctionType *FT = llvm::FunctionType::get(
-                REAL_TY,
+                this->retTy.first,
                 Tys,
                 false
         );
@@ -369,14 +401,14 @@ namespace AVSI {
             // initialize param
             named_values.clear();
             for (auto &arg: the_function->args()) {
-                llvm::AllocaInst *alloca = allocaBlockEntry(the_function, arg.getName(), arg.getType());
+                llvm::AllocaInst *alloca = allocaBlockEntry(the_function, arg.getName().str(), arg.getType());
                 builder->CreateStore(&arg, alloca);
                 named_values[string(arg.getName())] = alloca;
             }
 
             if (this->compound->codeGen()) {
                 auto t = builder->GetInsertBlock()->getTerminator();
-                if (!t) builder->CreateRet(llvm::ConstantFP::get(REAL_TY, 0.0));
+                if (!t && this->retTy.second != "void") builder->CreateRet(llvm::ConstantFP::get(REAL_TY, 0.0));
                 llvm::verifyFunction(*the_function, &llvm::errs());
                 the_fpm->run(*the_function);
                 return the_function;
@@ -461,7 +493,17 @@ namespace AVSI {
     }
 
     llvm::Value *Global::codeGen() {
-        string name = ((Variable *) this->var)->id;
+        auto *v = (Variable *) this->var;
+        string name = v->id;
+
+        if (v->Ty.first == VOID_TY) {
+            throw ExceptionFactory(
+                    __LogicException,
+                    "missing type of global variable '" + name + "'",
+                    this->getToken().column, this->getToken().column
+            );
+        }
+
         the_module->getOrInsertGlobal(name, builder->getBFloatTy());
         return llvm::Constant::getNullValue(REAL_TY);
     }
@@ -565,7 +607,7 @@ namespace AVSI {
         // the type that isn't in basic types must be defined before
         for (Variable *i: this->memberList) {
             if (i->Ty.second != "real" && i->Ty.second != "vec") {
-                if (struct_types.find(i->id) == struct_types.end()) {
+                if (struct_types.find(STRUCT(i->id)) == struct_types.end()) {
                     throw ExceptionFactory(
                             __MissingException,
                             "missing type '" + i->id + "'",
@@ -576,8 +618,8 @@ namespace AVSI {
             member_types.push_back(i->Ty.first);
         }
 
-        llvm::StructType *Ty = llvm::StructType::create(*the_context, member_types, struct_name);
-        struct_types[struct_name] = Ty;
+        llvm::StructType *Ty = llvm::StructType::create(*the_context, member_types, STRUCT(struct_name));
+        struct_types[STRUCT(struct_name)] = Ty;
 
         return llvm::Constant::getNullValue(REAL_TY);
     }

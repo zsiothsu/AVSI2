@@ -164,6 +164,7 @@ namespace AVSI {
                 if(_peek2 == "le") {advance(); advance(); advance(); return Token(LE,'o',line,column);}
                 if(_peek == 'o') {advance(); advance(); return Token(OR,'o',line,column);}
                 if(_peek == 'a') {advance(); advance(); return Token(AND,'o',line,column);}
+                if(_peek == '>') {advance();advance(); return Token(TO, 'o', line,column);}
             }
             map<char, TokenType>::iterator iter =
                     TokenMap.find(this->currentChar);
