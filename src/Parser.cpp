@@ -61,7 +61,6 @@ namespace AVSI {
     }
 
     AST *Parser::statement() {
-        // TODO Structre
         if (this->currentToken.getType() == FUNCTION) {
             return functionDecl();
         } else if (this->currentToken.getType() == RETURN) {
@@ -208,7 +207,7 @@ namespace AVSI {
 
         eat(RBRACE);
 
-        return new Object(token, members_list->paramList);
+        return new Object(token, id, members_list->paramList);
     }
 
     AST *Parser::IfStatement() {
@@ -270,10 +269,11 @@ namespace AVSI {
             }
 
             param->paramList.push_back(var);
-            if (this->currentToken.getType() != ID) {
+            if(this->currentToken.getType() == COMMA) {
+                eat(COMMA);
+            } else if (this->currentToken.getType() != ID) {
                 return param;
             }
-            eat(COMMA);
         }
         if (this->currentToken.getType() != ID) {
             return param;

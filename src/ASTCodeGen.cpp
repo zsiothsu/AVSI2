@@ -25,9 +25,16 @@ namespace AVSI {
     static unique_ptr<llvm::IRBuilder<>> builder = make_unique<llvm::IRBuilder<>>(*the_context);
     static unique_ptr<llvm::legacy::FunctionPassManager> the_fpm = make_unique<llvm::legacy::FunctionPassManager>(
             the_module);
-    map<string, llvm::AllocaInst *> named_values;
-    map<std::string, llvm::FunctionType *> function_protos;
     llvm::TargetMachine *TheTargetMachine = nullptr;
+
+    /*******************************************************
+     *                       protos                        *
+     *******************************************************/
+    llvm::Type *REAL_TY =  llvm::Type::getDoubleTy(*the_context);
+
+    map<string, llvm::AllocaInst *> named_values;
+    map<string, llvm::StructType *> struct_types;
+    map<std::string, llvm::FunctionType *> function_protos;
 
     void llvm_module_fpm_init() {
         the_fpm->add(llvm::createReassociatePass());
@@ -132,21 +139,34 @@ namespace AVSI {
     /*******************************************************
      *                    IR generator                     *
      *******************************************************/
-    llvm::AllocaInst *allocaBlockEntry(llvm::Function *fun, llvm::StringRef name) {
+    llvm::AllocaInst *allocaBlockEntry(llvm::Function *fun, llvm::StringRef name, llvm::Type *Ty) {
         llvm::IRBuilder<> blockEntry(
                 &fun->getEntryBlock(),
                 fun->getEntryBlock().begin()
         );
 
         return blockEntry.CreateAlloca(
-                llvm::Type::getDoubleTy(*the_context),
+                Ty,
+                0,
+                name
+        );
+    }
+
+    llvm::AllocaInst *allocaBlockEntry(llvm::BasicBlock *TheBB, llvm::StringRef name, llvm::Type *Ty) {
+        llvm::IRBuilder<> blockEntry(
+                TheBB,
+                TheBB->begin()
+        );
+
+        return blockEntry.CreateAlloca(
+                Ty,
                 0,
                 name
         );
     }
 
     llvm::Value *AST::codeGen() {
-        return llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*the_context));
+        return llvm::Constant::getNullValue(REAL_TY);
     }
 
     llvm::Value *Assign::codeGen() {
@@ -156,7 +176,7 @@ namespace AVSI {
             return builder->CreateStore(rv, named_values[lname]);
         } else {
             llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
-            llvm::AllocaInst *new_var_alloca = allocaBlockEntry(the_scope, lname);
+            llvm::AllocaInst *new_var_alloca = allocaBlockEntry(the_scope, lname, rv->getType());
             named_values[lname] = new_var_alloca;
             return builder->CreateStore(rv, new_var_alloca);
         }
@@ -184,34 +204,34 @@ namespace AVSI {
                 return builder->CreateFDiv(lv, rv, "divTmp");
             case EQ:
                 cmp_value_boolean = builder->CreateFCmpUEQ(lv, rv, "cmpEQTmp");
-                return builder->CreateUIToFP(cmp_value_boolean, llvm::Type::getDoubleTy(*the_context), "boolTmp");
+                return builder->CreateUIToFP(cmp_value_boolean, REAL_TY, "boolTmp");
             case NE:
                 cmp_value_boolean = builder->CreateFCmpUNE(lv, rv, "cmpNETmp");
-                return builder->CreateUIToFP(cmp_value_boolean, llvm::Type::getDoubleTy(*the_context), "boolTmp");
+                return builder->CreateUIToFP(cmp_value_boolean, REAL_TY, "boolTmp");
             case GT:
                 cmp_value_boolean = builder->CreateFCmpUGT(lv, rv, "cmpGTTmp");
-                return builder->CreateUIToFP(cmp_value_boolean, llvm::Type::getDoubleTy(*the_context), "boolTmp");
+                return builder->CreateUIToFP(cmp_value_boolean, REAL_TY, "boolTmp");
             case LT:
                 cmp_value_boolean = builder->CreateFCmpULT(lv, rv, "cmpLTTmp");
-                return builder->CreateUIToFP(cmp_value_boolean, llvm::Type::getDoubleTy(*the_context), "boolTmp");
+                return builder->CreateUIToFP(cmp_value_boolean, REAL_TY, "boolTmp");
             case GE:
                 cmp_value_boolean = builder->CreateFCmpUGE(lv, rv, "cmpGETmp");
-                return builder->CreateUIToFP(cmp_value_boolean, llvm::Type::getDoubleTy(*the_context), "boolTmp");
+                return builder->CreateUIToFP(cmp_value_boolean, REAL_TY, "boolTmp");
             case LE:
                 cmp_value_boolean = builder->CreateFCmpULE(lv, rv, "cmpLETmp");
-                return builder->CreateUIToFP(cmp_value_boolean, llvm::Type::getDoubleTy(*the_context), "boolTmp");
+                return builder->CreateUIToFP(cmp_value_boolean, REAL_TY, "boolTmp");
             case OR:
                 lv_bool = builder->CreateFPToUI(lv, llvm::Type::getInt1Ty(*the_context), "boolTmp");
                 rv_bool = builder->CreateFPToUI(rv, llvm::Type::getInt1Ty(*the_context), "boolTmp");
                 cmp_value_boolean = builder->CreateOr(lv_bool, rv_bool, "boolOrTmp");
 //                cmp_value_boolean = builder->CreateOr(lv, rv, "boolOrTmp");
-                return builder->CreateUIToFP(cmp_value_boolean, llvm::Type::getDoubleTy(*the_context), "boolTmp");
+                return builder->CreateUIToFP(cmp_value_boolean, REAL_TY, "boolTmp");
             case AND:
                 lv_bool = builder->CreateFPToUI(lv, llvm::Type::getInt1Ty(*the_context), "boolTmp");
                 rv_bool = builder->CreateFPToUI(rv, llvm::Type::getInt1Ty(*the_context), "boolTmp");
                 cmp_value_boolean = builder->CreateAnd(lv_bool, rv_bool, "boolAndTmp");
 //                cmp_value_boolean = builder->CreateAnd(lv, rv, "boolAndTmp");
-                return builder->CreateUIToFP(cmp_value_boolean, llvm::Type::getDoubleTy(*the_context), "boolTmp");
+                return builder->CreateUIToFP(cmp_value_boolean, REAL_TY, "boolTmp");
             default:
                 return nullptr;
         }
@@ -219,9 +239,9 @@ namespace AVSI {
 
     llvm::Value *Boolean::codeGen() {
         if (this->value == true) {
-            return llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context), 1.0);
+            return llvm::ConstantFP::get(REAL_TY, 1.0);
         } else {
-            return llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context), 0.0);
+            return llvm::ConstantFP::get(REAL_TY, 0.0);
         }
     }
 
@@ -283,18 +303,30 @@ namespace AVSI {
         the_function->getBasicBlockList().push_back(mergeBB);
         builder->SetInsertPoint(mergeBB);
 
-        return llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*the_context));
+        return llvm::Constant::getNullValue(REAL_TY);
     }
 
     llvm::Value *FunctionDecl::codeGen() {
         // create function type
-        std::vector<llvm::Type *> Doubles(
-                ((Param *) this->paramList)->paramList.size(),
-                llvm::Type::getDoubleTy(*the_context)
-        );
+        std::vector<llvm::Type *> Tys;
+        for (Variable *i: ((Param *) (this->paramList))->paramList) {
+            if (i->Ty.second != "real" && i->Ty.second != "vec") {
+                if (struct_types.find(i->Ty.second) == struct_types.end()) {
+                    throw ExceptionFactory(
+                            __MissingException,
+                            "missing type '" + i->Ty.second + "'",
+                            i->getToken().line, i->getToken().column
+                    );
+                } else {
+                    i->Ty.first = struct_types[i->Ty.second];
+                }
+            }
+            Tys.push_back(i->Ty.first);
+        }
+
         llvm::FunctionType *FT = llvm::FunctionType::get(
-                llvm::Type::getDoubleTy(*the_context),
-                Doubles,
+                REAL_TY,
+                Tys,
                 false
         );
 
@@ -337,14 +369,14 @@ namespace AVSI {
             // initialize param
             named_values.clear();
             for (auto &arg: the_function->args()) {
-                llvm::AllocaInst *alloca = allocaBlockEntry(the_function, arg.getName());
+                llvm::AllocaInst *alloca = allocaBlockEntry(the_function, arg.getName(), arg.getType());
                 builder->CreateStore(&arg, alloca);
                 named_values[string(arg.getName())] = alloca;
             }
 
             if (this->compound->codeGen()) {
                 auto t = builder->GetInsertBlock()->getTerminator();
-                if (!t) builder->CreateRet(llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context), 0.0));
+                if (!t) builder->CreateRet(llvm::ConstantFP::get(REAL_TY, 0.0));
                 llvm::verifyFunction(*the_function, &llvm::errs());
                 the_fpm->run(*the_function);
                 return the_function;
@@ -380,6 +412,23 @@ namespace AVSI {
             args.push_back(v);
         }
 
+        // check types
+        if (fun) {
+            auto callee_arg_iter = fun->args().begin();
+            auto caller_arg_iter = args.begin();
+            while (caller_arg_iter != args.end()) {
+                if (callee_arg_iter->getType() != (*caller_arg_iter)->getType()) {
+                    throw ExceptionFactory(
+                            __LogicException,
+                            "unmatched type",
+                            this->getToken().line, this->getToken().column
+                    );
+                }
+                callee_arg_iter++;
+                caller_arg_iter++;
+            }
+        }
+
         if (fun) {
             // for function have declared
             return builder->CreateCall(fun, args, "callLocal");
@@ -395,7 +444,7 @@ namespace AVSI {
             }
 
             llvm::FunctionType *FT = llvm::FunctionType::get(
-                    llvm::Type::getDoubleTy(*the_context),
+                    REAL_TY,
                     types,
                     false
             );
@@ -414,7 +463,7 @@ namespace AVSI {
     llvm::Value *Global::codeGen() {
         string name = ((Variable *) this->var)->id;
         the_module->getOrInsertGlobal(name, builder->getBFloatTy());
-        return llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*the_context));
+        return llvm::Constant::getNullValue(REAL_TY);
     }
 
     llvm::Value *If::codeGen() {
@@ -491,7 +540,7 @@ namespace AVSI {
             the_function->getBasicBlockList().push_back(mergeBB);
             builder->SetInsertPoint(mergeBB);
 
-            llvm::PHINode *PN = builder->CreatePHI(llvm::Type::getDoubleTy(*the_context),
+            llvm::PHINode *PN = builder->CreatePHI(REAL_TY,
                                                    non_ret_block_then + non_ret_block_else, "ifTmp");
             if (non_ret_block_then) PN->addIncoming(thenv, thenBB);
             if (non_ret_block_else) PN->addIncoming(elsev, elseBB);
@@ -504,13 +553,33 @@ namespace AVSI {
 
     llvm::Value *Num::codeGen() {
 //        auto t = llvm::ConstantFP::get(*the_context, llvm::APFloat((double)this->value));
-        auto t = llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context),
+        auto t = llvm::ConstantFP::get(REAL_TY,
                                        (double) this->getValue().any_cast<double>());
         return t;
     }
 
     llvm::Value *Object::codeGen() {
-        //TODO codegen
+        string struct_name = this->id;
+        vector<llvm::Type *> member_types;
+        // check types
+        // the type that isn't in basic types must be defined before
+        for (Variable *i: this->memberList) {
+            if (i->Ty.second != "real" && i->Ty.second != "vec") {
+                if (struct_types.find(i->id) == struct_types.end()) {
+                    throw ExceptionFactory(
+                            __MissingException,
+                            "missing type '" + i->id + "'",
+                            i->getToken().line, i->getToken().column
+                    );
+                }
+            }
+            member_types.push_back(i->Ty.first);
+        }
+
+        llvm::StructType *Ty = llvm::StructType::create(*the_context, member_types, struct_name);
+        struct_types[struct_name] = Ty;
+
+        return llvm::Constant::getNullValue(REAL_TY);
     }
 
     llvm::Value *UnaryOp::codeGen() {
@@ -525,20 +594,20 @@ namespace AVSI {
 
         if (this->op.getType() == MINUS) {
             return builder->CreateFSub(
-                    llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context), 0.0),
+                    llvm::ConstantFP::get(REAL_TY, 0.0),
                     rv,
                     "unaryAddTmp"
             );
         } else if (this->op.getType() == PLUS) {
             return builder->CreateFAdd(
-                    llvm::ConstantFP::get(llvm::Type::getDoubleTy(*the_context), 0.0),
+                    llvm::ConstantFP::get(REAL_TY, 0.0),
                     rv,
                     "unarySubTmp"
             );
         } else if (this->op.getType() == NOT) {
             llvm::Value *rv_bool = builder->CreateFPToUI(rv, llvm::Type::getInt1Ty(*the_context), "boolTmp");
             llvm::Value *v = builder->CreateNot(rv_bool, "unaryNotTmp");
-            return builder->CreateUIToFP(v, llvm::Type::getDoubleTy(*the_context), "boolTmp");
+            return builder->CreateUIToFP(v, REAL_TY, "boolTmp");
         } else {
             return nullptr;
         }
@@ -559,15 +628,16 @@ namespace AVSI {
             return v;
         }
 
-        return builder->CreateLoad(v, this->id.c_str());
+        return builder->CreateLoad(v->getType()->getPointerElementType(), v, this->id.c_str());
     }
+
 
     llvm::Value *Compound::codeGen() {
         for (AST *ast: this->child) {
             ast->codeGen();
         }
 
-        return llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*the_context));
+        return llvm::Constant::getNullValue(REAL_TY);
     }
 
     llvm::Value *Return::codeGen() {
@@ -628,10 +698,10 @@ namespace AVSI {
         the_function->getBasicBlockList().push_back(mergeBB);
         builder->SetInsertPoint(mergeBB);
 
-        return llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*the_context));
+        return llvm::Constant::getNullValue(REAL_TY);
     }
 
     llvm::Value *NoneAST::codeGen() {
-        return llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*the_context));
+        return llvm::Constant::getNullValue(REAL_TY);
     }
 }

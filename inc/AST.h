@@ -300,15 +300,17 @@ namespace AVSI {
 
     class Object : public AST {
     public:
+        string id;
         vector<Variable *> memberList;
 
         Object(void) : AST(__OBJECT_NAME), memberList(vector<Variable *>()) {};
 
         Object(Token token) : AST(__OBJECT_NAME, token), memberList(vector<Variable *>()) {};
 
-        Object(Token token, vector<Variable *>)
+        Object(Token token, string id, vector<Variable *> memberList)
                 : AST(__OBJECT_NAME, token),
-                  memberList(vector<Variable *>()) {};
+                  id(id),
+                  memberList(memberList) {};
 
         llvm::Value *codeGen() override;
     };
