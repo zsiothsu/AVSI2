@@ -7,6 +7,7 @@
 #include <set>
 
 #include "../inc/AST.h"
+#include "../inc/SymbolTable.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Host.h"
@@ -36,7 +37,7 @@ namespace AVSI {
     llvm::Type *REAL_TY = llvm::Type::getDoubleTy(*the_context);
     llvm::Type *VOID_TY = llvm::Type::getVoidTy(*the_context);
 
-    map<string, llvm::AllocaInst *> named_values;
+    SymbolTable *symbol_table = new SymbolTable();
     map<string, llvm::StructType *> struct_types;
     map<std::string, llvm::FunctionType *> function_protos;
 
@@ -46,12 +47,12 @@ namespace AVSI {
      *                     function                        *
      *******************************************************/
     void llvm_module_fpm_init() {
-        the_fpm->add(llvm::createReassociatePass());
+//        the_fpm->add(llvm::createReassociatePass());
 //        the_fpm->add(llvm::createGVNPass());
 //        the_fpm->add(llvm::createInstructionCombiningPass());
-        the_fpm->add(llvm::createCFGSimplificationPass());
-        the_fpm->add(llvm::createDeadCodeEliminationPass());
-        the_fpm->add(llvm::createFlattenCFGPass());
+//        the_fpm->add(llvm::createCFGSimplificationPass());
+//        the_fpm->add(llvm::createDeadCodeEliminationPass());
+//        the_fpm->add(llvm::createFlattenCFGPass());
 
         the_fpm->doInitialization();
     }
@@ -161,18 +162,18 @@ namespace AVSI {
         );
     }
 
-//    llvm::AllocaInst *allocaBlockEntry(llvm::BasicBlock *TheBB, llvm::StringRef name, llvm::Type *Ty) {
-//        llvm::IRBuilder<> blockEntry(
-//                TheBB,
-//                TheBB->begin()
-//        );
-//
-//        return blockEntry.CreateAlloca(
-//                Ty,
-//                0,
-//                name
-//        );
-//    }
+    llvm::AllocaInst *allocaBlockEntry(llvm::BasicBlock *TheBB, llvm::StringRef name, llvm::Type *Ty) {
+        llvm::IRBuilder<> blockEntry(
+                TheBB,
+                TheBB->begin()
+        );
+
+        return blockEntry.CreateAlloca(
+                Ty,
+                0,
+                name
+        );
+    }
 
     llvm::Value *AST::codeGen() {
         return llvm::Constant::getNullValue(REAL_TY);
@@ -191,14 +192,17 @@ namespace AVSI {
         }
 
         string lname = ((Variable *) this->left)->id;
-        if ((named_values.find(lname) != named_values.end()) && (named_values[lname]->getAllocatedType() == Ty)) {
-            return builder->CreateStore(rv, named_values[lname]);
+
+        auto pre_allocated = symbol_table->find(lname);
+        if(pre_allocated != nullptr && pre_allocated->getAllocatedType() == Ty) {
+            builder->CreateStore(rv, pre_allocated);
         } else {
             llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
             llvm::AllocaInst *new_var_alloca = allocaBlockEntry(the_scope, lname, Ty);
-            named_values[lname] = new_var_alloca;
-            return builder->CreateStore(rv, new_var_alloca);
+            symbol_table->insert(lname, new_var_alloca);
+            builder->CreateStore(rv, new_var_alloca);
         }
+        return rv;
     }
 
     llvm::Value *BinOp::codeGen() {
@@ -281,10 +285,12 @@ namespace AVSI {
         the_function->getBasicBlockList().push_back(headBB);
         builder->SetInsertPoint(headBB);
 
+        symbol_table->push(headBB);
         llvm::Value *cond = this->condition->codeGen();
         if (!cond) {
             return nullptr;
         }
+
         cond = builder->CreateFCmpONE(cond, llvm::ConstantFP::get(*the_context, llvm::APFloat(0.0)));
         llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
         llvm::IRBuilder<> blockEntry(
@@ -313,6 +319,8 @@ namespace AVSI {
         if (!adjust) {
             return nullptr;
         }
+        symbol_table->pop();
+
         auto t = builder->GetInsertBlock()->getTerminator();
         if (!t) {
             builder->CreateBr(headBB);
@@ -396,19 +404,20 @@ namespace AVSI {
 
             // create body
             llvm::BasicBlock *BB = llvm::BasicBlock::Create(*the_context, "entry", the_function);
+            symbol_table->push(BB);
             builder->SetInsertPoint(BB);
 
             // initialize param
-            named_values.clear();
             for (auto &arg: the_function->args()) {
                 llvm::AllocaInst *alloca = allocaBlockEntry(the_function, arg.getName().str(), arg.getType());
                 builder->CreateStore(&arg, alloca);
-                named_values[string(arg.getName())] = alloca;
+                symbol_table->insert(arg.getName().str(), alloca);
             }
 
             if (this->compound->codeGen()) {
                 auto t = builder->GetInsertBlock()->getTerminator();
                 if (!t && this->retTy.second != "void") builder->CreateRet(llvm::ConstantFP::get(REAL_TY, 0.0));
+                symbol_table->pop();
                 llvm::verifyFunction(*the_function, &llvm::errs());
                 the_fpm->run(*the_function);
                 return the_function;
@@ -504,7 +513,7 @@ namespace AVSI {
             );
         }
 
-        the_module->getOrInsertGlobal(name, builder->getBFloatTy());
+        the_module->getOrInsertGlobal(name, v->Ty.first);
         return llvm::Constant::getNullValue(REAL_TY);
     }
 
@@ -555,10 +564,12 @@ namespace AVSI {
 
             the_function->getBasicBlockList().push_back(thenBB);
             builder->SetInsertPoint(thenBB);
+            symbol_table->push(thenBB);
             llvm::Value *thenv = this->compound->codeGen();
             if (!thenv) {
                 return nullptr;
             }
+            symbol_table->pop();
             auto t = builder->GetInsertBlock()->getTerminator();
             if (!t) {
                 builder->CreateBr(mergeBB);
@@ -568,10 +579,12 @@ namespace AVSI {
 
             the_function->getBasicBlockList().push_back(elseBB);
             builder->SetInsertPoint(elseBB);
+            symbol_table->push(elseBB);
             llvm::Value *elsev = this->next->codeGen();
             if (!elsev) {
                 return nullptr;
             }
+            symbol_table->pop();
             t = builder->GetInsertBlock()->getTerminator();
             if (!t) {
                 builder->CreateBr(mergeBB);
@@ -656,7 +669,7 @@ namespace AVSI {
     }
 
     llvm::Value *Variable::codeGen() {
-        llvm::Value *v = named_values[this->id];
+        llvm::Value *v = symbol_table->find(this->id);
 
         if (!v) {
             v = the_module->getGlobalVariable(this->id);
@@ -707,6 +720,8 @@ namespace AVSI {
         the_function->getBasicBlockList().push_back(headBB);
         builder->SetInsertPoint(headBB);
 
+        symbol_table->push(headBB);
+
         llvm::Value *cond = this->condition->codeGen();
         if (!cond) {
             return nullptr;
@@ -732,6 +747,9 @@ namespace AVSI {
         if (!body) {
             return nullptr;
         }
+
+        symbol_table->pop();
+
         auto t = builder->GetInsertBlock()->getTerminator();
         if (!t) {
             builder->CreateBr(headBB);
