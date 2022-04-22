@@ -22,32 +22,33 @@ namespace AVSI {
         COMPOUND,
         ID,
         // operator
-        PLUS,
-        MINUS,
-        STAR,
-        SLASH,
-        EQUAL,
-        NOT,
-        EQ,
-        NE,
-        GT,
-        LT,
-        GE,
-        LE,
-        OR,
-        AND,
+        PLUS,       // +
+        MINUS,      // -
+        STAR,       // *
+        SLASH,      // /
+        EQUAL,      // =
+        NOT,        // !
+        DOT,        // .
+        EQ,         // ==   -eq
+        NE,         // !=   -ne
+        GT,         // >    -gt
+        LT,         // <    -lt
+        GE,         // >=   -ge
+        LE,         // <=   -le
+        OR,         // ||   -o
+        AND,        // &&   -a
         // symbol
-        LPAR,
-        RPAR,
-        LSQB,
-        RSQB,
-        LBRACE,
-        RBRACE,
-        SEMI,
-        COMMA,
-        DOLLAR,
-        COLON,
-        TO,
+        LPAR,       // (
+        RPAR,       // )
+        LSQB,       // [
+        RSQB,       // ]
+        LBRACE,     // {
+        RBRACE,     // }
+        SEMI,       // ;
+        COMMA,      // ,
+        DOLLAR,     // $
+        COLON,      // :
+        TO,         // ->
         DQUO,
         SQUO,
         // reserved keywork

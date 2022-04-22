@@ -38,7 +38,7 @@ namespace AVSI {
     llvm::Type *VOID_TY = llvm::Type::getVoidTy(*the_context);
 
     SymbolTable *symbol_table = new SymbolTable();
-    map<string, llvm::StructType *> struct_types;
+    map<string, StructDef *> struct_types;
     map<std::string, llvm::FunctionType *> function_protos;
 
     set<string> simple_types = {"void", "real", "vec"};
@@ -162,18 +162,80 @@ namespace AVSI {
         );
     }
 
-    llvm::AllocaInst *allocaBlockEntry(llvm::BasicBlock *TheBB, llvm::StringRef name, llvm::Type *Ty) {
-        llvm::IRBuilder<> blockEntry(
-                TheBB,
-                TheBB->begin()
-        );
+    llvm::Value *getAlloca(Variable *var) {
+        llvm::Value *v = symbol_table->find(var->id);
 
-        return blockEntry.CreateAlloca(
-                Ty,
-                0,
-                name
-        );
+        if (!v) {
+            v = the_module->getGlobalVariable(var->id);
+        }
+
+        if (v && !var->offset.empty()) {
+            for (auto i: var->offset) {
+                vector<llvm::Value *> offset_list;
+                offset_list.push_back(llvm::ConstantInt::get(
+                        llvm::Type::getInt32Ty(*the_context),
+                        0,
+                        true)
+                );
+                if (i.first == Variable::ARRAY) {
+                    llvm::Value *index = i.second->codeGen();
+                    index = builder->CreateFPToSI(index, llvm::Type::getInt32Ty((*the_context)));
+                    offset_list.push_back(index);
+
+                    try {
+                        v = builder->CreateGEP(
+                                llvm::cast<llvm::PointerType>(v->getType()->getScalarType())->getElementType(),
+                                v,
+                                offset_list,
+                                var->id
+                        );
+                    } catch (...) {
+                        throw ExceptionFactory(
+                                __TypeException,
+                                "index out of range or not an array",
+                                i.second->getToken().line, i.second->getToken().column
+                        );
+                    }
+
+                } else {
+                    string member_name = ((Variable *) (i.second))->id;
+                    auto current_ty = v->getType()->getPointerElementType();
+
+                    bool find_flag = false;
+                    for (auto iter: struct_types) {
+                        if (iter.second->Ty == current_ty) {
+                            auto index = iter.second->members[member_name];
+                            offset_list.push_back(llvm::ConstantInt::get(
+                                    llvm::Type::getInt32Ty(*the_context),
+                                    index,
+                                    true)
+                            );
+                            find_flag = true;
+                            break;
+                        }
+                    }
+
+                    if (find_flag) {
+                        v = builder->CreateGEP(
+                                llvm::cast<llvm::PointerType>(v->getType()->getScalarType())->getElementType(),
+                                v,
+                                offset_list,
+                                var->id
+                        );
+                    } else {
+                        throw ExceptionFactory(
+                                __MissingException,
+                                "unrecognized member '" + member_name + "'",
+                                i.second->getToken().line, i.second->getToken().column
+                        );
+                    }
+                }
+            }
+        }
+
+        return v;
     }
+
 
     llvm::Value *AST::codeGen() {
         return llvm::Constant::getNullValue(REAL_TY);
@@ -193,14 +255,21 @@ namespace AVSI {
 
         string lname = ((Variable *) this->left)->id;
 
-        auto pre_allocated = symbol_table->find(lname);
-        if(pre_allocated != nullptr && pre_allocated->getAllocatedType() == Ty) {
+        auto pre_allocated = getAlloca((Variable *) this->left);
+
+        if (pre_allocated != nullptr && pre_allocated->getType()->getPointerElementType() == Ty) {
             builder->CreateStore(rv, pre_allocated);
-        } else {
+        } else if (((Variable *) this->left)->offset.empty()) {
             llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
             llvm::AllocaInst *new_var_alloca = allocaBlockEntry(the_scope, lname, Ty);
             symbol_table->insert(lname, new_var_alloca);
             builder->CreateStore(rv, new_var_alloca);
+        } else {
+            throw ExceptionFactory(
+                    __LogicException,
+                    "not matched type",
+                    this->getToken().line, this->getToken().column
+            );
         }
         return rv;
     }
@@ -345,7 +414,7 @@ namespace AVSI {
                             i->getToken().line, i->getToken().column
                     );
                 } else {
-                    i->Ty.first = struct_types[STRUCT(i->Ty.second)];
+                    i->Ty.first = struct_types[STRUCT(i->Ty.second)]->Ty;
                 }
             }
             Tys.push_back(i->Ty.first);
@@ -360,7 +429,7 @@ namespace AVSI {
                         this->getToken().line, this->getToken().column
                 );
             } else {
-                this->retTy.first = struct_types[STRUCT(this->retTy.second)];
+                this->retTy.first = struct_types[STRUCT(this->retTy.second)]->Ty;
             }
         }
 
@@ -616,23 +685,37 @@ namespace AVSI {
     llvm::Value *Object::codeGen() {
         string struct_name = this->id;
         vector<llvm::Type *> member_types;
+        map<string, int> member_index;
+        int index = 0;
+
         // check types
         // the type that isn't in basic types must be defined before
         for (Variable *i: this->memberList) {
+            if (i->Ty.second == this->id) {
+                throw ExceptionFactory(
+                        __MissingException,
+                        "incomplete type '" + i->Ty.second + "'",
+                        i->getToken().line, i->getToken().column
+                );
+            }
+
             if (i->Ty.second != "real" && i->Ty.second != "vec") {
                 if (struct_types.find(STRUCT(i->id)) == struct_types.end()) {
                     throw ExceptionFactory(
                             __MissingException,
-                            "missing type '" + i->id + "'",
+                            "missing type '" + i->Ty.second + "'",
                             i->getToken().line, i->getToken().column
                     );
                 }
             }
             member_types.push_back(i->Ty.first);
+            member_index[i->id] = index++;
         }
 
         llvm::StructType *Ty = llvm::StructType::create(*the_context, member_types, STRUCT(struct_name));
-        struct_types[STRUCT(struct_name)] = Ty;
+        StructDef *sd = new StructDef(Ty);
+        sd->members = member_index;
+        struct_types[STRUCT(struct_name)] = sd;
 
         return llvm::Constant::getNullValue(REAL_TY);
     }
@@ -669,19 +752,7 @@ namespace AVSI {
     }
 
     llvm::Value *Variable::codeGen() {
-        llvm::Value *v = symbol_table->find(this->id);
-
-        if (!v) {
-            v = the_module->getGlobalVariable(this->id);
-            if (!v) {
-                throw ExceptionFactory(
-                        __LogicException,
-                        "variable '" + this->id + "' is not defined",
-                        this->token.line, this->token.column
-                );
-            }
-            return v;
-        }
+        llvm::Value *v = getAlloca(this);
 
         return builder->CreateLoad(v->getType()->getPointerElementType(), v, this->id.c_str());
     }

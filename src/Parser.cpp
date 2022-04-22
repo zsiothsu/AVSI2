@@ -441,7 +441,26 @@ namespace AVSI {
             Ty = eatType();
         }
 
-        return new Variable(var, Ty);
+        // process [expr] and .ID
+        vector<pair<Variable::offsetType, AST*>> offset;
+        TokenType current_type = this->currentToken.getType();
+        while (current_type == LSQB || current_type == DOT) {
+            if(current_type == LSQB) {
+                eat(LSQB);
+                AST *val = expr();
+                eat(RSQB);
+                offset.push_back(pair<Variable::offsetType, AST*>(Variable::ARRAY, val));
+            } else {
+                eat(DOT);
+                Token id = this->currentToken;
+                eat(ID);
+                offset.push_back(pair<Variable::offsetType, AST*>(Variable::MEMBER, new Variable(id)));
+            }
+            current_type = this->currentToken.getType();
+        }
+
+
+        return new Variable(var, Ty, offset);
     }
 
     AST *Parser::WhileStatement() {

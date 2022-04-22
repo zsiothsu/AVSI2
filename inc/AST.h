@@ -29,6 +29,7 @@
 #include "Exception.h"
 #include "Token.h"
 #include <typeinfo>
+#include <utility>
 #include <vector>
 
 #define __ASSIGN_NAME           "Assign"
@@ -74,9 +75,9 @@ namespace AVSI {
 
         AST(void) {};
 
-        AST(string name) : __AST_name(name) {};
+        AST(string name) : __AST_name(std::move(name)) {};
 
-        AST(string name, Token token) : token(token), __AST_name(name) {};
+        AST(string name, const Token& token) : token(token), __AST_name(std::move(name)) {};
 
         virtual ~AST() {};
 
@@ -96,7 +97,7 @@ namespace AVSI {
 
         Assign(void) : AST(__ASSIGN_NAME), left(nullptr), right(nullptr) {};
 
-        Assign(Token token, AST *left, AST *right)
+        Assign(const Token& token, AST *left, AST *right)
                 : AST(__ASSIGN_NAME, token),
                   left(left),
                   right(right) {};
@@ -120,7 +121,7 @@ namespace AVSI {
                   left(nullptr),
                   right(nullptr) {};
 
-        BinOp(AST *left, Token op, AST *right)
+        BinOp(AST *left, const Token& op, AST *right)
                 : AST(__BINOP_NAME, op), op(op), left(left), right(right) {};
 
         virtual ~BinOp();
@@ -137,7 +138,7 @@ namespace AVSI {
     public:
         Boolean(void) : AST(__BOOL_NAME) {};
 
-        Boolean(Token token) : AST(__BOOL_NAME, token), value((token.getType() == TRUE) ? true : false) {};
+        Boolean(Token token) : AST(__BOOL_NAME, token), value((token.getType() == TRUE)) {};
 
         virtual ~Boolean() {};
 
@@ -190,10 +191,10 @@ namespace AVSI {
         FunctionDecl(void)
                 : AST(__FUNCTIONDECL_NAME), retTy(Type()), paramList(nullptr), compound(nullptr) {};
 
-        FunctionDecl(string id, Type retTy, AST *paramList, AST *compound, Token token)
+        FunctionDecl(string id, Type retTy, AST *paramList, AST *compound, const Token& token)
                 : AST(__FUNCTIONDECL_NAME, token),
-                  id(id),
-                  retTy(retTy),
+                  id(std::move(id)),
+                  retTy(std::move(retTy)),
                   paramList(paramList),
                   compound(compound) {};
 
@@ -210,8 +211,8 @@ namespace AVSI {
         FunctionCall(void)
                 : AST(__FUNCTIONCALL_NAME), paramList(vector<AST *>()) {};
 
-        FunctionCall(string id, vector<AST *> paramList, Token token)
-                : AST(__FUNCTIONCALL_NAME, token), id(id), paramList(paramList) {};
+        FunctionCall(string id, vector<AST *> paramList, const Token& token)
+                : AST(__FUNCTIONCALL_NAME, token), id(std::move(id)), paramList(std::move(paramList)) {};
 
         virtual ~FunctionCall();
 
@@ -257,7 +258,7 @@ namespace AVSI {
     public:
         Num(void) : AST(__NUM_NAME) {};
 
-        Num(Token token) : AST(__NUM_NAME, token), value(token.getValue()) {};
+        explicit Num(Token token) : AST(__NUM_NAME, token), value(token.getValue()) {};
 
         virtual ~Num() {};
 
@@ -271,19 +272,36 @@ namespace AVSI {
         std::string id;
         Type Ty;
 
+        enum offsetType {
+            ARRAY = 0,
+            MEMBER = 1
+        };
+
+        vector<pair<offsetType, AST*>> offset;
+
         Variable(void)
                 : AST(__VARIABLE_NAME),
-                  id(""), Ty(Type(nullptr, "")) {};
+                  id(""),
+                  Ty(Type(nullptr, "")),
+                  offset() {};
 
-        Variable(Token var)
+        explicit Variable(Token var)
                 : AST(__VARIABLE_NAME, var),
                   id(var.getValue().any_cast<std::string>()),
-                  Ty(Type(nullptr, "")) {};
+                  Ty(Type(nullptr, "")),
+                  offset() {};
 
         Variable(Token var, Type ty)
                 : AST(__VARIABLE_NAME, var),
                   id(var.getValue().any_cast<std::string>()),
-                  Ty(ty) {};
+                  Ty(std::move(ty)),
+                  offset(){};
+
+        Variable(Token var, Type ty, vector<pair<offsetType, AST*>> offset)
+                : AST(__VARIABLE_NAME, var),
+                  id(var.getValue().any_cast<std::string>()),
+                  Ty(std::move(ty)),
+                  offset(std::move(offset)){};
 
         ~Variable() {};
 
@@ -297,12 +315,14 @@ namespace AVSI {
 
         Object(void) : AST(__OBJECT_NAME), memberList(vector<Variable *>()) {};
 
-        Object(Token token) : AST(__OBJECT_NAME, token), memberList(vector<Variable *>()) {};
+        Object(const Token& token) : AST(__OBJECT_NAME, token), memberList(vector<Variable *>()) {};
 
-        Object(Token token, string id, vector<Variable *> memberList)
+        Object(const Token& token, string id, vector<Variable *> memberList)
                 : AST(__OBJECT_NAME, token),
-                  id(id),
-                  memberList(memberList) {};
+                  id(std::move(id)),
+                  memberList(std::move(memberList)) {};
+
+        virtual ~Object() {}
 
         llvm::Value *codeGen() override;
     };
@@ -320,7 +340,7 @@ namespace AVSI {
 
         Return(void) : AST(__RETURN_NAME) {};
 
-        Return(Token token, AST *ret) : AST(__RETURN_NAME, token), ret(ret) {};
+        Return(const Token& token, AST *ret) : AST(__RETURN_NAME, token), ret(ret) {};
 
         llvm::Value *codeGen() override;
     };
@@ -365,7 +385,7 @@ namespace AVSI {
         While(void)
                 : AST(__WHILE_NAME), condition(nullptr), compound(nullptr) {};
 
-        While(AST *condition, AST *compound, Token token)
+        While(AST *condition, AST *compound, const Token& token)
                 : AST(__WHILE_NAME, token), condition(condition), compound(compound) {};
 
         virtual ~While();

@@ -65,7 +65,8 @@ namespace AVSI {
             {';', SEMI},
             {',', COMMA},
             {'$', DOLLAR},
-            {':', COLON}};
+            {':', COLON},
+            {'.', DOT}};
 
     static map<string, TokenType> reservedKeyword = {
             {"function", FUNCTION},
