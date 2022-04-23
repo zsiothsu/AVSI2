@@ -5,6 +5,7 @@
  * @Description: include Parser class
  */
 #include "../inc/Parser.h"
+#include "SymbolTable.h"
 
 namespace AVSI {
     /*******************************************************
@@ -12,6 +13,8 @@ namespace AVSI {
      *******************************************************/
     extern llvm::LLVMContext *the_context;
     extern llvm::Module *the_module;
+    extern map<llvm::Type *, string> type_name;
+    extern map<string, StructDef *> struct_types;
 
     /*******************************************************
      *                    constructor                      *
@@ -200,7 +203,12 @@ namespace AVSI {
 
         Param *members_list = (Param *) param();
         vector<Variable *> &li = members_list->paramList;
+        vector<llvm::Type *> member_types;
+        map<string, int> member_index;
+        int index = 0;
+
         // check types
+        // map members' name to sequence
         for (Variable *i: li) {
             if (i->Ty.first == nullptr) {
                 throw ExceptionFactory(
@@ -209,9 +217,49 @@ namespace AVSI {
                         i->getToken().line, i->getToken().column
                 );
             }
+
+            if (i->Ty.second == id) {
+                throw ExceptionFactory(
+                        __MissingException,
+                        "incomplete type '" + i->Ty.second + "'",
+                        i->getToken().line, i->getToken().column
+                );
+            }
+
+            if (i->Ty.second != "real" && i->Ty.second != "vec") {
+                if (struct_types.find(STRUCT(i->id)) == struct_types.end()) {
+                    throw ExceptionFactory(
+                            __MissingException,
+                            "missing type '" + i->Ty.second + "'",
+                            i->getToken().line, i->getToken().column
+                    );
+                }
+            }
+
+            member_types.push_back(i->Ty.first);
+            member_index[i->id] = index++;
         }
 
         eat(RBRACE);
+
+        // register a struct type
+        llvm::StructType *Ty = llvm::StructType::create(*the_context, member_types, STRUCT(id));
+        StructDef *sd = new StructDef(Ty);
+        sd->members = member_index;
+        struct_types[STRUCT(id)] = sd;
+
+        // generate type name
+        string struct_type_name = id + "{";
+        bool first_flag = true;
+        for (auto i: member_types) {
+            if (!first_flag) {
+                struct_type_name += ",";
+            }
+            first_flag = false;
+            struct_type_name += type_name[i];
+        }
+        struct_type_name += "}";
+        type_name[Ty] = struct_type_name;
 
         return new Object(token, id, members_list->paramList);
     }
@@ -442,19 +490,19 @@ namespace AVSI {
         }
 
         // process [expr] and .ID
-        vector<pair<Variable::offsetType, AST*>> offset;
+        vector<pair<Variable::offsetType, AST *>> offset;
         TokenType current_type = this->currentToken.getType();
         while (current_type == LSQB || current_type == DOT) {
-            if(current_type == LSQB) {
+            if (current_type == LSQB) {
                 eat(LSQB);
                 AST *val = expr();
                 eat(RSQB);
-                offset.push_back(pair<Variable::offsetType, AST*>(Variable::ARRAY, val));
+                offset.push_back(pair<Variable::offsetType, AST *>(Variable::ARRAY, val));
             } else {
                 eat(DOT);
                 Token id = this->currentToken;
                 eat(ID);
-                offset.push_back(pair<Variable::offsetType, AST*>(Variable::MEMBER, new Variable(id)));
+                offset.push_back(pair<Variable::offsetType, AST *>(Variable::MEMBER, new Variable(id)));
             }
             current_type = this->currentToken.getType();
         }
@@ -501,6 +549,7 @@ namespace AVSI {
                 }
                 eat(RSQB);
                 llvm::Type *Ty = llvm::ArrayType::get(nest.first, array_size);
+                type_name[Ty] = "vec[" + type_name[nest.first] + ";" + to_string(array_size) + "]";
                 return Type(Ty, "vec");
             }
             throw ExceptionFactory(
@@ -509,9 +558,16 @@ namespace AVSI {
                     this->currentToken.line, this->currentToken.column
             );
         } else if (this->currentToken.getType() == ID) {
-            // this StructType is not the real type in generated IR code.
-            // it will be replaced to more detailed type in code generation.
-            Type Ty = Type(llvm::StructType::get(*the_context), this->currentToken.getValue().any_cast<string>());
+            string id = this->currentToken.getValue().any_cast<string>();
+            if (struct_types.find(STRUCT(id)) == struct_types.end()) {
+                throw ExceptionFactory(
+                        __MissingException,
+                        "missing type '" + id + "'",
+                        this->currentToken.line, this->currentToken.column
+                );
+            }
+
+            Type Ty = Type(struct_types[STRUCT(id)]->Ty, this->currentToken.getValue().any_cast<string>());
             eat(ID);
             return Ty;
         } else {

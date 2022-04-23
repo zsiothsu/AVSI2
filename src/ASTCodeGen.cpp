@@ -16,8 +16,6 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 
-#define STRUCT(x) "struct."+(x)
-
 namespace AVSI {
     /*******************************************************
      *                      llvm base                      *
@@ -36,12 +34,18 @@ namespace AVSI {
      *******************************************************/
     llvm::Type *REAL_TY = llvm::Type::getDoubleTy(*the_context);
     llvm::Type *VOID_TY = llvm::Type::getVoidTy(*the_context);
+    llvm::Type *BOOL_TY = llvm::Type::getInt1Ty(*the_context);
 
     SymbolTable *symbol_table = new SymbolTable();
     map<string, StructDef *> struct_types;
     map<std::string, llvm::FunctionType *> function_protos;
 
     set<string> simple_types = {"void", "real", "vec"};
+    map<llvm::Type*,string> type_name = {
+            {REAL_TY, "real"},
+            {VOID_TY, "void"},
+            {BOOL_TY, "bool"}
+    };
 
     /*******************************************************
      *                     function                        *
@@ -267,7 +271,9 @@ namespace AVSI {
         } else {
             throw ExceptionFactory(
                     __LogicException,
-                    "not matched type",
+                    "not matched type, left: " + \
+                    type_name[pre_allocated->getType()->getPointerElementType()] + \
+                    ", right: " + type_name[Ty],
                     this->getToken().line, this->getToken().column
             );
         }
@@ -313,14 +319,14 @@ namespace AVSI {
                 cmp_value_boolean = builder->CreateFCmpULE(lv, rv, "cmpLETmp");
                 return builder->CreateUIToFP(cmp_value_boolean, REAL_TY, "boolTmp");
             case OR:
-                lv_bool = builder->CreateFPToUI(lv, llvm::Type::getInt1Ty(*the_context), "boolTmp");
-                rv_bool = builder->CreateFPToUI(rv, llvm::Type::getInt1Ty(*the_context), "boolTmp");
+                lv_bool = builder->CreateFPToUI(lv, BOOL_TY, "boolTmp");
+                rv_bool = builder->CreateFPToUI(rv, BOOL_TY, "boolTmp");
                 cmp_value_boolean = builder->CreateOr(lv_bool, rv_bool, "boolOrTmp");
 //                cmp_value_boolean = builder->CreateOr(lv, rv, "boolOrTmp");
                 return builder->CreateUIToFP(cmp_value_boolean, REAL_TY, "boolTmp");
             case AND:
-                lv_bool = builder->CreateFPToUI(lv, llvm::Type::getInt1Ty(*the_context), "boolTmp");
-                rv_bool = builder->CreateFPToUI(rv, llvm::Type::getInt1Ty(*the_context), "boolTmp");
+                lv_bool = builder->CreateFPToUI(lv, BOOL_TY, "boolTmp");
+                rv_bool = builder->CreateFPToUI(rv, BOOL_TY, "boolTmp");
                 cmp_value_boolean = builder->CreateAnd(lv_bool, rv_bool, "boolAndTmp");
 //                cmp_value_boolean = builder->CreateAnd(lv, rv, "boolAndTmp");
                 return builder->CreateUIToFP(cmp_value_boolean, REAL_TY, "boolTmp");
@@ -367,13 +373,13 @@ namespace AVSI {
                 the_scope->getEntryBlock().begin()
         );
         llvm::AllocaInst *new_var_alloca = blockEntry.CreateAlloca(
-                llvm::Type::getInt1Ty(*the_context),
+                BOOL_TY,
                 0,
                 "ifCondAlloca"
         );
         builder->CreateStore(cond, new_var_alloca);
 
-        cond = builder->CreateLoad(llvm::Type::getInt1Ty(*the_context), new_var_alloca);
+        cond = builder->CreateLoad(BOOL_TY, new_var_alloca);
         builder->CreateCondBr(cond, loopBB, mergeBB);
         headBB = builder->GetInsertBlock();
 
@@ -530,7 +536,9 @@ namespace AVSI {
                 if (callee_arg_iter->getType() != (*caller_arg_iter)->getType()) {
                     throw ExceptionFactory(
                             __LogicException,
-                            "unmatched type",
+                            "unmatched type, provided: " + \
+                            type_name[(*caller_arg_iter)->getType()] + \
+                            ", excepted: " + type_name[callee_arg_iter->getType()],
                             this->getToken().line, this->getToken().column
                     );
                 }
@@ -614,7 +622,7 @@ namespace AVSI {
                     the_scope->getEntryBlock().begin()
             );
             llvm::AllocaInst *new_var_alloca = blockEntry.CreateAlloca(
-                    llvm::Type::getInt1Ty(*the_context),
+                    BOOL_TY,
                     0,
                     "ifCondAlloca"
             );
@@ -628,7 +636,7 @@ namespace AVSI {
             uint8_t non_ret_block_then = 0;
             uint8_t non_ret_block_else = 0;
 
-            cond = builder->CreateLoad(llvm::Type::getInt1Ty(*the_context), new_var_alloca);
+            cond = builder->CreateLoad(BOOL_TY, new_var_alloca);
             builder->CreateCondBr(cond, thenBB, elseBB);
 
             the_function->getBasicBlockList().push_back(thenBB);
@@ -683,40 +691,6 @@ namespace AVSI {
     }
 
     llvm::Value *Object::codeGen() {
-        string struct_name = this->id;
-        vector<llvm::Type *> member_types;
-        map<string, int> member_index;
-        int index = 0;
-
-        // check types
-        // the type that isn't in basic types must be defined before
-        for (Variable *i: this->memberList) {
-            if (i->Ty.second == this->id) {
-                throw ExceptionFactory(
-                        __MissingException,
-                        "incomplete type '" + i->Ty.second + "'",
-                        i->getToken().line, i->getToken().column
-                );
-            }
-
-            if (i->Ty.second != "real" && i->Ty.second != "vec") {
-                if (struct_types.find(STRUCT(i->id)) == struct_types.end()) {
-                    throw ExceptionFactory(
-                            __MissingException,
-                            "missing type '" + i->Ty.second + "'",
-                            i->getToken().line, i->getToken().column
-                    );
-                }
-            }
-            member_types.push_back(i->Ty.first);
-            member_index[i->id] = index++;
-        }
-
-        llvm::StructType *Ty = llvm::StructType::create(*the_context, member_types, STRUCT(struct_name));
-        StructDef *sd = new StructDef(Ty);
-        sd->members = member_index;
-        struct_types[STRUCT(struct_name)] = sd;
-
         return llvm::Constant::getNullValue(REAL_TY);
     }
 
@@ -743,7 +717,7 @@ namespace AVSI {
                     "unarySubTmp"
             );
         } else if (this->op.getType() == NOT) {
-            llvm::Value *rv_bool = builder->CreateFPToUI(rv, llvm::Type::getInt1Ty(*the_context), "boolTmp");
+            llvm::Value *rv_bool = builder->CreateFPToUI(rv, BOOL_TY, "boolTmp");
             llvm::Value *v = builder->CreateNot(rv_bool, "unaryNotTmp");
             return builder->CreateUIToFP(v, REAL_TY, "boolTmp");
         } else {
@@ -804,12 +778,12 @@ namespace AVSI {
                 the_scope->getEntryBlock().begin()
         );
         llvm::AllocaInst *new_var_alloca = blockEntry.CreateAlloca(
-                llvm::Type::getInt1Ty(*the_context),
+                BOOL_TY,
                 0,
                 "ifCondAlloca"
         );
         builder->CreateStore(cond, new_var_alloca);
-        cond = builder->CreateLoad(llvm::Type::getInt1Ty(*the_context), new_var_alloca);
+        cond = builder->CreateLoad(BOOL_TY, new_var_alloca);
         builder->CreateCondBr(cond, loopBB, mergeBB);
 
         the_function->getBasicBlockList().push_back(loopBB);

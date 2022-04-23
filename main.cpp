@@ -106,9 +106,10 @@ int main(int argc, char **argv) {
         if (opt_asm) llvm_asm_output();
         if (!(opt_ir || opt_asm))llvm_obj_output();
     }
+
     catch (Exception &e) {
-        std::cerr << e.what() << "\t at line " << e.line << " column "
-                  << e.column + 1 << '\n';
+        std::cerr << basename(fileName) << ":" <<  e.line  << ":" << e.column + 1 << ": "
+                  << e.what() << std::endl;
         return 1;
     }
     return 0;

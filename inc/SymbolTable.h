@@ -12,6 +12,8 @@
 #include <deque>
 #include <vector>
 
+#define STRUCT(x) "struct."+(x)
+
 namespace AVSI {
     using std::map;
     using std::deque;
