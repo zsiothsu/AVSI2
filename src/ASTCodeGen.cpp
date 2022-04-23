@@ -158,6 +158,22 @@ namespace AVSI {
     /*******************************************************
      *                    IR generator                     *
      *******************************************************/
+    llvm::PointerType *getArrayBasicTypePointer(llvm::PointerType *Ty) {
+        llvm::Type *basic = Ty->getPointerElementType();
+        while (basic->isArrayTy()) basic = basic->getArrayElementType();
+        return basic->getPointerTo();
+    }
+
+    bool isTheSameBasicType(llvm::PointerType *l, llvm::PointerType *r) {
+        llvm::Type *basicl = l->getPointerElementType();
+        llvm::Type *basicr = r->getPointerElementType();
+
+        while (basicl->isArrayTy()) basicl = basicl->getArrayElementType();
+        while (basicr->isArrayTy()) basicr = basicr->getArrayElementType();
+
+        return basicl == basicr;
+    }
+
     llvm::AllocaInst *allocaBlockEntry(llvm::Function *fun, string name, llvm::Type *Ty) {
         llvm::IRBuilder<> blockEntry(
                 &fun->getEntryBlock(),
@@ -300,7 +316,7 @@ namespace AVSI {
             builder->CreateStore(rv, pre_allocated);
         } else if (((Variable *) this->left)->offset.empty()) {
             llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
-            llvm::AllocaInst *new_var_alloca = allocaBlockEntry(the_scope, lname,
+            llvm::AllocaInst *new_var_alloca = allocaBlockEntry(the_scope, lname + (Ty->isArrayTy() ? ".addr" : ""),
                                                                 Ty->isArrayTy() ? Ty->getPointerTo() : Ty);
             symbol_table->insert(lname, new_var_alloca);
             builder->CreateStore(rv->getType()->isArrayTy() ? getLoadStorePointerOperand(rv) : rv, new_var_alloca);
@@ -448,16 +464,25 @@ namespace AVSI {
         // create function parameters' type
         std::vector<llvm::Type *> Tys;
         for (Variable *i: ((Param *) (this->paramList))->paramList) {
-            // passing array pointers between functions
+            /* Passing array pointers between functions
+             *
+             * To be able to call external functions. Passing
+             * array type by C ABI.
+             *
+             * e.g. [3 x double]* will be represented as double*
+             * in function declaration
+             */
             if (i->Ty.first->isArrayTy()) {
-                Tys.push_back(i->Ty.first->getPointerTo());
+                Tys.push_back(getArrayBasicTypePointer(i->Ty.first->getPointerTo()));
             } else {
                 Tys.push_back(i->Ty.first);
             }
         }
 
         llvm::FunctionType *FT = llvm::FunctionType::get(
-                this->retTy.first->isArrayTy() ? this->retTy.first->getPointerTo() : this->retTy.first,
+                this->retTy.first->isArrayTy()
+                ? getArrayBasicTypePointer(this->retTy.first->getPointerTo())
+                : this->retTy.first,
                 Tys,
                 false
         );
@@ -523,7 +548,15 @@ namespace AVSI {
     llvm::Value *FunctionCall::codeGen() {
         llvm::Function *fun = the_module->getFunction(this->id);
 
-        if (fun && (fun->arg_size() != this->paramList.size())) {
+        if (!fun) {
+            throw ExceptionFactory(
+                    __MissingException,
+                    "function '" + this->id + "' is not declared",
+                    this->getToken().line, this->getToken().column
+            );
+        }
+
+        if (fun->arg_size() != this->paramList.size()) {
             // if function has declared, check parameters' size
             throw ExceptionFactory(
                     __LogicException,
@@ -537,63 +570,39 @@ namespace AVSI {
         }
 
         vector<llvm::Value *> args;
+        auto callee_arg_iter = fun->args().begin();
         for (int i = 0; i < this->paramList.size(); i++) {
             AST *arg = paramList[i];
             llvm::Value *v = arg->codeGen();
             if (!v) {
                 return nullptr;
             }
-            args.push_back(v);
-        }
 
-        // check types
-        if (fun) {
-            auto callee_arg_iter = fun->args().begin();
-            auto caller_arg_iter = args.begin();
-            while (caller_arg_iter != args.end()) {
-                if (callee_arg_iter->getType() != (*caller_arg_iter)->getType()) {
-                    throw ExceptionFactory(
-                            __LogicException,
-                            "unmatched type, provided: " + \
-                            type_name[(*caller_arg_iter)->getType()] + \
+            llvm::Type *callee_type = callee_arg_iter->getType();
+            llvm::Type *caller_type = v->getType();
+
+            if (
+                    caller_type->isPtrOrPtrVectorTy() &&
+                    callee_type->isPtrOrPtrVectorTy() &&
+                    isTheSameBasicType((llvm::PointerType *) caller_type,
+                                       (llvm::PointerType *) callee_type)
+                    ) {
+                v = builder->CreatePointerCast(v, callee_type);
+            } else if(callee_type != caller_type) {
+                throw ExceptionFactory(
+                        __LogicException,
+                        "unmatched type, provided: " + \
+                            type_name[caller_type] + \
                             ", excepted: " + type_name[callee_arg_iter->getType()],
-                            this->getToken().line, this->getToken().column
-                    );
-                }
-                callee_arg_iter++;
-                caller_arg_iter++;
-            }
-        }
-
-        if (fun) {
-            // for function have declared
-            return builder->CreateCall(fun, args, "callLocal");
-        } else {
-            Warning(__Warning,
-                    "function '" + this->id + "' is not declared in this scope",
-                    this->token.line, this->token.column);
-            // function not declared, create call linked to external function
-            vector<llvm::Type *> types;
-            types.reserve(args.size());
-            for (llvm::Value *i: args) {
-                types.push_back(i->getType());
+                        this->getToken().line, this->getToken().column
+                );
             }
 
-            llvm::FunctionType *FT = llvm::FunctionType::get(
-                    REAL_TY,
-                    types,
-                    false
-            );
-
-            llvm::Function *link_function = llvm::Function::Create(
-                    FT,
-                    llvm::Function::ExternalLinkage,
-                    this->id,
-                    the_module
-            );
-
-            return builder->CreateCall(FT, link_function, args, "callExternal");
+            args.push_back(v);
+            callee_arg_iter++;
         }
+
+        return builder->CreateCall(fun, args, "callLocal");
     }
 
     llvm::Value *StructInit::codeGen() {
