@@ -272,7 +272,8 @@ namespace AVSI {
                 }
             }
 
-            member_types.push_back(i->Ty.first);
+            // turn array to pointer
+            member_types.push_back(i->Ty.first->isArrayTy() ? i->Ty.first->getPointerTo(): i->Ty.first);
             member_index[i->id] = index++;
         }
 
@@ -588,6 +589,7 @@ namespace AVSI {
                 eat(RSQB);
                 llvm::Type *Ty = llvm::ArrayType::get(nest.first, array_size);
                 type_name[Ty] = "vec[" + type_name[nest.first] + ";" + to_string(array_size) + "]";
+                type_name[Ty->getPointerTo()] = type_name[Ty] + "*";
                 return Type(Ty, "vec");
             }
             throw ExceptionFactory(
