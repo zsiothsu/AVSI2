@@ -49,6 +49,8 @@
 #define __PRINTF_NAME           "Printf"
 #define __RETURN_NAME           "Return"
 #define __STRING_NAME           "String"
+#define __STRUCTINIT_NAME       "StructInit"
+#define __ARRAYINIT_NAME        "ArrayInit"
 #define __UNARYTOP_NAME         "UnaryOp"
 #define __VARIABLE_NAME         "Variable"
 #define __WHILE_NAME            "While"
@@ -62,6 +64,8 @@ namespace AVSI {
     using std::map;
 
     using Type = pair<llvm::Type *, string>;
+
+    extern llvm::Type *VOID_TY;
 
     /*******************************************************
      *                       AST base                      *
@@ -77,7 +81,7 @@ namespace AVSI {
 
         AST(string name) : __AST_name(std::move(name)) {};
 
-        AST(string name, const Token& token) : token(token), __AST_name(std::move(name)) {};
+        AST(string name, const Token &token) : token(token), __AST_name(std::move(name)) {};
 
         virtual ~AST() {};
 
@@ -97,7 +101,7 @@ namespace AVSI {
 
         Assign(void) : AST(__ASSIGN_NAME), left(nullptr), right(nullptr) {};
 
-        Assign(const Token& token, AST *left, AST *right)
+        Assign(const Token &token, AST *left, AST *right)
                 : AST(__ASSIGN_NAME, token),
                   left(left),
                   right(right) {};
@@ -121,7 +125,7 @@ namespace AVSI {
                   left(nullptr),
                   right(nullptr) {};
 
-        BinOp(AST *left, const Token& op, AST *right)
+        BinOp(AST *left, const Token &op, AST *right)
                 : AST(__BINOP_NAME, op), op(op), left(left), right(right) {};
 
         virtual ~BinOp();
@@ -191,7 +195,7 @@ namespace AVSI {
         FunctionDecl(void)
                 : AST(__FUNCTIONDECL_NAME), retTy(Type()), paramList(nullptr), compound(nullptr) {};
 
-        FunctionDecl(string id, Type retTy, AST *paramList, AST *compound, const Token& token)
+        FunctionDecl(string id, Type retTy, AST *paramList, AST *compound, const Token &token)
                 : AST(__FUNCTIONDECL_NAME, token),
                   id(std::move(id)),
                   retTy(std::move(retTy)),
@@ -211,7 +215,7 @@ namespace AVSI {
         FunctionCall(void)
                 : AST(__FUNCTIONCALL_NAME), paramList(vector<AST *>()) {};
 
-        FunctionCall(string id, vector<AST *> paramList, const Token& token)
+        FunctionCall(string id, vector<AST *> paramList, const Token &token)
                 : AST(__FUNCTIONCALL_NAME, token), id(std::move(id)), paramList(std::move(paramList)) {};
 
         virtual ~FunctionCall();
@@ -277,7 +281,7 @@ namespace AVSI {
             MEMBER = 1
         };
 
-        vector<pair<offsetType, AST*>> offset;
+        vector<pair<offsetType, AST *>> offset;
 
         Variable(void)
                 : AST(__VARIABLE_NAME),
@@ -295,13 +299,13 @@ namespace AVSI {
                 : AST(__VARIABLE_NAME, var),
                   id(var.getValue().any_cast<std::string>()),
                   Ty(std::move(ty)),
-                  offset(){};
+                  offset() {};
 
-        Variable(Token var, Type ty, vector<pair<offsetType, AST*>> offset)
+        Variable(Token var, Type ty, vector<pair<offsetType, AST *>> offset)
                 : AST(__VARIABLE_NAME, var),
                   id(var.getValue().any_cast<std::string>()),
                   Ty(std::move(ty)),
-                  offset(std::move(offset)){};
+                  offset(std::move(offset)) {};
 
         ~Variable() {};
 
@@ -315,9 +319,9 @@ namespace AVSI {
 
         Object(void) : AST(__OBJECT_NAME), memberList(vector<Variable *>()) {};
 
-        Object(const Token& token) : AST(__OBJECT_NAME, token), memberList(vector<Variable *>()) {};
+        Object(const Token &token) : AST(__OBJECT_NAME, token), memberList(vector<Variable *>()) {};
 
-        Object(const Token& token, string id, vector<Variable *> memberList)
+        Object(const Token &token, string id, vector<Variable *> memberList)
                 : AST(__OBJECT_NAME, token),
                   id(std::move(id)),
                   memberList(std::move(memberList)) {};
@@ -340,7 +344,7 @@ namespace AVSI {
 
         Return(void) : AST(__RETURN_NAME) {};
 
-        Return(const Token& token, AST *ret) : AST(__RETURN_NAME, token), ret(ret) {};
+        Return(const Token &token, AST *ret) : AST(__RETURN_NAME, token), ret(ret) {};
 
         llvm::Value *codeGen() override;
     };
@@ -356,6 +360,47 @@ namespace AVSI {
 
 
         any getValue(void);
+    };
+
+    class StructInit : public AST {
+    public:
+        string id;
+        vector<AST *> paramList;
+
+        StructInit(void)
+                : AST(__STRUCTINIT_NAME), paramList(vector<AST *>()) {};
+
+        StructInit(string id, vector<AST *> paramList, const Token &token)
+                : AST(__STRUCTINIT_NAME, token), id(std::move(id)), paramList(std::move(paramList)) {};
+
+        virtual ~StructInit();
+
+        llvm::Value *codeGen() override;
+    };
+
+    class ArrayInit : public AST {
+    public:
+        vector<AST *> paramList;
+        Type Ty;
+        uint32_t num;
+
+        ArrayInit(void)
+                : AST(__ARRAYINIT_NAME), paramList(vector<AST *>()) {};
+
+        ArrayInit(vector<AST *> paramList, uint32_t num, const Token &token)
+                : AST(__ARRAYINIT_NAME, token),
+                  paramList(std::move(paramList)),
+                  Ty(Type(VOID_TY, "void")),
+                  num(num) {};
+
+        ArrayInit(Type Ty, uint32_t num, const Token &token)
+                : AST(__ARRAYINIT_NAME, token),
+                  Ty(Ty),
+                  num(num) {};
+
+        virtual ~ArrayInit();
+
+        llvm::Value *codeGen() override;
     };
 
     class UnaryOp : public AST {
@@ -385,7 +430,7 @@ namespace AVSI {
         While(void)
                 : AST(__WHILE_NAME), condition(nullptr), compound(nullptr) {};
 
-        While(AST *condition, AST *compound, const Token& token)
+        While(AST *condition, AST *compound, const Token &token)
                 : AST(__WHILE_NAME, token), condition(condition), compound(compound) {};
 
         virtual ~While();

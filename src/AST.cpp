@@ -55,6 +55,14 @@ namespace AVSI {
 
     any String::getValue(void) { return this->value; }
 
+    StructInit::~StructInit() {
+        for (auto param: this->paramList) { delete param; }
+    }
+
+    ArrayInit::~ArrayInit() {
+        for (auto param: this->paramList) { delete param; }
+    }
+
     If::~If() {
         if (this->condition != nullptr) { delete this->condition; }
         if (this->compound != nullptr) { delete this->compound; }

@@ -86,8 +86,38 @@ namespace AVSI {
             return global();
         } else if (token_type == OBJ) {
             return object();
+        } else if (token_type == LBRACE) {
+            return arraylist();
         }
         return &ASTEmpty;
+    }
+
+    AST *Parser::arraylist() {
+        vector<AST*> elements;
+        Token token = this->currentToken;
+
+        eat(LBRACE);
+
+        if (this->currentToken.getType() == COLON) {
+            eat(COLON);
+            Type Ty = eatType();
+            eat(COLON);
+            uint32_t num = this->currentToken.getValue().any_cast<int>();
+            eat(INTEGER);
+            eat(RBRACE);
+            return new ArrayInit(Ty, num, token);
+        }
+
+        while (this->currentToken.getType() != RBRACE) {
+            elements.push_back(expr());
+
+            if(this->currentToken.getType() != RBRACE) {
+                eat(COMMA);
+            }
+        }
+        eat(RBRACE);
+
+        return new ArrayInit(elements, elements.size(), token);
     }
 
     AST *Parser::assignment() {
@@ -179,6 +209,12 @@ namespace AVSI {
             }
         }
         eat(RPAR);
+
+        if(struct_types.find(STRUCT(id)) != struct_types.end()) {
+            StructInit *struct_init_fun = new StructInit(id, paramList, token);
+            return struct_init_fun;
+        }
+
         FunctionCall *fun = new FunctionCall(id, paramList, token);
         return fun;
     }
@@ -348,6 +384,8 @@ namespace AVSI {
      */
     AST *Parser::expr(void) {
         if (this->currentToken.getType() == SEMI) return &ASTEmpty;
+
+        if (this->currentToken.getType() == LBRACE) return arraylist();
 
         AST *res = term();
         while (this->currentToken.getType() == PLUS ||

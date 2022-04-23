@@ -41,7 +41,7 @@ namespace AVSI {
     map<std::string, llvm::FunctionType *> function_protos;
 
     set<string> simple_types = {"void", "real", "vec"};
-    map<llvm::Type*,string> type_name = {
+    map<llvm::Type *, string> type_name = {
             {REAL_TY, "real"},
             {VOID_TY, "void"},
             {BOOL_TY, "bool"}
@@ -576,6 +576,127 @@ namespace AVSI {
 
             return builder->CreateCall(FT, link_function, args, "callExternal");
         }
+    }
+
+    llvm::Value *StructInit::codeGen() {
+        llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
+        llvm::StructType *Ty = struct_types[STRUCT(this->id)]->Ty;
+
+        uint32_t param_num = this->paramList.size();
+        uint32_t member_num = Ty->getNumElements();
+
+        // check number of parameters
+        if (param_num > member_num) {
+            throw ExceptionFactory(
+                    __LogicException,
+                    "candidate function not viable: requires " + \
+                    to_string(member_num) + \
+                    " or less arguments, but " + \
+                    to_string(param_num) + \
+                    " were provided",
+                    this->token.line, this->token.column
+            );
+        }
+
+        // initialize struct
+        llvm::AllocaInst *new_var_alloca = allocaBlockEntry(the_scope, this->id + "InitTemp", Ty);
+        for (int i = 0; i < param_num; i++) {
+            AST *param = this->paramList[i];
+            llvm::Value *rv = param->codeGen();
+
+            auto member_addr = builder->CreateGEP(
+                    llvm::cast<llvm::PointerType>(new_var_alloca->getType()->getScalarType())->getElementType(),
+                    new_var_alloca,
+                    {
+                            llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), 0),
+                            llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), i),
+                    },
+                    id + ".member." + to_string(i)
+            );
+
+            if (member_addr->getType()->getPointerElementType() != rv->getType()) {
+                throw ExceptionFactory(
+                        __LogicException,
+                        "not matched type, left: " + \
+                        type_name[member_addr->getType()->getPointerElementType()] + \
+                        ", right: " + type_name[rv->getType()],
+                        this->getToken().line, this->getToken().column
+                );
+            }
+
+            builder->CreateStore(rv, member_addr);
+        }
+
+        return builder->CreateLoad(Ty, new_var_alloca);
+    }
+
+    llvm::Value *ArrayInit::codeGen() {
+        llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
+        uint32_t element_num = this->num;
+
+        if (element_num == 0) {
+            // create vec[real;8] for default
+            auto Ty = llvm::ArrayType::get(REAL_TY, 8);
+            type_name[Ty] = "vec[" + type_name[REAL_TY] + ";" + to_string(8) + "]";
+            llvm::AllocaInst *new_var_alloca = allocaBlockEntry(the_scope, "ArrayInitTemp", Ty);
+            return builder->CreateLoad(Ty, new_var_alloca);
+        }
+
+        if (this->Ty.first != VOID_TY) {
+            auto Ty = llvm::ArrayType::get(this->Ty.first, element_num);
+            type_name[Ty] = "vec[" + type_name[this->Ty.first] + ";" + to_string(element_num) + "]";
+            llvm::AllocaInst *new_var_alloca = allocaBlockEntry(the_scope, "ArrayInitTemp", Ty);
+            return builder->CreateLoad(Ty, new_var_alloca);
+        }
+
+        llvm::Value *head_rv = this->paramList[0]->codeGen();
+        auto eleTy = head_rv->getType();
+        auto Ty = llvm::ArrayType::get(eleTy, element_num);
+        type_name[Ty] = "vec[" + type_name[eleTy] + ";" + to_string(element_num) + "]";
+        // initialize array
+        llvm::AllocaInst *new_var_alloca = allocaBlockEntry(the_scope, "ArrayInitTemp", Ty);
+
+        // store first element
+        auto first_element_addr = builder->CreateGEP(
+                llvm::cast<llvm::PointerType>(new_var_alloca->getType()->getScalarType())->getElementType(),
+                new_var_alloca,
+                {
+                        llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), 0),
+                        llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), 0),
+                },
+                "Array.element." + to_string(0)
+        );
+        builder->CreateStore(head_rv, first_element_addr);
+
+        // initialize other elements
+        for (int i = 1; i < element_num; i++) {
+            AST *param = this->paramList[i];
+            llvm::Value *rv = param->codeGen();
+
+            auto element_addr = builder->CreateGEP(
+                    llvm::cast<llvm::PointerType>(new_var_alloca->getType()->getScalarType())->getElementType(),
+                    new_var_alloca,
+                    {
+                            llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), 0),
+                            llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), i),
+                    },
+                    "Array.element." + to_string(i)
+            );
+
+            if (element_addr->getType()->getPointerElementType() != eleTy) {
+                throw ExceptionFactory(
+                        __LogicException,
+                        "not matched type, element type: " + \
+                        type_name[element_addr->getType()->getPointerElementType()] + \
+                        ", array type: " + type_name[eleTy],
+                        this->getToken().line, this->getToken().column
+                );
+            }
+
+            builder->CreateStore(rv, element_addr);
+        }
+
+        return builder->CreateLoad(Ty, new_var_alloca);
     }
 
     llvm::Value *Global::codeGen() {

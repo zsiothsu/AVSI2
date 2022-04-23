@@ -37,6 +37,8 @@ namespace AVSI {
 
         AST *statement();
 
+        AST *arraylist();
+
         AST *assignment();
 
         AST *forStatement();
