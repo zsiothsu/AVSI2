@@ -57,6 +57,8 @@ namespace AVSI {
 
         AST *expr();
 
+        AST *checkedExpr();
+
         AST *factor();
 
         AST *parse();

@@ -6,6 +6,9 @@
  */
 #include "../inc/Exception.h"
 #include <iostream>
+#include <cstring>
+
+char *file_name;
 
 namespace AVSI {
     /*******************************************************
@@ -52,7 +55,11 @@ namespace AVSI {
     }
 
     void Warning(std::string type, std::string msg, int line, int column) {
-        std::cerr << __COLOR_YELLOW << type << ": " << msg \
-                  << "\t at line " << line << " column " << column  << __COLOR_RESET << std::endl;
+        std::cerr << __COLOR_YELLOW
+                  << basename(file_name)
+                  << ":" << line  << ":" << column + 1 << ": "
+                  << type << ": "
+                  << msg
+                  << __COLOR_RESET << std::endl;
     }
 } // namespace AVSI

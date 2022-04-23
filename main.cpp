@@ -21,6 +21,7 @@ using namespace AVSI;
 extern int optind, opterr, optopt;
 extern char *optarg;
 static int opt = 0, lopt = 0, loidx = 0;
+extern char *file_name;
 
 static struct option long_options[] = {
         {"ir",   no_argument, &lopt, 1},
@@ -87,6 +88,7 @@ int main(int argc, char **argv) {
     }
 
     char *fileName = argv[optind];
+    file_name = fileName;
     ifstream file;
     file.open(fileName, ios::in);
     if (!file.is_open()) {
@@ -108,8 +110,11 @@ int main(int argc, char **argv) {
     }
 
     catch (Exception &e) {
-        std::cerr << basename(fileName) << ":" <<  e.line  << ":" << e.column + 1 << ": "
-                  << e.what() << std::endl;
+        std::cerr << __COLOR_RED
+                  << basename(fileName)
+                  << ":" <<  e.line  << ":" << e.column + 1 << ": "
+                  << e.what()
+                  << __COLOR_RESET << std::endl;
         return 1;
     }
     return 0;

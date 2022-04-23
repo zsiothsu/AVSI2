@@ -14,6 +14,7 @@ namespace AVSI {
     extern llvm::LLVMContext *the_context;
     extern llvm::Module *the_module;
     extern map<llvm::Type *, string> type_name;
+    extern map<llvm::Type *, uint32_t> type_size;
     extern map<string, StructDef *> struct_types;
 
     /*******************************************************
@@ -124,7 +125,7 @@ namespace AVSI {
         AST *left = variable();
         Token token = this->currentToken;
         eat(EQUAL);
-        AST *right = expr();
+        AST *right = checkedExpr();
         return new Assign(token, left, right);
     }
 
@@ -242,6 +243,7 @@ namespace AVSI {
         vector<llvm::Type *> member_types;
         map<string, int> member_index;
         int index = 0;
+        uint32_t struct_size = 0;
 
         // check types
         // map members' name to sequence
@@ -274,6 +276,7 @@ namespace AVSI {
 
             // turn array to pointer
             member_types.push_back(i->Ty.first->isArrayTy() ? i->Ty.first->getPointerTo(): i->Ty.first);
+            struct_size += type_size[member_types.back()];
             member_index[i->id] = index++;
         }
 
@@ -297,6 +300,7 @@ namespace AVSI {
         }
         struct_type_name += "}";
         type_name[Ty] = struct_type_name;
+        type_size[Ty] = struct_size;
 
         return new Object(token, id, members_list->paramList);
     }
@@ -386,8 +390,6 @@ namespace AVSI {
     AST *Parser::expr(void) {
         if (this->currentToken.getType() == SEMI) return &ASTEmpty;
 
-        if (this->currentToken.getType() == LBRACE) return arraylist();
-
         AST *res = term();
         while (this->currentToken.getType() == PLUS ||
                this->currentToken.getType() == MINUS) {
@@ -411,6 +413,11 @@ namespace AVSI {
         }
 
         return res;
+    }
+
+    AST *Parser::checkedExpr() {
+        if (this->currentToken.getType() == LBRACE) return arraylist();
+        return expr();
     }
 
     /**
@@ -590,6 +597,7 @@ namespace AVSI {
                 llvm::Type *Ty = llvm::ArrayType::get(nest.first, array_size);
                 type_name[Ty] = "vec[" + type_name[nest.first] + ";" + to_string(array_size) + "]";
                 type_name[Ty->getPointerTo()] = type_name[Ty] + "*";
+                type_size[Ty] = type_size[nest.first] * array_size;
                 return Type(Ty, "vec");
             }
             throw ExceptionFactory(
