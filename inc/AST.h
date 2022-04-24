@@ -375,8 +375,9 @@ namespace AVSI {
 
         String(Token token) : AST(__STRING_NAME, token), value(token.getValue()) {};
 
-
         any getValue(void);
+
+        llvm::Value *codeGen() override;
     };
 
     class StructInit : public AST {

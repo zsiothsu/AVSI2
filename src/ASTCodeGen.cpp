@@ -34,6 +34,7 @@ namespace AVSI {
      *               protos & definition                   *
      *******************************************************/
     llvm::Type *REAL_TY = llvm::Type::getDoubleTy(*the_context);
+    llvm::Type *CHAR_TY = llvm::Type::getInt8Ty(*the_context);
     llvm::Type *VOID_TY = llvm::Type::getVoidTy(*the_context);
     llvm::Type *BOOL_TY = llvm::Type::getInt1Ty(*the_context);
 
@@ -41,14 +42,24 @@ namespace AVSI {
     map<string, StructDef *> struct_types;
     map<std::string, llvm::FunctionType *> function_protos;
 
-    set<string> simple_types = {"void", "real", "vec"};
+    set<llvm::Type *> simple_types = {REAL_TY,
+                                CHAR_TY,
+                                BOOL_TY};
+    map<llvm::Type*, uint8_t> simple_types_map = {
+            {REAL_TY, 0x04},
+            {CHAR_TY, 0x02},
+            {BOOL_TY, 0x01}
+    };
+
     map<llvm::Type *, string> type_name = {
             {REAL_TY, "real"},
+            {CHAR_TY, "char"},
             {VOID_TY, "void"},
-            {BOOL_TY, "bool"}
+            {BOOL_TY, "bool"},
     };
     map<llvm::Type *, uint32_t> type_size = {
             {REAL_TY, 8},
+            {CHAR_TY, 1},
             {VOID_TY, 0},
             {BOOL_TY, 1},
     };
@@ -213,8 +224,6 @@ namespace AVSI {
          */
         llvm::Value *v = symbol_table->find(var->id);
 
-        debug_type(v);
-
         if (!v) {
             v = the_module->getGlobalVariable(var->id);
         }
@@ -336,9 +345,6 @@ namespace AVSI {
         auto l_alloca_addr = getAlloca((Variable *) this->left);
         llvm::Type *l_type = l_alloca_addr ? l_alloca_addr->getType()->getPointerElementType() : nullptr;
 
-        debug_type(l_type);
-        debug_type(r_value);
-
         if (
                 l_alloca_addr != nullptr &&
                 l_type->isPtrOrPtrVectorTy() &&
@@ -372,7 +378,7 @@ namespace AVSI {
             string cast_to_name = l_base_name;
 
             auto l_excepted_type = ((Variable *) this->left)->Ty.first;
-            debug_type(l_excepted_type);
+
             // if right value is an array initializer or another array
             if (
                     r_type->isPtrOrPtrVectorTy() &&
@@ -441,6 +447,7 @@ namespace AVSI {
                         if (isTheSameBasicType((llvm::PointerType *) r_type, (llvm::PointerType *) l_excepted_type)) {
                             cast_to_type = l_excepted_type;
                             cast_to_name = l_base_name + ".cast.array2ptr";
+                            r_value = builder->CreatePointerCast(r_value, l_excepted_type);
                         } else {
                             Warning(
                                     __Warning,
@@ -498,16 +505,34 @@ namespace AVSI {
             return nullptr;
         }
 
+        llvm::Type *l_type = lv->getType();
+        llvm::Type *r_type = rv->getType();
+
+        if(
+                simple_types.find(l_type) == simple_types.end() ||
+                simple_types.find(r_type) == simple_types.end()
+                ) {
+            return nullptr;
+        }
+
+        int result_type_bitmap = simple_types_map[l_type] | simple_types_map[r_type];
+        bool float_point = false;
+        if(result_type_bitmap >= 0x04) float_point = true;
+
         llvm::Value *cmp_value_boolean;
         llvm::Value *lv_bool;
         llvm::Value *rv_bool;
+
         switch (this->op.getType()) {
             case PLUS:
-                return builder->CreateFAdd(lv, rv, "addTmp");
+                if(float_point) return builder->CreateFAdd(lv, rv, "addTmp");
+                else return builder->CreateAdd(lv, rv, "addTmp");
             case MINUS:
-                return builder->CreateFSub(lv, rv, "subTmp");
+                if(float_point) return builder->CreateFSub(lv, rv, "subTmp");
+                else return builder->CreateSub(lv, rv, "subTmp");
             case STAR:
-                return builder->CreateFMul(lv, rv, "mulTmp");
+                if(float_point) return builder->CreateFMul(lv, rv, "mulTmp");
+                else if(float_point) return builder->CreateMul(lv, rv, "mulTmp");
             case SLASH:
                 return builder->CreateFDiv(lv, rv, "divTmp");
             case EQ:
@@ -1001,9 +1026,12 @@ namespace AVSI {
 
     llvm::Value *Num::codeGen() {
 //        auto t = llvm::ConstantFP::get(*the_context, llvm::APFloat((double)this->value));
-        auto t = llvm::ConstantFP::get(REAL_TY,
-                                       (double) this->getValue().any_cast<double>());
-        return t;
+        if (this->token.getType() == CHAR) {
+            return llvm::ConstantInt::get(CHAR_TY, this->getValue().any_cast<char>());
+        } else {
+            return llvm::ConstantFP::get(REAL_TY,
+                                  (double) this->getValue().any_cast<double>());
+        }
     }
 
     llvm::Value *Object::codeGen() {
@@ -1059,7 +1087,7 @@ namespace AVSI {
                 if (type->getPointerElementType()->isArrayTy()) {
                     return llvm::ConstantFP::get(REAL_TY, type_size[type->getPointerElementType()]);
                 } else {
-                    return llvm::ConstantFP::get(REAL_TY,sizeof(size_t*));
+                    return llvm::ConstantFP::get(REAL_TY, sizeof(size_t *));
                 }
             } else {
                 return llvm::ConstantFP::get(REAL_TY, type_size[type]);
@@ -1067,6 +1095,19 @@ namespace AVSI {
         }
 
         return llvm::ConstantFP::get(REAL_TY, type_size[this->Ty.first]);
+    }
+
+    llvm::Value *String::codeGen() {
+        llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
+        auto value = llvm::ConstantDataArray::getString(*the_context, this->getValue().any_cast<string>());
+        llvm::AllocaInst *ptr_alloca = allocaBlockEntry(the_scope, "String", value->getType());
+        builder->CreateStore(value, ptr_alloca);
+
+        llvm::Type *Ty = value->getType();
+        type_name[Ty] = "vec[char;" + to_string(this->getValue().any_cast<string>().length() + 1) + "]";
+        type_name[Ty->getPointerTo()] = type_name[Ty] + "*";
+        type_size[Ty] = this->getValue().any_cast<string>().length() + 1;
+        return ptr_alloca;
     }
 
     llvm::Value *Variable::codeGen() {

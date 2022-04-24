@@ -48,6 +48,10 @@ namespace AVSI {
 
         Token str();
 
+        char getEscapeChar();
+
+        Token character();
+
         Token Id();
     };
 

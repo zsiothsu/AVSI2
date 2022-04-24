@@ -5,6 +5,8 @@
  * @Description: include Lexer class
  */
 #include "../inc/Lexer.h"
+#include "Exception.h"
+#include <cstring>
 
 namespace AVSI {
     /*******************************************************
@@ -87,16 +89,20 @@ namespace AVSI {
                 return Id();
             }
             if (this->currentChar == '"') { return str(); }
+            if (this->currentChar == '\'') { return character();}
+            if (this->currentChar == '\'') { return character(); }
             if (this->currentChar == '|') {
                 if (peek() == '|') {
-                    advance(); advance();
+                    advance();
+                    advance();
                     return Token(OR, 'o', line, column);
                 }
                 return Token::empty();
             }
             if (this->currentChar == '&') {
                 if (peek() == '&') {
-                    advance(); advance();
+                    advance();
+                    advance();
                     return Token(AND, 'o', line, column);
                 }
                 return Token::empty();
@@ -105,13 +111,11 @@ namespace AVSI {
                 if (peek() != '=') {
                     advance();
                     return Token(EQUAL, '=', line, column);
-                }
-                else if(peek() == '=') {
+                } else if (peek() == '=') {
                     advance();
                     advance();
-                    return Token(EQ,'o',line,column);
-                }
-                else
+                    return Token(EQ, 'o', line, column);
+                } else
                     return Token::empty();
             }
             if (this->currentChar == '!') {
@@ -119,12 +123,11 @@ namespace AVSI {
                     advance();
                     return Token(NOT, '!', line, column);
                 }
-                if(peek() == '=') {
+                if (peek() == '=') {
                     advance();
                     advance();
-                    return Token(NE,'o',line,column);
-                }
-                else
+                    return Token(NE, 'o', line, column);
+                } else
                     return Token::empty();
             }
             if (this->currentChar == '>') {
@@ -132,12 +135,11 @@ namespace AVSI {
                     advance();
                     return Token(GT, 'o', line, column);
                 }
-                if(peek() == '=') {
+                if (peek() == '=') {
                     advance();
                     advance();
-                    return Token(GE,'o',line,column);
-                }
-                else
+                    return Token(GE, 'o', line, column);
+                } else
                     return Token::empty();
             }
             if (this->currentChar == '<') {
@@ -145,26 +147,67 @@ namespace AVSI {
                     advance();
                     return Token(LT, '!', line, column);
                 }
-                if(peek() == '=') {
+                if (peek() == '=') {
                     advance();
                     advance();
-                    return Token(LE,'o',line,column);
-                }
-                else
+                    return Token(LE, 'o', line, column);
+                } else
                     return Token::empty();
             }
             if (this->currentChar == '-') {
                 char _peek = peek();
                 string _peek2 = peek2();
-                if(_peek2 == "eq") {advance(); advance(); advance(); return Token(EQ,'o',line,column);}
-                if(_peek2 == "ne") {advance(); advance(); advance(); return Token(NE,'o',line,column);}
-                if(_peek2 == "gt") {advance(); advance(); advance(); return Token(GT,'o',line,column);}
-                if(_peek2 == "lt") {advance(); advance(); advance(); return Token(LT,'o',line,column);}
-                if(_peek2 == "ge") {advance(); advance(); advance(); return Token(GE,'o',line,column);}
-                if(_peek2 == "le") {advance(); advance(); advance(); return Token(LE,'o',line,column);}
-                if(_peek == 'o') {advance(); advance(); return Token(OR,'o',line,column);}
-                if(_peek == 'a') {advance(); advance(); return Token(AND,'o',line,column);}
-                if(_peek == '>') {advance();advance(); return Token(TO, 'o', line,column);}
+                if (_peek2 == "eq") {
+                    advance();
+                    advance();
+                    advance();
+                    return Token(EQ, 'o', line, column);
+                }
+                if (_peek2 == "ne") {
+                    advance();
+                    advance();
+                    advance();
+                    return Token(NE, 'o', line, column);
+                }
+                if (_peek2 == "gt") {
+                    advance();
+                    advance();
+                    advance();
+                    return Token(GT, 'o', line, column);
+                }
+                if (_peek2 == "lt") {
+                    advance();
+                    advance();
+                    advance();
+                    return Token(LT, 'o', line, column);
+                }
+                if (_peek2 == "ge") {
+                    advance();
+                    advance();
+                    advance();
+                    return Token(GE, 'o', line, column);
+                }
+                if (_peek2 == "le") {
+                    advance();
+                    advance();
+                    advance();
+                    return Token(LE, 'o', line, column);
+                }
+                if (_peek == 'o') {
+                    advance();
+                    advance();
+                    return Token(OR, 'o', line, column);
+                }
+                if (_peek == 'a') {
+                    advance();
+                    advance();
+                    return Token(AND, 'o', line, column);
+                }
+                if (_peek == '>') {
+                    advance();
+                    advance();
+                    return Token(TO, 'o', line, column);
+                }
             }
             map<char, TokenType>::iterator iter =
                     TokenMap.find(this->currentChar);
@@ -239,7 +282,7 @@ namespace AVSI {
             second = this->currentChar = 0;
         }
 
-        return string({first,second});
+        return string({first, second});
     }
 
     /**
@@ -258,11 +301,126 @@ namespace AVSI {
         std::string str;
         advance();
         while (this->currentChar != '"') {
-            str = str + this->currentChar;
-            advance();
+            if(this->currentChar == '\\') {
+                str += getEscapeChar();
+            } else {
+                str = str + this->currentChar;
+                advance();
+            }
         }
         advance();
         return Token(STRING, str, line, column);
+    }
+
+    char Lexer::getEscapeChar() {
+        advance();
+        char c;
+        if (this->currentChar == 'x') {
+            string two_char = peek2();
+            if (two_char[1] >= 'A' && two_char[1] <= 'Z') {
+                two_char[1] -= 'A' - 'a';
+            }
+            if (
+                    two_char[0] < '0' ||
+                    two_char[0] > '7' ||
+                    isxdigit(two_char[1])
+                    ) {
+                two_char = "0x" + two_char;
+                char *str;
+                c = (char) strtol(two_char.c_str(), &str, 16);
+                advance();
+                advance();
+                advance();
+                return c;
+            } else {
+                advance();
+                throw ExceptionFactory(
+                        __SyntaxException,
+                        "cannot read escape char",
+                        this->linenum, this->cur
+                );
+            }
+        } else {
+            if (this->currentChar == '0') {
+                string two_char = peek2();
+                if (
+                        '0' <= two_char[0] &&
+                        two_char[0] <= '7' &&
+                        '0' <= two_char[1] &&
+                        two_char[1] <= '7'
+                        ) {
+                    two_char = "0" + two_char;
+                    char *str;
+                    c = (char) strtol(two_char.c_str(), &str, 8);
+                    advance();
+                    advance();
+                    advance();
+                    return c;
+                } else {
+                    advance();
+                    return '\0';
+                }
+            } else {
+                char ch = this->currentChar;
+                switch (ch) {
+                    case 'a':
+                        c = '\a';
+                        break;
+                    case 'b':
+                        c = '\b';
+                        break;
+                    case 'f':
+                        c = '\f';
+                        break;
+                    case 'n':
+                        c = '\n';
+                        break;
+                    case 'r':
+                        c = '\r';
+                        break;
+                    case 't':
+                        c = '\t';
+                        break;
+                    case 'v':
+                        c = '\v';
+                        break;
+                    case '\'':
+                        c = '\'';
+                        break;
+                    case '\"':
+                        c = '\"';
+                        break;
+                    case '\\':
+                        c = '\\';
+                        break;
+                }
+                advance();
+                return c;
+            }
+        }
+    }
+
+    Token Lexer::character() {
+        int line = this->linenum, column = this->cur;
+        char c;
+        advance();
+        if (this->currentChar == '\\') {
+            c = getEscapeChar();
+            if(currentChar != '\'') {
+                throw ExceptionFactory(
+                        __SyntaxException,
+                        "cannot read escape char",
+                        this->linenum, this->cur
+                );
+            }
+            advance();
+        } else {
+            c = this->currentChar;
+            advance();
+            advance();
+        }
+
+        return Token(CHAR, c, line, column);
     }
 
     Token Lexer::Id() {

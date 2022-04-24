@@ -71,8 +71,9 @@ namespace AVSI {
         SIZEOF,
         TYPENAME,
         REAL,
+        CHAR,
         VEC,
-        OBJ
+        OBJ,
     } TokenType;
 
     class Token {

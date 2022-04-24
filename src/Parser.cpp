@@ -417,6 +417,12 @@ namespace AVSI {
 
     AST *Parser::checkedExpr() {
         if (this->currentToken.getType() == LBRACE) return arraylist();
+        if (this->currentToken.getType() == STRING) {
+            Token token = this->currentToken;
+            eat(STRING);
+            return new class String(token);
+        }
+
         return expr();
     }
 
@@ -428,14 +434,11 @@ namespace AVSI {
      */
     AST *Parser::factor(void) {
         Token token = this->currentToken;
-        if (token.getType() == STRING) {
-            eat(STRING);
-            return new class String(token);
-        }
+
         if (token.getType() == SIZEOF) {
             return sizeOf();
         }
-        if (token.getType() == INTEGER || token.getType() == FLOAT) {
+        if (token.getType() == INTEGER || token.getType() == FLOAT || token.getType() == CHAR) {
             eat(token.getType());
             return new Num(token);
         }
@@ -596,6 +599,9 @@ namespace AVSI {
         if (this->currentToken.getType() == REAL) {
             eat(REAL);
             return Type(llvm::Type::getDoubleTy(*the_context), "real");
+        } else if (this->currentToken.getType() == CHAR) {
+            eat(CHAR);
+            return Type(llvm::Type::getInt8Ty(*the_context), "char");
         } else if (this->currentToken.getType() == VEC) {
             eat(VEC);
             eat(LSQB);
