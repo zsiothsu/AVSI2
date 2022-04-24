@@ -94,7 +94,7 @@ namespace AVSI {
     }
 
     AST *Parser::arraylist() {
-        vector<AST*> elements;
+        vector<AST *> elements;
         Token token = this->currentToken;
 
         eat(LBRACE);
@@ -112,7 +112,7 @@ namespace AVSI {
         while (this->currentToken.getType() != RBRACE) {
             elements.push_back(expr());
 
-            if(this->currentToken.getType() != RBRACE) {
+            if (this->currentToken.getType() != RBRACE) {
                 eat(COMMA);
             }
         }
@@ -211,7 +211,7 @@ namespace AVSI {
         }
         eat(RPAR);
 
-        if(struct_types.find(STRUCT(id)) != struct_types.end()) {
+        if (struct_types.find(STRUCT(id)) != struct_types.end()) {
             StructInit *struct_init_fun = new StructInit(id, paramList, token);
             return struct_init_fun;
         }
@@ -275,7 +275,7 @@ namespace AVSI {
             }
 
             // turn array to pointer
-            member_types.push_back(i->Ty.first->isArrayTy() ? i->Ty.first->getPointerTo(): i->Ty.first);
+            member_types.push_back(i->Ty.first->isArrayTy() ? i->Ty.first->getPointerTo() : i->Ty.first);
             struct_size += type_size[member_types.back()];
             member_index[i->id] = index++;
         }
@@ -533,6 +533,7 @@ namespace AVSI {
         if (this->currentToken.getType() == COLON) {
             eat(COLON);
             Ty = eatType();
+            if(Ty.first->isArrayTy()) Ty.first = Ty.first->getPointerTo();
         }
 
         // process [expr] and .ID
@@ -594,11 +595,19 @@ namespace AVSI {
                     );
                 }
                 eat(RSQB);
-                llvm::Type *Ty = llvm::ArrayType::get(nest.first, array_size);
-                type_name[Ty] = "vec[" + type_name[nest.first] + ";" + to_string(array_size) + "]";
-                type_name[Ty->getPointerTo()] = type_name[Ty] + "*";
-                type_size[Ty] = type_size[nest.first] * array_size;
-                return Type(Ty, "vec");
+                if (array_size != 0) {
+                    llvm::Type *Ty = llvm::ArrayType::get(nest.first, array_size);
+                    type_name[Ty] = "vec[" + type_name[nest.first] + ";" + to_string(array_size) + "]";
+                    type_name[Ty->getPointerTo()] = type_name[Ty] + "*";
+                    type_size[Ty] = type_size[nest.first] * array_size;
+                    return Type(Ty, "vec");
+                } else {
+                    llvm::Type *Ty = nest.first->getPointerTo();
+                    type_name[Ty] = type_name[nest.first] + "*";
+                    type_name[Ty->getPointerTo()] = type_name[Ty] + "*";
+                    type_size[Ty] = sizeof(size_t *);
+                    return Type(Ty, "vec");
+                }
             }
             throw ExceptionFactory(
                     __SyntaxException,
