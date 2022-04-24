@@ -432,6 +432,9 @@ namespace AVSI {
             eat(STRING);
             return new class String(token);
         }
+        if (token.getType() == SIZEOF) {
+            return sizeOf();
+        }
         if (token.getType() == INTEGER || token.getType() == FLOAT) {
             eat(token.getType());
             return new Num(token);
@@ -517,6 +520,23 @@ namespace AVSI {
         return res;
     }
 
+    AST *Parser::sizeOf() {
+        Token token = this->currentToken;
+
+        eat(SIZEOF);
+        eat(LPAR);
+        if (this->currentToken.getType() == TYPENAME) {
+            eat(TYPENAME);
+            Type Ty = eatType();
+            eat(RPAR);
+            return new Sizeof(token, Ty);
+        } else {
+            AST *var = variable();
+            eat(RPAR);
+            return new Sizeof(token, var);
+        }
+    }
+
     AST *Parser::variable() {
         if (this->currentToken.getType() == DOLLAR)
             eat(DOLLAR);
@@ -533,7 +553,7 @@ namespace AVSI {
         if (this->currentToken.getType() == COLON) {
             eat(COLON);
             Ty = eatType();
-            if(Ty.first->isArrayTy()) Ty.first = Ty.first->getPointerTo();
+            if (Ty.first->isArrayTy()) Ty.first = Ty.first->getPointerTo();
         }
 
         // process [expr] and .ID

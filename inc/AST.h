@@ -48,6 +48,7 @@
 #define __PARAM_NAME            "Param"
 #define __PRINTF_NAME           "Printf"
 #define __RETURN_NAME           "Return"
+#define __SIZEOF_NAME           "Sizeof"
 #define __STRING_NAME           "String"
 #define __STRUCTINIT_NAME       "StructInit"
 #define __ARRAYINIT_NAME        "ArrayInit"
@@ -267,6 +268,22 @@ namespace AVSI {
         virtual ~Num() {};
 
         any getValue(void);
+
+        llvm::Value *codeGen() override;
+    };
+
+    class Sizeof: public AST {
+    public:
+        AST* id;
+        Type Ty;
+
+        Sizeof(void) : AST(__SIZEOF_NAME) {};
+
+        Sizeof(Token token, AST *id) : AST(__SIZEOF_NAME, token), id(id), Ty(Type(VOID_TY, "void")) {};
+
+        Sizeof(Token token, Type Ty) : AST(__SIZEOF_NAME, token), id(nullptr), Ty(Ty) {};
+
+        virtual ~Sizeof() {};
 
         llvm::Value *codeGen() override;
     };

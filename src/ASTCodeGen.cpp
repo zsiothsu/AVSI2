@@ -1041,8 +1041,44 @@ namespace AVSI {
         }
     }
 
+    llvm::Value *Sizeof::codeGen() {
+        if (this->id != nullptr) {
+            llvm::Value *v = getAlloca((Variable *) this->id);
+
+            if (!v) {
+                throw ExceptionFactory(
+                        __MissingException,
+                        "variable '" + ((Variable *) (this->id))->id + "' is not defined",
+                        this->token.line, this->token.column
+                );
+            }
+
+            llvm::Type *type = v->getType()->getPointerElementType();
+
+            if (type->isPtrOrPtrVectorTy()) {
+                if (type->getPointerElementType()->isArrayTy()) {
+                    return llvm::ConstantFP::get(REAL_TY, type_size[type->getPointerElementType()]);
+                } else {
+                    return llvm::ConstantFP::get(REAL_TY,sizeof(size_t*));
+                }
+            } else {
+                return llvm::ConstantFP::get(REAL_TY, type_size[type]);
+            }
+        }
+
+        return llvm::ConstantFP::get(REAL_TY, type_size[this->Ty.first]);
+    }
+
     llvm::Value *Variable::codeGen() {
         llvm::Value *v = getAlloca(this);
+
+        if (!v) {
+            throw ExceptionFactory(
+                    __MissingException,
+                    "variable '" + this->id + "' is not defined",
+                    this->token.line, this->token.column
+            );
+        }
 
         // if v is an array pointer, return pointer directly
         if (v->getType()->getPointerElementType()->isArrayTy()) {
@@ -1134,4 +1170,5 @@ namespace AVSI {
     llvm::Value *NoneAST::codeGen() {
         return llvm::Constant::getNullValue(REAL_TY);
     }
+
 }

@@ -67,6 +67,8 @@ namespace AVSI {
 
         AST *term();
 
+        AST *sizeOf();
+
         AST *variable();
 
         AST *WhileStatement();

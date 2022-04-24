@@ -87,7 +87,9 @@ namespace AVSI {
             {"export",   EXPORT},
             {"real",     REAL},
             {"vec",      VEC},
-            {"obj",      OBJ}};
+            {"obj",      OBJ},
+            {"sizeof",   SIZEOF},
+            {"typename", TYPENAME}};
 } // namespace AVSI
 
 #endif

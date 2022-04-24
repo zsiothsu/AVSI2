@@ -68,6 +68,8 @@ namespace AVSI {
         GLOBAL,
         IMPORT,
         EXPORT,
+        SIZEOF,
+        TYPENAME,
         REAL,
         VEC,
         OBJ
