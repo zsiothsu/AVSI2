@@ -467,6 +467,10 @@ namespace AVSI {
 
     static AST ASTEmpty = NoneAST();
 
+    void llvm_import_module();
+
+    void llvm_export_module();
+
     void llvm_module_fpm_init();
 
     void llvm_machine_init();

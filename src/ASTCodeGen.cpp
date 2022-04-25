@@ -9,13 +9,25 @@
 
 #include "../inc/AST.h"
 #include "../inc/SymbolTable.h"
-#include "llvm/Support/TargetRegistry.h"
-#include "llvm/Support/FileSystem.h"
-#include "llvm/Support/Host.h"
-#include "llvm/Support/TargetSelect.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Target/TargetMachine.h"
-#include "llvm/Target/TargetOptions.h"
+#include <llvm/Support/TargetRegistry.h>
+#include <llvm/Support/FileSystem.h>
+#include <llvm/Support/Host.h>
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/Support/raw_ostream.h>
+#include <llvm/Target/TargetMachine.h>
+#include <llvm/Target/TargetOptions.h>
+#include <llvm/Support/MemoryBuffer.h>
+#include <llvm/IRReader/IRReader.h>
+
+#if (__SIZEOF_POINTER__ == 4)
+    #define PTR_SIZE 4
+    #define MACHINE_WIDTH_TY (llvm::Type::getInt32Ty((*the_context)))
+#elif (__SIZEOF_POINTER__ == 8)
+    #define PTR_SIZE 8
+    #define MACHINE_WIDTH_TY (llvm::Type::getInt64Ty((*the_context)))
+#else
+    #err "unsupported machine"
+#endif
 
 namespace AVSI {
     /*******************************************************
@@ -37,7 +49,7 @@ namespace AVSI {
     llvm::Type *CHAR_TY = llvm::Type::getInt8Ty(*the_context);
     llvm::Type *VOID_TY = llvm::Type::getVoidTy(*the_context);
     llvm::Type *BOOL_TY = llvm::Type::getInt1Ty(*the_context);
-
+    
     SymbolTable *symbol_table = new SymbolTable();
     map<string, StructDef *> struct_types;
     map<std::string, llvm::FunctionType *> function_protos;
@@ -76,6 +88,14 @@ namespace AVSI {
 //        the_fpm->add(llvm::createFlattenCFGPass());
 
         the_fpm->doInitialization();
+    }
+
+    void llvm_import_module()  {
+
+    }
+
+    void llvm_export_module() {
+
     }
 
     void llvm_machine_init() {
@@ -246,21 +266,25 @@ namespace AVSI {
                 );
                 if (i.first == Variable::ARRAY) {
                     llvm::Value *index = i.second->codeGen();
-                    index = builder->CreateFPToSI(index, llvm::Type::getInt32Ty((*the_context)));
+                    index = builder->CreateFPToSI(index, MACHINE_WIDTH_TY);
                     offset_list.push_back(index);
 
                     if (!v->getType()->getPointerElementType()->isArrayTy()) {
                         // for raw pointer
+                        // TODO support 64-bit machine
                         index = builder->CreateMul(index,
                                                    llvm::ConstantInt::get(
-                                                           llvm::Type::getInt32Ty((*the_context)),
+                                                           MACHINE_WIDTH_TY,
                                                            v->getType()->getPointerElementType()->isPtrOrPtrVectorTy()
-                                                           ? sizeof(size_t *)
+                                                           ? PTR_SIZE
                                                            : type_size[v->getType()->getPointerElementType()]
                                                    )
                         );
-                        index = builder->CreateIntToPtr(index, v->getType());
+
+                        llvm::Type *v_oldTy = v->getType();
+                        v = builder->CreatePtrToInt(v, MACHINE_WIDTH_TY);
                         v = builder->CreateAdd(v, index);
+                        v = builder->CreateIntToPtr(v, v_oldTy);
                     } else {
                         try {
                             v = builder->CreateGEP(
@@ -851,7 +875,7 @@ namespace AVSI {
             }
             llvm::Type *ptr_type = contain_type->getPointerTo();
             type_name[ptr_type] = type_name[contain_type] + "*";
-            type_size[ptr_type] = sizeof(size_t *);
+            type_size[ptr_type] = PTR_SIZE;
             llvm::AllocaInst *ptr_alloca = allocaBlockEntry(the_scope, "ArrayInitTemp", contain_type);
             return ptr_alloca;
         }
@@ -1087,7 +1111,7 @@ namespace AVSI {
                 if (type->getPointerElementType()->isArrayTy()) {
                     return llvm::ConstantFP::get(REAL_TY, type_size[type->getPointerElementType()]);
                 } else {
-                    return llvm::ConstantFP::get(REAL_TY, sizeof(size_t *));
+                    return llvm::ConstantFP::get(REAL_TY, PTR_SIZE);
                 }
             } else {
                 return llvm::ConstantFP::get(REAL_TY, type_size[type]);
