@@ -7,6 +7,8 @@
 #include "../inc/Parser.h"
 #include "SymbolTable.h"
 
+extern char *file_name;
+
 namespace AVSI {
     /*******************************************************
      *                     variable                        *
@@ -66,8 +68,45 @@ namespace AVSI {
     AST *Parser::statementList() {
         Compound *root = new Compound();
         AST *node;
-        while ((node = statement()) != &ASTEmpty) root->child.push_back(node);
+        int err_count = 0;
+        while (this->currentToken.getType() != END) {
+            try {
+                node = statement();
+                if (node == &ASTEmpty) break;
+                root->child.push_back(node);
+            } catch (Exception e) {
+                if (e.type() != __ErrReport) {
+                    err_count++;
+                }
+                std::cerr << __COLOR_RED
+                          << file_name
+                          << ":" << e.line << ":" << e.column + 1 << ": "
+                          << e.what()
+                          << __COLOR_RESET << std::endl;
+
+
+                auto tokenIsNotAStart = [](Token t) -> bool {
+                    for (TokenType i: StatementStartWith) {
+                        if (i == t.getType()) return false;
+                    }
+                    return true;
+                };
+
+                while (tokenIsNotAStart(this->currentToken) && this->currentToken.getType() != END) {
+                    eat(this->currentToken.getType());
+                }
+                if (this->currentToken.getType() == END) goto err;
+            }
+        }
+
         return root;
+
+        err:
+        throw ExceptionFactory(
+                __ErrReport,
+                "generated " + to_string(err_count) + " errors",
+                0, 0
+        );
     }
 
     AST *Parser::statement() {
@@ -129,8 +168,6 @@ namespace AVSI {
             Object *may_be_export = (Object *) object();
             may_be_export->is_export = is_export;
             return may_be_export;
-        } else if (token_type == LBRACE) {
-            return arraylist();
         }
 
         return &ASTEmpty;

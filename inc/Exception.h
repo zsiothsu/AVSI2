@@ -15,6 +15,7 @@
 #define __LogicException    "LogicException"
 #define __MissingException  "MissingException"
 #define __IRErrException    "IRErrException"
+#define __ErrReport         "ErrReport"
 
 #define __Warning           "Warning"
 
@@ -89,6 +90,13 @@ namespace AVSI {
         using Exception::Exception;
 
         IRErrException() : Exception(__IRErrException) {};
+    };
+
+    class ErrReport : public Exception {
+    public:
+        using Exception::Exception;
+
+        ErrReport() : Exception(__ErrReport) {};
     };
 
     const Exception ExceptionFactory(std::string e);

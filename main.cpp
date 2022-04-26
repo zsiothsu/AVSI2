@@ -113,9 +113,7 @@ int main(int argc, char **argv) {
         if (opt_ir) llvm_module_printIR();
         if (opt_asm) llvm_asm_output();
         if (!(opt_ir || opt_asm))llvm_obj_output();
-    }
-
-    catch (Exception &e) {
+    } catch (Exception &e) {
         std::cerr << __COLOR_RED
                   << basename(fileName)
                   << ":" << e.line << ":" << e.column + 1 << ": "

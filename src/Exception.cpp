@@ -40,6 +40,8 @@ namespace AVSI {
             return MissingException();
         } else if (e == __IRErrException) {
             return IRErrException();
+        } else if (e == __ErrReport) {
+            return ErrReport();
         }
         return Exception();
     }

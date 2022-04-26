@@ -143,6 +143,12 @@ namespace AVSI {
         AND
     };
 
+    const static TokenType StatementStartWith[] = {
+            FUNCTION,   RETURN,     ID,
+            IF,         FOR,        WHILE,
+            GLOBAL,     OBJ
+    };
+
     std::string typeName(TokenType type);
 } // namespace AVSI
 

@@ -92,7 +92,7 @@ namespace AVSI {
         }
 
         int search_begin_index = 0;
-        if(is_absolute_path) {
+        if (is_absolute_path) {
             search_begin_index = path_size;
         }
 
@@ -1252,8 +1252,31 @@ namespace AVSI {
 
 
     llvm::Value *Compound::codeGen() {
+        int err_count = 0;
+        bool is_err = false;
+
         for (AST *ast: this->child) {
-            ast->codeGen();
+            try {
+                ast->codeGen();
+            } catch (Exception e) {
+                if(e.type() != __ErrReport) err_count++;
+
+                is_err = true;
+
+                std::cerr << __COLOR_RED
+                          << file_name
+                          << ":" << e.line << ":" << e.column + 1 << ": "
+                          << e.what()
+                          << __COLOR_RESET << std::endl;
+            }
+        }
+
+        if (err_count != 0 || is_err) {
+            throw ExceptionFactory(
+                    __ErrReport,
+                    "generated " + to_string(err_count) + " errors",
+                    0, 0
+            );
         }
 
         return llvm::Constant::getNullValue(REAL_TY);

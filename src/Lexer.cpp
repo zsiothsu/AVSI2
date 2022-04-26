@@ -218,7 +218,7 @@ namespace AVSI {
             }
             return Token::empty();
         }
-        return Token(END, EOF);
+        return Token(END, EOF, 0, 0);
     }
 
     /**
