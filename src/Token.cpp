@@ -19,19 +19,21 @@ namespace AVSI {
 
     any Token::getValue() { return this->value; }
 
-    // TODO: map<TokeType,string>
+    void Token::setModInfo(vector<string> info) { this->__MOD_INFO = info; }
+
+    vector<string> Token::getModInfo() { return this->__MOD_INFO; }
 
     bool Token::isExpr() {
-        for(auto t : ExprOp){
-            if(this->type == t) return true;
+        for (auto t: ExprOp) {
+            if (this->type == t) return true;
         }
 
         return false;
     }
 
     bool Token::isReOp() {
-        for(auto t : ReOp){
-            if(this->type == t) return true;
+        for (auto t: ReOp) {
+            if (this->type == t) return true;
         }
 
         return false;

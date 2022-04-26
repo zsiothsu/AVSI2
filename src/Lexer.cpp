@@ -426,15 +426,28 @@ namespace AVSI {
     Token Lexer::Id() {
         int line = this->linenum, column = this->cur;
         std::string str;
+        vector<string> mod_info;
+
         while (isalpha(this->currentChar) || isdigit(this->currentChar) ||
                this->currentChar == '_') {
             str = str + this->currentChar;
             advance();
+
+            if(this->currentChar == ':' && peek() == ':') {
+                mod_info.push_back(str);
+                str.clear();
+                advance();
+                advance();
+            }
         }
         map<string, TokenType>::iterator iter = reservedKeyword.find(str);
-        if (iter != reservedKeyword.end())
+        if (mod_info.empty() && iter != reservedKeyword.end()) {
             return Token(iter->second, str, line, column);
-        else
-            return Token(ID, str, line, column);
+        }
+        else {
+            Token token = Token(ID, str, line, column);
+            token.setModInfo(mod_info);
+            return token;
+        }
     }
 } // namespace AVSI

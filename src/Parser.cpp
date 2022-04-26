@@ -13,9 +13,13 @@ namespace AVSI {
      *******************************************************/
     extern llvm::LLVMContext *the_context;
     extern llvm::Module *the_module;
+    extern string module_name;
+    extern vector<string> module_path;
+
+    extern map<string, StructDef *> struct_types;
+
     extern map<llvm::Type *, string> type_name;
     extern map<llvm::Type *, uint32_t> type_size;
-    extern map<string, StructDef *> struct_types;
 
     /*******************************************************
      *                    constructor                      *
@@ -25,6 +29,7 @@ namespace AVSI {
     Parser::Parser(Lexer *lexer) {
         this->lexer = lexer;
         this->currentToken = lexer->getNextToken();
+        this->lastToken = this->currentToken;
     }
 
     Parser::~Parser() {}
@@ -47,6 +52,7 @@ namespace AVSI {
                 this->parenCnt++;
             if (currentToken.getType() == RPAR)
                 this->parenCnt--;
+            this->lastToken = this->currentToken;
             this->currentToken = this->lexer->getNextToken();
         } else {
             throw ExceptionFactory(__SyntaxException, "invalid syntax",
@@ -65,10 +71,42 @@ namespace AVSI {
     }
 
     AST *Parser::statement() {
+        bool is_export = false;
+        static bool mod_named = false;
+
+        if (this->currentToken.getType() == EXPORT) {
+            is_export = true;
+            eat(EXPORT);
+        }
+        if (this->currentToken.getType() == MODULE) {
+            if (mod_named) {
+                Warning(
+                        __Warning,
+                        "Module has named before.",
+                        this->currentToken.line, this->currentToken.column
+                );
+            }
+
+            eat(MODULE);
+            if (this->currentToken.getType() == ID) {
+                vector<string> path = this->currentToken.getModInfo();
+                module_path = path;
+                path.push_back(this->currentToken.getValue().any_cast<string>());
+                module_name = getModuleNameByPath(path);
+                mod_named = true;
+                the_module->setModuleIdentifier(module_name);
+            }
+            eat(ID);
+            return &ASTEmptyNotEnd;
+        }
+
+
         TokenType token_type = this->currentToken.getType();
 
         if (token_type == FUNCTION) {
-            return functionDecl();
+            FunctionDecl *may_be_export = (FunctionDecl *) functionDecl();
+            may_be_export->is_export = is_export;
+            return may_be_export;
         } else if (token_type == RETURN) {
             return returnExpr();
         } else if (token_type == ID &&
@@ -84,12 +122,17 @@ namespace AVSI {
         } else if (token_type == WHILE) {
             return WhileStatement();
         } else if (token_type == GLOBAL) {
-            return global();
+            Global *may_be_export = (Global *) global();
+            may_be_export->is_export = is_export;
+            return may_be_export;
         } else if (token_type == OBJ) {
-            return object();
+            Object *may_be_export = (Object *) object();
+            may_be_export->is_export = is_export;
+            return may_be_export;
         } else if (token_type == LBRACE) {
             return arraylist();
         }
+
         return &ASTEmpty;
     }
 
@@ -211,7 +254,7 @@ namespace AVSI {
         }
         eat(RPAR);
 
-        if (struct_types.find(STRUCT(id)) != struct_types.end()) {
+        if (struct_types.find(id) != struct_types.end()) {
             StructInit *struct_init_fun = new StructInit(id, paramList, token);
             return struct_init_fun;
         }
@@ -232,6 +275,7 @@ namespace AVSI {
     AST *Parser::object() {
         string id;
         Token token = this->currentToken;
+        Token last_token = this->lastToken;
 
         eat(OBJ);
         id = this->currentToken.getValue().any_cast<string>();
@@ -265,7 +309,7 @@ namespace AVSI {
             }
 
             if (i->Ty.second != "real" && i->Ty.second != "vec") {
-                if (struct_types.find(STRUCT(i->id)) == struct_types.end()) {
+                if (struct_types.find(i->id) == struct_types.end()) {
                     throw ExceptionFactory(
                             __MissingException,
                             "missing type '" + i->Ty.second + "'",
@@ -283,10 +327,11 @@ namespace AVSI {
         eat(RBRACE);
 
         // register a struct type
-        llvm::StructType *Ty = llvm::StructType::create(*the_context, member_types, STRUCT(id));
+        llvm::StructType *Ty = llvm::StructType::create(*the_context, member_types, NAME_MANGLING(id));
+
         StructDef *sd = new StructDef(Ty);
         sd->members = member_index;
-        struct_types[STRUCT(id)] = sd;
+        struct_types[id] = sd;
 
         // generate type name
         string struct_type_name = id + "{";
@@ -642,7 +687,7 @@ namespace AVSI {
             );
         } else if (this->currentToken.getType() == ID) {
             string id = this->currentToken.getValue().any_cast<string>();
-            if (struct_types.find(STRUCT(id)) == struct_types.end()) {
+            if (struct_types.find(id) == struct_types.end()) {
                 throw ExceptionFactory(
                         __MissingException,
                         "missing type '" + id + "'",
@@ -650,7 +695,7 @@ namespace AVSI {
                 );
             }
 
-            Type Ty = Type(struct_types[STRUCT(id)]->Ty, this->currentToken.getValue().any_cast<string>());
+            Type Ty = Type(struct_types[id]->Ty, this->currentToken.getValue().any_cast<string>());
             eat(ID);
             return Ty;
         } else {
@@ -661,5 +706,4 @@ namespace AVSI {
             );
         }
     }
-
 } // namespace AVSI

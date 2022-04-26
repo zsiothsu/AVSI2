@@ -20,6 +20,7 @@ namespace AVSI {
     private:
         Lexer *lexer;
         Token currentToken;
+        Token lastToken;
         int parenCnt = 0;
 
     public:
@@ -74,6 +75,8 @@ namespace AVSI {
         AST *WhileStatement();
 
         Type eatType();
+
+        vector<string> eatModule();
     };
 } // namespace AVSI
 

@@ -20,61 +20,48 @@
 #include <llvm/IRReader/IRReader.h>
 
 #if (__SIZEOF_POINTER__ == 4)
-    #define PTR_SIZE 4
-    #define MACHINE_WIDTH_TY (llvm::Type::getInt32Ty((*the_context)))
+#define PTR_SIZE 4
+#define MACHINE_WIDTH_TY (llvm::Type::getInt32Ty((*the_context)))
 #elif (__SIZEOF_POINTER__ == 8)
-    #define PTR_SIZE 8
-    #define MACHINE_WIDTH_TY (llvm::Type::getInt64Ty((*the_context)))
+#define PTR_SIZE 8
+#define MACHINE_WIDTH_TY (llvm::Type::getInt64Ty((*the_context)))
 #else
-    #err "unsupported machine"
+#err "unsupported machine"
 #endif
+
+extern char *file_name;
+std::string file_name_base;
 
 namespace AVSI {
     /*******************************************************
      *                      llvm base                      *
      *******************************************************/
-//    static unique_ptr<llvm::LLVMContext> the_context = make_unique<llvm::LLVMContext>();
-//    static unique_ptr<llvm::Module> the_module = make_unique<llvm::Module>("program", *the_context);
-    llvm::LLVMContext *the_context = new llvm::LLVMContext();
-    llvm::Module *the_module = new llvm::Module("program", *the_context);
-    static unique_ptr<llvm::IRBuilder<>> builder = make_unique<llvm::IRBuilder<>>(*the_context);
-    static unique_ptr<llvm::legacy::FunctionPassManager> the_fpm = make_unique<llvm::legacy::FunctionPassManager>(
-            the_module);
-    llvm::TargetMachine *TheTargetMachine = nullptr;
+    string module_name;
+    vector<string> module_path = vector<string>();
+
+    llvm::LLVMContext *the_context;
+    llvm::Module *the_module;
+    llvm::IRBuilder<> *builder;
+    llvm::legacy::FunctionPassManager *the_fpm;
+    llvm::TargetMachine *TheTargetMachine;
 
     /*******************************************************
      *               protos & definition                   *
      *******************************************************/
-    llvm::Type *REAL_TY = llvm::Type::getDoubleTy(*the_context);
-    llvm::Type *CHAR_TY = llvm::Type::getInt8Ty(*the_context);
-    llvm::Type *VOID_TY = llvm::Type::getVoidTy(*the_context);
-    llvm::Type *BOOL_TY = llvm::Type::getInt1Ty(*the_context);
-    
-    SymbolTable *symbol_table = new SymbolTable();
+    llvm::Type *REAL_TY;
+    llvm::Type *CHAR_TY;
+    llvm::Type *VOID_TY;
+    llvm::Type *BOOL_TY;
+
+    SymbolTable *symbol_table;
     map<string, StructDef *> struct_types;
     map<std::string, llvm::FunctionType *> function_protos;
 
-    set<llvm::Type *> simple_types = {REAL_TY,
-                                CHAR_TY,
-                                BOOL_TY};
-    map<llvm::Type*, uint8_t> simple_types_map = {
-            {REAL_TY, 0x04},
-            {CHAR_TY, 0x02},
-            {BOOL_TY, 0x01}
-    };
+    set<llvm::Type *> simple_types;
+    map<llvm::Type *, uint8_t> simple_types_map;
 
-    map<llvm::Type *, string> type_name = {
-            {REAL_TY, "real"},
-            {CHAR_TY, "char"},
-            {VOID_TY, "void"},
-            {BOOL_TY, "bool"},
-    };
-    map<llvm::Type *, uint32_t> type_size = {
-            {REAL_TY, 8},
-            {CHAR_TY, 1},
-            {VOID_TY, 0},
-            {BOOL_TY, 1},
-    };
+    map<llvm::Type *, string> type_name;
+    map<llvm::Type *, uint32_t> type_size;
 
     /*******************************************************
      *                     function                        *
@@ -90,12 +77,84 @@ namespace AVSI {
         the_fpm->doInitialization();
     }
 
-    void llvm_import_module()  {
+    void llvm_import_module(vector<string> path, string mod) {
+        int path_size = module_path.size();
+        bool is_absolute_path = true;
+        if (path.size() < path_size) {
+            is_absolute_path = false;
+        } else {
+            for (int i = 0; i < path_size; i++) {
+                if (module_path[i] != path[i]) {
+                    is_absolute_path = false;
+                    break;
+                }
+            }
+        }
 
+        int search_begin_index = 0;
+        if(is_absolute_path) {
+            search_begin_index = path_size;
+        }
+
+        // TODO import symbol table of other module
     }
 
-    void llvm_export_module() {
+    void llvm_global_context_reset() {
+        // reset context and module
+        delete TheTargetMachine;
+        delete the_fpm;
+        delete builder;
+        delete the_module;
+        delete the_context;
 
+        the_context = new llvm::LLVMContext();
+        the_module = new llvm::Module("program", *the_context);
+        builder = new llvm::IRBuilder<>(*the_context);
+        the_fpm = new llvm::legacy::FunctionPassManager(the_module);
+        TheTargetMachine = nullptr;
+
+        // reset symbols
+        delete symbol_table;
+        REAL_TY = llvm::Type::getDoubleTy(*the_context);
+        CHAR_TY = llvm::Type::getInt8Ty(*the_context);
+        VOID_TY = llvm::Type::getVoidTy(*the_context);
+        BOOL_TY = llvm::Type::getInt1Ty(*the_context);
+
+        symbol_table = new SymbolTable();
+        struct_types.clear();
+        function_protos.clear();
+        simple_types.clear();
+        simple_types_map.clear();
+        type_name.clear();
+        type_size.clear();
+
+        simple_types = {REAL_TY,
+                        CHAR_TY,
+                        BOOL_TY};
+        simple_types_map = {
+                {REAL_TY, 0x04},
+                {CHAR_TY, 0x02},
+                {BOOL_TY, 0x01}
+        };
+        type_name = {
+                {REAL_TY, "real"},
+                {CHAR_TY, "char"},
+                {VOID_TY, "void"},
+                {BOOL_TY, "bool"},
+        };
+        type_size = {
+                {REAL_TY, 8},
+                {CHAR_TY, 1},
+                {VOID_TY, 0},
+                {BOOL_TY, 1},
+        };
+
+        file_name_base = basename(file_name);
+        file_name_base = file_name_base.substr(0, file_name_base.find('.'));
+
+        module_name = "";
+        the_module->setModuleIdentifier(basename(file_name));
+        the_module->setSourceFileName(file_name);
     }
 
     void llvm_machine_init() {
@@ -132,7 +191,7 @@ namespace AVSI {
     }
 
     void llvm_obj_output() {
-        auto Filename = "a.o";
+        auto Filename = file_name_base + ".o";
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
 
@@ -156,7 +215,7 @@ namespace AVSI {
     }
 
     void llvm_asm_output() {
-        auto Filename = "a.s";
+        auto Filename = file_name_base + ".s";
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
 
@@ -180,7 +239,7 @@ namespace AVSI {
     }
 
     void llvm_module_printIR() {
-        auto Filename = "a.ll";
+        auto Filename = file_name_base + ".ll";
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
         the_module->print(dest, nullptr);
@@ -271,7 +330,6 @@ namespace AVSI {
 
                     if (!v->getType()->getPointerElementType()->isArrayTy()) {
                         // for raw pointer
-                        // TODO support 64-bit machine
                         index = builder->CreateMul(index,
                                                    llvm::ConstantInt::get(
                                                            MACHINE_WIDTH_TY,
@@ -532,7 +590,7 @@ namespace AVSI {
         llvm::Type *l_type = lv->getType();
         llvm::Type *r_type = rv->getType();
 
-        if(
+        if (
                 simple_types.find(l_type) == simple_types.end() ||
                 simple_types.find(r_type) == simple_types.end()
                 ) {
@@ -541,7 +599,7 @@ namespace AVSI {
 
         int result_type_bitmap = simple_types_map[l_type] | simple_types_map[r_type];
         bool float_point = false;
-        if(result_type_bitmap >= 0x04) float_point = true;
+        if (result_type_bitmap >= 0x04) float_point = true;
 
         llvm::Value *cmp_value_boolean;
         llvm::Value *lv_bool;
@@ -549,14 +607,14 @@ namespace AVSI {
 
         switch (this->op.getType()) {
             case PLUS:
-                if(float_point) return builder->CreateFAdd(lv, rv, "addTmp");
+                if (float_point) return builder->CreateFAdd(lv, rv, "addTmp");
                 else return builder->CreateAdd(lv, rv, "addTmp");
             case MINUS:
-                if(float_point) return builder->CreateFSub(lv, rv, "subTmp");
+                if (float_point) return builder->CreateFSub(lv, rv, "subTmp");
                 else return builder->CreateSub(lv, rv, "subTmp");
             case STAR:
-                if(float_point) return builder->CreateFMul(lv, rv, "mulTmp");
-                else if(float_point) return builder->CreateMul(lv, rv, "mulTmp");
+                if (float_point) return builder->CreateFMul(lv, rv, "mulTmp");
+                else if (float_point) return builder->CreateMul(lv, rv, "mulTmp");
             case SLASH:
                 return builder->CreateFDiv(lv, rv, "divTmp");
             case EQ:
@@ -707,11 +765,22 @@ namespace AVSI {
                 );
             }
 
+            auto link_type =
+                    this->is_export
+                    ? llvm::Function::ExternalLinkage
+                    : llvm::Function::PrivateLinkage;
+
+
             // create function
+            string func_name =
+                    this->id == ENTRY_NAME
+                    ? this->id
+                    : NAME_MANGLING(this->id);
+
             llvm::Function *the_function = llvm::Function::Create(
                     FT,
-                    llvm::Function::ExternalLinkage,
-                    this->id,
+                    link_type,
+                    func_name,
                     the_module
             );
             function_protos[this->id] = FT;
@@ -725,7 +794,12 @@ namespace AVSI {
         }
 
         if (this->compound != nullptr) {
-            llvm::Function *the_function = the_module->getFunction(this->id);
+            string func_name =
+                    this->id == ENTRY_NAME
+                    ? this->id
+                    : NAME_MANGLING(this->id);
+
+            llvm::Function *the_function = the_module->getFunction(func_name);
 
             // create body
             llvm::BasicBlock *BB = llvm::BasicBlock::Create(*the_context, "entry", the_function);
@@ -741,7 +815,11 @@ namespace AVSI {
 
             if (this->compound->codeGen()) {
                 auto t = builder->GetInsertBlock()->getTerminator();
-                if (!t) builder->CreateRet(llvm::ConstantFP::get(REAL_TY, 0.0));
+                if (!t && this->retTy.first == VOID_TY) {
+                    builder->CreateRetVoid();
+                } else if (!t) {
+                    builder->CreateRet(llvm::ConstantFP::get(REAL_TY, 0.0));
+                }
                 symbol_table->pop();
                 llvm::verifyFunction(*the_function, &llvm::errs());
                 the_fpm->run(*the_function);
@@ -753,7 +831,9 @@ namespace AVSI {
     }
 
     llvm::Value *FunctionCall::codeGen() {
-        llvm::Function *fun = the_module->getFunction(this->id);
+        llvm::Function *fun = the_module->getFunction(
+                getFunctionNameMangling(this->getToken().getModInfo(), this->id)
+        );
 
         if (!fun) {
             throw ExceptionFactory(
@@ -814,7 +894,7 @@ namespace AVSI {
 
     llvm::Value *StructInit::codeGen() {
         llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
-        llvm::StructType *Ty = struct_types[STRUCT(this->id)]->Ty;
+        llvm::StructType *Ty = struct_types[this->id]->Ty;
 
         uint32_t param_num = this->paramList.size();
         uint32_t member_num = Ty->getNumElements();
@@ -955,7 +1035,24 @@ namespace AVSI {
             );
         }
 
-        the_module->getOrInsertGlobal(name, v->Ty.first);
+        auto link_type =
+                this->is_export
+                ? llvm::GlobalVariable::ExternalLinkage
+                : llvm::GlobalVariable::PrivateLinkage;
+
+        the_module->getOrInsertGlobal(
+                NAME_MANGLING(name), v->Ty.first,
+                [v, link_type, name] {
+                    return new llvm::GlobalVariable(
+                            *the_module,
+                            v->Ty.first,
+                            false,
+                            link_type,
+                            llvm::Constant::getNullValue(v->Ty.first),
+                            NAME_MANGLING(name));
+                }
+        );
+
         return llvm::Constant::getNullValue(REAL_TY);
     }
 
@@ -1054,7 +1151,7 @@ namespace AVSI {
             return llvm::ConstantInt::get(CHAR_TY, this->getValue().any_cast<char>());
         } else {
             return llvm::ConstantFP::get(REAL_TY,
-                                  (double) this->getValue().any_cast<double>());
+                                         (double) this->getValue().any_cast<double>());
         }
     }
 

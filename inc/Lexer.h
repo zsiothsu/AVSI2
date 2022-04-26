@@ -89,6 +89,7 @@ namespace AVSI {
             {"global",   GLOBAL},
             {"import",   IMPORT},
             {"export",   EXPORT},
+            {"mod",      MODULE},
             {"real",     REAL},
             {"vec",      VEC},
             {"obj",      OBJ},

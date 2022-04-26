@@ -12,7 +12,11 @@
 #include <deque>
 #include <vector>
 
-#define STRUCT(x) "struct."+(x)
+#define NAME_MANGLING(x)    ("_ZN" + \
+to_string(module_name.size()) + module_name + \
+to_string(string(x).size()) + string(x))
+
+#define ENTRY_NAME          "entry"
 
 namespace AVSI {
     using std::map;
@@ -72,6 +76,10 @@ namespace AVSI {
 
         ~StructDef() = default;
     };
+
+    string getModuleNameByPath(vector<string> path);
+
+    string getFunctionNameMangling(vector<string> path, string fun);
 }
 
 

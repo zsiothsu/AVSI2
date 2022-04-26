@@ -9,6 +9,7 @@
 #include <cstring>
 
 char *file_name;
+char *file_path;
 
 namespace AVSI {
     /*******************************************************
@@ -56,7 +57,7 @@ namespace AVSI {
 
     void Warning(std::string type, std::string msg, int line, int column) {
         std::cerr << __COLOR_YELLOW
-                  << basename(file_name)
+                  << file_name
                   << ":" << line  << ":" << column + 1 << ": "
                   << type << ": "
                   << msg

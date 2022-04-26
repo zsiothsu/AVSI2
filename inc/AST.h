@@ -192,16 +192,22 @@ namespace AVSI {
         Type retTy;
         AST *paramList;
         AST *compound;
+        bool is_export;
 
         FunctionDecl(void)
-                : AST(__FUNCTIONDECL_NAME), retTy(Type()), paramList(nullptr), compound(nullptr) {};
+                : AST(__FUNCTIONDECL_NAME),
+                  retTy(Type()),
+                  paramList(nullptr),
+                  compound(nullptr),
+                  is_export(false) {};
 
         FunctionDecl(string id, Type retTy, AST *paramList, AST *compound, const Token &token)
                 : AST(__FUNCTIONDECL_NAME, token),
                   id(std::move(id)),
                   retTy(std::move(retTy)),
                   paramList(paramList),
-                  compound(compound) {};
+                  compound(compound),
+                  is_export(false) {};
 
         virtual ~FunctionDecl();
 
@@ -227,11 +233,16 @@ namespace AVSI {
     class Global : public AST {
     public:
         AST *var;
+        bool is_export;
 
-        Global(void) : AST(__GLOBAL_NAME) {};
+        Global(void)
+                : AST(__GLOBAL_NAME),
+                  is_export(false) {};
 
         Global(AST *var, Token token)
-                : AST(__GLOBAL_NAME, token), var(var) {};
+                : AST(__GLOBAL_NAME, token),
+                  var(var),
+                  is_export(false) {};
 
         virtual ~Global();
 
@@ -272,9 +283,9 @@ namespace AVSI {
         llvm::Value *codeGen() override;
     };
 
-    class Sizeof: public AST {
+    class Sizeof : public AST {
     public:
-        AST* id;
+        AST *id;
         Type Ty;
 
         Sizeof(void) : AST(__SIZEOF_NAME) {};
@@ -292,6 +303,7 @@ namespace AVSI {
     public:
         std::string id;
         Type Ty;
+        bool is_export;
 
         enum offsetType {
             ARRAY = 0,
@@ -333,15 +345,23 @@ namespace AVSI {
     public:
         string id;
         vector<Variable *> memberList;
+        bool is_export;
 
-        Object(void) : AST(__OBJECT_NAME), memberList(vector<Variable *>()) {};
+        Object(void)
+                : AST(__OBJECT_NAME),
+                  memberList(vector<Variable *>()),
+                  is_export(false) {};
 
-        Object(const Token &token) : AST(__OBJECT_NAME, token), memberList(vector<Variable *>()) {};
+        Object(const Token &token)
+                : AST(__OBJECT_NAME, token),
+                  memberList(vector<Variable *>()),
+                  is_export(false) {};
 
         Object(const Token &token, string id, vector<Variable *> memberList)
                 : AST(__OBJECT_NAME, token),
                   id(std::move(id)),
-                  memberList(std::move(memberList)) {};
+                  memberList(std::move(memberList)),
+                  is_export(false) {};
 
         virtual ~Object() {}
 
@@ -466,10 +486,11 @@ namespace AVSI {
     };
 
     static AST ASTEmpty = NoneAST();
+    static AST ASTEmptyNotEnd = NoneAST();
 
-    void llvm_import_module();
+    void llvm_import_module(vector<string> path, string mod);
 
-    void llvm_export_module();
+    void llvm_global_context_reset();
 
     void llvm_module_fpm_init();
 

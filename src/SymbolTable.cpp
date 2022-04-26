@@ -4,8 +4,11 @@
  * @Description: Symbol table use in code generator
  */
 #include "../inc/SymbolTable.h"
+#include <string>
 
 namespace AVSI {
+    extern std::string module_name;
+
     llvm::BasicBlock *SymbolMap::getBasicBlock() const {
         return this->BB;
     }
@@ -63,5 +66,25 @@ namespace AVSI {
 
     void SymbolTable::insert(basic_string<char> name, llvm::AllocaInst *addr) {
         this->maps.back()->insert(name, addr);
+    }
+
+    string getModuleNameByPath(vector<string> path) {
+        if(path.empty()) {
+            return module_name;
+        }
+
+        string name;
+        bool flag_first = true;
+        for(string i : path) {
+            if(!flag_first) name += "_";
+            flag_first = false;
+            name += i;
+        }
+        return name;
+    }
+
+    string getFunctionNameMangling(vector<string> path, string fun) {
+        string mn = getModuleNameByPath(path);
+        return "_ZN" + to_string(mn.size()) + mn + to_string(fun.size()) + fun;
     }
 }

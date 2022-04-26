@@ -22,6 +22,7 @@ extern int optind, opterr, optopt;
 extern char *optarg;
 static int opt = 0, lopt = 0, loidx = 0;
 extern char *file_name;
+extern char *file_path;
 
 static struct option long_options[] = {
         {"ir",   no_argument, &lopt, 1},
@@ -88,22 +89,27 @@ int main(int argc, char **argv) {
     }
 
     char *fileName = argv[optind];
-    file_name = fileName;
+    file_name = basename(fileName);
     ifstream file;
     file.open(fileName, ios::in);
     if (!file.is_open()) {
         cout << "AVSI: can't open file '" + string(fileName) + "'" << endl;
         return -1;
     }
+    realpath(fileName, file_path);
 
-    Lexer *lexer = new Lexer(&file);
-    Parser *parser = new Parser(lexer);
+    cout << file_path << endl;
+
     try {
-        AST *tree = parser->parse();
-
+        llvm_global_context_reset();
         llvm_machine_init();
         llvm_module_fpm_init();
+
+        Lexer *lexer = new Lexer(&file);
+        Parser *parser = new Parser(lexer);
+        AST *tree = parser->parse();
         tree->codeGen();
+
         if (opt_ir) llvm_module_printIR();
         if (opt_asm) llvm_asm_output();
         if (!(opt_ir || opt_asm))llvm_obj_output();
@@ -112,7 +118,7 @@ int main(int argc, char **argv) {
     catch (Exception &e) {
         std::cerr << __COLOR_RED
                   << basename(fileName)
-                  << ":" <<  e.line  << ":" << e.column + 1 << ": "
+                  << ":" << e.line << ":" << e.column + 1 << ": "
                   << e.what()
                   << __COLOR_RESET << std::endl;
         return 1;

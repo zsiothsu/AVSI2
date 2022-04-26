@@ -68,6 +68,7 @@ namespace AVSI {
         GLOBAL,
         IMPORT,
         EXPORT,
+        MODULE,
         SIZEOF,
         TYPENAME,
         REAL,
@@ -80,6 +81,7 @@ namespace AVSI {
     private:
         any value;
         TokenType type;
+        vector<string> __MOD_INFO;
 
     public:
         int line;
@@ -99,6 +101,10 @@ namespace AVSI {
         TokenType getType();
 
         any getValue();
+
+        void setModInfo(vector<string> info);
+
+        vector<string> getModInfo();
 
         any getNum();
 
