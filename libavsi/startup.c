@@ -1,4 +1,4 @@
-extern double entry();
+extern void entry();
 
 int main() {
     entry();

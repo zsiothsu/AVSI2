@@ -93,6 +93,7 @@ namespace AVSI {
             {"real",     REAL},
             {"vec",      VEC},
             {"obj",      OBJ},
+            {"char",     CHAR},
             {"sizeof",   SIZEOF},
             {"typename", TYPENAME}};
 } // namespace AVSI

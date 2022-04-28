@@ -1,22 +1,19 @@
 #include <stdio.h>
 
-double println(double x) {
-    printf("%f\n",x);
-    return x;
+void _ZN3std8printStr(char* s) {
+    printf("%s", s);
 }
 
-double print(double x) {
-    printf("%f",x);
-    return x;
+void _ZN3std9printReal(double num) {
+    printf("%f", num);
 }
 
-double put(double c) {
-    printf("%c", (char)c);
-    return c;
+double _ZN3std7readNum() {
+    double num;
+    scanf("%lf", &num);
+    return num;
 }
 
-double input() {
-    double x;
-    scanf("%lf", &x);
-    return x;
+double _ZN3std7readStr(char* str, double n) {
+    return scanf("%s", str);
 }

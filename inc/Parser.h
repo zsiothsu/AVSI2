@@ -50,6 +50,10 @@ namespace AVSI {
 
         AST *global();
 
+        AST *moduleDef();
+
+        AST *moduleImport();
+
         AST *object();
 
         AST *IfStatement();

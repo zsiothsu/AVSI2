@@ -77,9 +77,13 @@ namespace AVSI {
         ~StructDef() = default;
     };
 
-    string getModuleNameByPath(vector<string> path);
+    string __getModuleNameByPath(vector<string> path);
 
     string getFunctionNameMangling(vector<string> path, string fun);
+
+    string getpathListToUnresolved(vector<string> path);
+
+    vector<string> getpathUnresolvedToList(string path);
 }
 
 

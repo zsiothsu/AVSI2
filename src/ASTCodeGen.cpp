@@ -9,15 +9,19 @@
 
 #include "../inc/AST.h"
 #include "../inc/SymbolTable.h"
+#include "../inc/FileName.h"
+#include <filesystem>
 #include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/Host.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Support/SourceMgr.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/IRReader/IRReader.h>
+#include <llvm/Bitcode/BitcodeWriter.h>
 
 #if (__SIZEOF_POINTER__ == 4)
 #define PTR_SIZE 4
@@ -29,8 +33,7 @@
 #err "unsupported machine"
 #endif
 
-extern char *file_name;
-std::string file_name_base;
+extern bool opt_reliance;
 
 namespace AVSI {
     /*******************************************************
@@ -44,6 +47,7 @@ namespace AVSI {
     llvm::IRBuilder<> *builder;
     llvm::legacy::FunctionPassManager *the_fpm;
     llvm::TargetMachine *TheTargetMachine;
+
 
     /*******************************************************
      *               protos & definition                   *
@@ -63,6 +67,8 @@ namespace AVSI {
     map<llvm::Type *, string> type_name;
     map<llvm::Type *, uint32_t> type_size;
 
+    map<string, string> module_name_alias;
+
     /*******************************************************
      *                     function                        *
      *******************************************************/
@@ -77,26 +83,133 @@ namespace AVSI {
         the_fpm->doInitialization();
     }
 
-    void llvm_import_module(vector<string> path, string mod) {
+    void llvm_import_module(vector<string> path, string mod, int line, int col) {
+        // import module can use absolute path or relative path
+        // resolve path to locate module
         int path_size = module_path.size();
-        bool is_absolute_path = true;
+        bool is_absolute_module_path = true;
         if (path.size() < path_size) {
-            is_absolute_path = false;
+            is_absolute_module_path = false;
         } else {
             for (int i = 0; i < path_size; i++) {
                 if (module_path[i] != path[i]) {
-                    is_absolute_path = false;
+                    is_absolute_module_path = false;
                     break;
                 }
             }
         }
 
         int search_begin_index = 0;
-        if (is_absolute_path) {
+        if (is_absolute_module_path) {
             search_begin_index = path_size;
         }
 
-        // TODO import symbol table of other module
+        // get bc file path in file system
+        string module_file_system_path;
+        if (is_absolute_module_path) {
+            module_file_system_path = output_root_path + SYSTEM_PATH_DIVIDER;
+
+            string unresolved_path = getpathListToUnresolved(path);
+            unresolved_path += (unresolved_path.empty() ? "" : "::") + mod;
+            module_name_alias[unresolved_path] = unresolved_path;
+        } else {
+            module_file_system_path = output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER;
+
+            // create alias: relative -> absolute
+            string unresolved_path = getpathListToUnresolved(path);
+            unresolved_path += (unresolved_path.empty() ? "" : "::") + mod;
+            string unresolved_path_absolute = getpathListToUnresolved(module_path);
+            unresolved_path_absolute += "::" + unresolved_path;
+            module_name_alias[unresolved_path] = unresolved_path_absolute;
+        }
+        for (int i = search_begin_index; i < path.size(); i++) {
+            module_file_system_path += SYSTEM_PATH_DIVIDER + path[i];
+        }
+        module_file_system_path += SYSTEM_PATH_DIVIDER + mod;
+        if (std::filesystem::is_directory(std::filesystem::path(module_file_system_path))) {
+            module_file_system_path += SYSTEM_PATH_DIVIDER + mod + ".bc";
+        } else {
+            module_file_system_path += ".bc";
+        }
+        std::filesystem::path bcfile = module_file_system_path;
+
+        // generate .r for Makefile
+        if(opt_reliance) {
+            auto OFilename =
+                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
+                + string(input_file_name_no_suffix) + ".o";
+
+            auto BCFilename =
+                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
+                + string(input_file_name_no_suffix) + ".bc";
+
+            auto RFilename =
+                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
+                + string(input_file_name_no_suffix) + ".r";
+
+            llvm_create_dir(filesystem::path(RFilename).parent_path());
+            std::error_code EC;
+            llvm::raw_fd_ostream dest(RFilename, EC, llvm::sys::fs::OF_None);
+
+            dest << OFilename << " " << BCFilename << ":" << bcfile.string() << "\n";
+            return;
+        }
+
+        cout << bcfile.c_str() << endl;
+
+        if (!std::filesystem::exists(bcfile)) {
+            string unparsed_name;
+            for (string i: path) {
+                unparsed_name += i + "::";
+            }
+            unparsed_name += mod;
+
+            throw ExceptionFactory(
+                    __MissingException,
+                    "module " + unparsed_name + " is not found",
+                    line, col
+            );
+        }
+
+        // read bc file to memory buffer
+        auto mbuf = llvm::MemoryBuffer::getFile(bcfile.c_str());
+        if (!mbuf) {
+            if (!std::filesystem::exists(bcfile)) {
+                string unparsed_name;
+                for (string i: path) {
+                    unparsed_name += i + "::";
+                }
+                unparsed_name += mod;
+
+                throw ExceptionFactory(
+                        __MissingException,
+                        "error occurred when reading module " + unparsed_name,
+                        line, col
+                );
+            }
+        }
+
+        // create and import module
+        llvm::SMDiagnostic smd = llvm::SMDiagnostic();
+        auto ir = llvm::parseIR(*mbuf.get(), smd, *the_context);
+        auto ptr = ir.release();
+
+        // import symbols
+        // import function
+        auto function_iter = ptr->getFunctionList().begin();
+        while (function_iter != ptr->getFunctionList().end()) {
+            auto fun = &(*function_iter);
+            the_module->getOrInsertFunction(fun->getName(), fun->getFunctionType());
+            function_iter++;
+        }
+
+        // import global
+        auto global_iter = ptr->getGlobalList().begin();
+        while (global_iter != ptr->getGlobalList().end()) {
+            auto glb = &(*global_iter);
+            the_module->getOrInsertFunction(glb->getName(), glb->getValueType());
+            global_iter++;
+        }
     }
 
     void llvm_global_context_reset() {
@@ -149,12 +262,9 @@ namespace AVSI {
                 {BOOL_TY, 1},
         };
 
-        file_name_base = basename(file_name);
-        file_name_base = file_name_base.substr(0, file_name_base.find('.'));
-
         module_name = "";
-        the_module->setModuleIdentifier(basename(file_name));
-        the_module->setSourceFileName(file_name);
+        the_module->setModuleIdentifier(input_file_name_no_suffix);
+        the_module->setSourceFileName(input_file_name);
     }
 
     void llvm_machine_init() {
@@ -191,9 +301,14 @@ namespace AVSI {
     }
 
     void llvm_obj_output() {
-        auto Filename = file_name_base + ".o";
+        auto Filename =
+                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
+                + string(input_file_name_no_suffix) + ".o";
+        llvm_create_dir(filesystem::path(Filename).parent_path());
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
+
+        cout << Filename << endl;
 
         if (EC) {
             llvm::errs() << "Could not open file: " << EC.message();
@@ -215,7 +330,10 @@ namespace AVSI {
     }
 
     void llvm_asm_output() {
-        auto Filename = file_name_base + ".s";
+        auto Filename =
+                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
+                + string(input_file_name_no_suffix) + ".s";
+        llvm_create_dir(filesystem::path(Filename).parent_path());
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
 
@@ -238,8 +356,27 @@ namespace AVSI {
         llvm::outs() << "Wrote " << Filename << "\n";
     }
 
+    void llvm_module_output() {
+        auto Filename =
+                output_root_path + SYSTEM_PATH_DIVIDER  + input_file_path_relative + SYSTEM_PATH_DIVIDER
+                + string(input_file_name_no_suffix) + ".bc";
+        llvm_create_dir(filesystem::path(Filename).parent_path());
+        std::error_code EC;
+        llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
+
+        cout << Filename << endl;
+
+        llvm::WriteBitcodeToFile(*the_module, dest);
+
+        dest.flush();
+        llvm::outs() << "Wrote " << Filename << "\n";
+    }
+
     void llvm_module_printIR() {
-        auto Filename = file_name_base + ".ll";
+        auto Filename =
+                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
+                + string(input_file_name_no_suffix) + ".ll";
+        llvm_create_dir(filesystem::path(Filename).parent_path());
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
         the_module->print(dest, nullptr);
@@ -256,6 +393,14 @@ namespace AVSI {
         if (!v) return;
         v->print(llvm::outs());
         cout << endl;
+    }
+
+    void llvm_create_dir(string dir) {
+        std::filesystem::path d = dir;
+        if(!filesystem::exists(d.parent_path())) {
+            llvm_create_dir(d.parent_path());
+        }
+        filesystem::create_directory(d);
     }
 
     /*******************************************************
@@ -303,8 +448,13 @@ namespace AVSI {
          */
         llvm::Value *v = symbol_table->find(var->id);
 
+        string mod_path = getpathListToUnresolved(var->getToken().getModInfo());
+        mod_path = module_name_alias[mod_path];
+
         if (!v) {
-            v = the_module->getGlobalVariable(var->id);
+            v = the_module->getGlobalVariable(
+                    getFunctionNameMangling(getpathUnresolvedToList(mod_path), var->id)
+            );
         }
 
         if (v && !var->offset.empty()) {
@@ -360,12 +510,16 @@ namespace AVSI {
                         }
                     }
                 } else {
-                    string member_name = ((Variable *) (i.second))->id;
+                    string member_name = ((Variable * )(i.second))->id;
                     auto current_ty = v->getType()->getPointerElementType();
 
                     bool find_flag = false;
                     for (auto iter: struct_types) {
                         if (iter.second->Ty == current_ty) {
+                            if (iter.second->members.find(member_name) == iter.second->members.end()) {
+                                break;
+                            }
+
                             auto index = iter.second->members[member_name];
                             offset_list.push_back(llvm::ConstantInt::get(
                                     llvm::Type::getInt32Ty(*the_context),
@@ -831,8 +985,11 @@ namespace AVSI {
     }
 
     llvm::Value *FunctionCall::codeGen() {
+        string mod_path = getpathListToUnresolved(this->getToken().getModInfo());
+        mod_path = module_name_alias[mod_path];
+
         llvm::Function *fun = the_module->getFunction(
-                getFunctionNameMangling(this->getToken().getModInfo(), this->id)
+                getFunctionNameMangling(getpathUnresolvedToList(mod_path), this->id)
         );
 
         if (!fun) {
@@ -1259,12 +1416,12 @@ namespace AVSI {
             try {
                 ast->codeGen();
             } catch (Exception e) {
-                if(e.type() != __ErrReport) err_count++;
+                if (e.type() != __ErrReport) err_count++;
 
                 is_err = true;
 
                 std::cerr << __COLOR_RED
-                          << file_name
+                          << input_file_name
                           << ":" << e.line << ":" << e.column + 1 << ": "
                           << e.what()
                           << __COLOR_RESET << std::endl;

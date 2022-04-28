@@ -5,11 +5,9 @@
  * @Description: include some exception types for interpreter
  */
 #include "../inc/Exception.h"
+#include "../inc/FileName.h"
 #include <iostream>
 #include <cstring>
-
-char *file_name;
-char *file_path;
 
 namespace AVSI {
     /*******************************************************
@@ -59,7 +57,7 @@ namespace AVSI {
 
     void Warning(std::string type, std::string msg, int line, int column) {
         std::cerr << __COLOR_YELLOW
-                  << file_name
+                  << input_file_name
                   << ":" << line  << ":" << column + 1 << ": "
                   << type << ": "
                   << msg

@@ -5,9 +5,8 @@
  * @Description: include Parser class
  */
 #include "../inc/Parser.h"
+#include "../inc/FileName.h"
 #include "SymbolTable.h"
-
-extern char *file_name;
 
 namespace AVSI {
     /*******************************************************
@@ -23,6 +22,7 @@ namespace AVSI {
     extern map<llvm::Type *, string> type_name;
     extern map<llvm::Type *, uint32_t> type_size;
 
+    extern map<string, string> module_name_alias;
     /*******************************************************
      *                    constructor                      *
      *******************************************************/
@@ -79,7 +79,7 @@ namespace AVSI {
                     err_count++;
                 }
                 std::cerr << __COLOR_RED
-                          << file_name
+                          << input_file_name
                           << ":" << e.line << ":" << e.column + 1 << ": "
                           << e.what()
                           << __COLOR_RESET << std::endl;
@@ -111,34 +111,11 @@ namespace AVSI {
 
     AST *Parser::statement() {
         bool is_export = false;
-        static bool mod_named = false;
 
         if (this->currentToken.getType() == EXPORT) {
             is_export = true;
             eat(EXPORT);
         }
-        if (this->currentToken.getType() == MODULE) {
-            if (mod_named) {
-                Warning(
-                        __Warning,
-                        "Module has named before.",
-                        this->currentToken.line, this->currentToken.column
-                );
-            }
-
-            eat(MODULE);
-            if (this->currentToken.getType() == ID) {
-                vector<string> path = this->currentToken.getModInfo();
-                module_path = path;
-                path.push_back(this->currentToken.getValue().any_cast<string>());
-                module_name = getModuleNameByPath(path);
-                mod_named = true;
-                the_module->setModuleIdentifier(module_name);
-            }
-            eat(ID);
-            return &ASTEmptyNotEnd;
-        }
-
 
         TokenType token_type = this->currentToken.getType();
 
@@ -168,6 +145,10 @@ namespace AVSI {
             Object *may_be_export = (Object *) object();
             may_be_export->is_export = is_export;
             return may_be_export;
+        } else if (this->currentToken.getType() == MODULE) {
+            return moduleDef();
+        } else if (this->currentToken.getType() == IMPORT) {
+            return moduleImport();
         }
 
         return &ASTEmpty;
@@ -307,6 +288,49 @@ namespace AVSI {
         AST *var = variable();
 
         return new Global(var, token);
+    }
+
+    AST *Parser::moduleDef() {
+        static bool mod_named = false;
+
+        if (mod_named) {
+            Warning(
+                    __Warning,
+                    "Module has named before.",
+                    this->currentToken.line, this->currentToken.column
+            );
+        }
+
+        eat(MODULE);
+        if (this->currentToken.getType() == ID) {
+            vector<string> path = this->currentToken.getModInfo();
+            module_path = path;
+            path.push_back(this->currentToken.getValue().any_cast<string>());
+            module_name = __getModuleNameByPath(path);
+            mod_named = true;
+            the_module->setModuleIdentifier(module_name);
+
+            string path_unresolved = getpathListToUnresolved(path);
+            path_unresolved += (path_unresolved.empty() ? "" : "::") + this->currentToken.getValue().any_cast<string>();
+            module_name_alias[path_unresolved]  =path_unresolved;
+        }
+        eat(ID);
+        return &ASTEmptyNotEnd;
+    }
+
+    AST *Parser::moduleImport() {
+        eat(IMPORT);
+        if (this->currentToken.getType() == ID) {
+            vector<string> path = this->currentToken.getModInfo();
+            llvm_import_module(
+                    path,
+                    this->currentToken.getValue().any_cast<string>(),
+                    this->currentToken.line,
+                    this->currentToken.column);
+        }
+        eat(ID);
+
+        return &ASTEmptyNotEnd;
     }
 
     AST *Parser::object() {

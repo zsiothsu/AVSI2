@@ -68,7 +68,7 @@ namespace AVSI {
         this->maps.back()->insert(name, addr);
     }
 
-    string getModuleNameByPath(vector<string> path) {
+    string __getModuleNameByPath(vector<string> path) {
         if(path.empty()) {
             return module_name;
         }
@@ -84,7 +84,32 @@ namespace AVSI {
     }
 
     string getFunctionNameMangling(vector<string> path, string fun) {
-        string mn = getModuleNameByPath(path);
+        string mn = __getModuleNameByPath(path);
         return "_ZN" + to_string(mn.size()) + mn + to_string(fun.size()) + fun;
+    }
+
+    string getpathListToUnresolved(vector<string> path) {
+        string ret;
+        bool flag_isFirst = true;
+        for(auto i : path) {
+            if(!flag_isFirst) ret+="::";
+            flag_isFirst = false;
+            ret += i;
+        }
+        return ret;
+    }
+
+    vector<string> getpathUnresolvedToList(string path) {
+        vector<string> ret;
+        while (true) {
+            auto index = path.find("::");
+            if (index == string::npos) break;
+            string part = path.substr(0, index);
+            ret.push_back(part);
+            path = path.substr(index + 2);
+        }
+        ret.push_back(path);
+
+        return ret;
     }
 }

@@ -488,7 +488,7 @@ namespace AVSI {
     static AST ASTEmpty = NoneAST();
     static AST ASTEmptyNotEnd = NoneAST();
 
-    void llvm_import_module(vector<string> path, string mod);
+    void llvm_import_module(vector<string> path, string mod, int line, int col);
 
     void llvm_global_context_reset();
 
@@ -500,7 +500,11 @@ namespace AVSI {
 
     void llvm_asm_output();
 
+    void llvm_module_output();
+
     void llvm_module_printIR();
+
+    void llvm_create_dir(string dir);
 } // namespace AVSI
 
 #endif
