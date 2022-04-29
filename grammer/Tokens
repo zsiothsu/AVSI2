@@ -1,14 +1,34 @@
 # data
 INTEGER
 FLOAT
+STRING
+CHAR
 ID
 
 # reserved keyword
-ECHO
-FUNCTION
-RETURN
-TRUE
-FALSE
+ECHO            
+FUNCTION        function
+RETURN          return
+TRUE            true
+FALSE           false
+IF              if
+ELIF            elif
+ELSE            else
+FI              fi
+THEN            then
+FOR             for
+WHILE           while
+DO              do
+DONE            done
+GLOBAL          global
+IMPORT          import
+EXPORT          export
+MODULE          mod
+SIZEOF          sizeof
+TYPENAME        typename
+REAL            real
+VEC             vec
+OBJ             obj
 
 # structure
 COMPOUND
@@ -26,6 +46,8 @@ GT              '>'         '-gt'
 LT              '<'         '-lt'
 GE              '>='        '-ge'
 LE              '<='        '-le'
+OR              '||'        '-o'
+AND             '&&'        '-a'
 
 # symbol
 LPAR            '('
@@ -37,6 +59,8 @@ RBRACE          '}'
 SEMI            ';'
 COMMA           ','
 DOLLAR          '$'
+COLON           ':'
+TO              '->'
 
 # special token for reading program file
 END = EOF
