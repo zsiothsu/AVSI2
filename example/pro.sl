@@ -1,15 +1,13 @@
 mod root::pro
 
-import root::mod1::mod1
-import root::mod2::mod2
 import root::mod3
 
-obj struct{
-    a:real
-    b: vec[real;2]
-    c: vec[real;0]
+obj a{
+    a: real
+    b: real
 }
 
 export function entry() {
-    c = root::mod1::mod1::foo()
+    d = a()
+    e = root::mod3::foo(d)
 }

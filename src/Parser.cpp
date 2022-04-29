@@ -264,10 +264,10 @@ namespace AVSI {
         vector<AST *> paramList;
         eat(LPAR);
         if (this->currentToken.getType() != RPAR) {
-            paramList.push_back(expr());
+            paramList.push_back(checkedExpr());
             while (this->currentToken.getType() == COMMA) {
                 eat(COMMA);
-                paramList.push_back(expr());
+                paramList.push_back(checkedExpr());
             }
         }
         eat(RPAR);
@@ -388,7 +388,8 @@ namespace AVSI {
         eat(RBRACE);
 
         // register a struct type
-        llvm::StructType *Ty = llvm::StructType::create(*the_context, member_types, NAME_MANGLING(id));
+        llvm::StructType *Ty = llvm::StructType::create(*the_context, member_types, id);
+//        llvm::StructType *Ty = llvm::StructType::create(*the_context, member_types);
 
         StructDef *sd = new StructDef(Ty);
         sd->members = member_index;

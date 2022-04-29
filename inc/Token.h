@@ -19,6 +19,7 @@ namespace AVSI {
         INTEGER,
         FLOAT,
         STRING,
+        CHAR,
         COMPOUND,
         ID,
         // operator
@@ -72,7 +73,6 @@ namespace AVSI {
         SIZEOF,
         TYPENAME,
         REAL,
-        CHAR,
         VEC,
         OBJ,
     } TokenType;

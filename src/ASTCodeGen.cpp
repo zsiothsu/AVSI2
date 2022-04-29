@@ -113,7 +113,8 @@ namespace AVSI {
             unresolved_path += (unresolved_path.empty() ? "" : "::") + mod;
             module_name_alias[unresolved_path] = unresolved_path;
         } else {
-            module_file_system_path = output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER;
+            module_file_system_path =
+                    output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER;
 
             // create alias: relative -> absolute
             string unresolved_path = getpathListToUnresolved(path);
@@ -134,18 +135,18 @@ namespace AVSI {
         std::filesystem::path bcfile = module_file_system_path;
 
         // generate .r for Makefile
-        if(opt_reliance) {
+        if (opt_reliance) {
             auto OFilename =
-                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
-                + string(input_file_name_no_suffix) + ".o";
+                    output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
+                    + string(input_file_name_no_suffix) + ".o";
 
             auto BCFilename =
-                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
-                + string(input_file_name_no_suffix) + ".bc";
+                    output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
+                    + string(input_file_name_no_suffix) + ".bc";
 
             auto RFilename =
-                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
-                + string(input_file_name_no_suffix) + ".r";
+                    output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
+                    + string(input_file_name_no_suffix) + ".r";
 
             llvm_create_dir(filesystem::path(RFilename).parent_path());
             std::error_code EC;
@@ -209,6 +210,13 @@ namespace AVSI {
             auto glb = &(*global_iter);
             the_module->getOrInsertFunction(glb->getName(), glb->getValueType());
             global_iter++;
+        }
+
+        auto md_iter = ptr->getNamedMDList().begin();
+        while (md_iter != ptr->getNamedMDList().end()) {
+            auto md = &(*md_iter);
+            the_module->getOrInsertNamedMetadata(md->getName());
+            md_iter++;
         }
     }
 
@@ -358,7 +366,7 @@ namespace AVSI {
 
     void llvm_module_output() {
         auto Filename =
-                output_root_path + SYSTEM_PATH_DIVIDER  + input_file_path_relative + SYSTEM_PATH_DIVIDER
+                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
                 + string(input_file_name_no_suffix) + ".bc";
         llvm_create_dir(filesystem::path(Filename).parent_path());
         std::error_code EC;
@@ -397,7 +405,7 @@ namespace AVSI {
 
     void llvm_create_dir(string dir) {
         std::filesystem::path d = dir;
-        if(!filesystem::exists(d.parent_path())) {
+        if (!filesystem::exists(d.parent_path())) {
             llvm_create_dir(d.parent_path());
         }
         filesystem::create_directory(d);
@@ -510,7 +518,7 @@ namespace AVSI {
                         }
                     }
                 } else {
-                    string member_name = ((Variable * )(i.second))->id;
+                    string member_name = ((Variable *) (i.second))->id;
                     auto current_ty = v->getType()->getPointerElementType();
 
                     bool find_flag = false;
@@ -1032,6 +1040,14 @@ namespace AVSI {
                                        (llvm::PointerType *) callee_type)
                     ) {
                 v = builder->CreatePointerCast(v, callee_type);
+            } else if (
+                    caller_type->isStructTy() &&
+                    caller_type->isStructTy() &&
+                    ((llvm::StructType *) caller_type)->isLayoutIdentical((llvm::StructType *) callee_type)
+                    ) {
+                v = getLoadStorePointerOperand(v);
+                v = builder->CreatePointerCast(v, callee_type->getPointerTo());
+                v = builder->CreateLoad(callee_type, v);
             } else if (callee_type != caller_type) {
                 throw ExceptionFactory(
                         __LogicException,
@@ -1134,7 +1150,7 @@ namespace AVSI {
 
         type_name[arr_type] = "vec[" + type_name[eleTy] + ";" + to_string(element_num) + "]";
         type_name[arr_type->getPointerTo()] = "vec[" + type_name[eleTy] + ";" + to_string(element_num) + "]*";
-        type_size[arr_type] = type_size[eleTy] * element_num;
+        type_size[arr_type] = (eleTy->isPointerTy() ? PTR_SIZE : type_size[eleTy]) * element_num;
         // initialize array
         llvm::AllocaInst *array_alloca = allocaBlockEntry(the_scope, "ArrayInit.begin", arr_type);
 
