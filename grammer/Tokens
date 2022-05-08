@@ -6,7 +6,6 @@ CHAR
 ID
 
 # reserved keyword
-ECHO            
 FUNCTION        function
 RETURN          return
 TRUE            true

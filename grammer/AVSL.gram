@@ -1,58 +1,124 @@
-COMPOUND:
-    | STATEMENT (| STATEMENT)*
+ARRAY:
+    | '{'LBRACE ARRAYCONTAIN '}'RBRACE
 
-STATEMENT:
-    | FUNCTIONDECL
-    | FUNCTIONCALL
-    | ASSIGNMENT
-    | RETURNEXPR
+ARRAYCONTAIN:
+    | ε
+    | ':'COLON INNERTYPE ':'COLON INTEGER
+    | EXPR (','COMMA EXPR)*
 
 ASSIGNMENT:
-    | a=VARIABLE '='EQUAL b=EXPR { Assign(a,b) }
+    | MODULENAME '='EQUAL EXPRCHECK
 
-FUNCTIONDECL:
-    | FUNCTION a=ID '('LPAR b=PARAM ')'RPAR '{'LBRACE c=COMPOUND '}'RBRACE {
-        FunctionDecl(a,b,c,NULL)
-    }
+ASSIGNMENTORCALL:
+    | '='EQUAL EXPRCHECK
+    | '('LPAR PARAMLIST ')'RPAR 
 
-FUNCTIONCALL:
-    | a=ID '('LPAR b=PARAMLIST ')'RPAR { FunctionCall(a,b) }
-    
-PARAM:
-    | NULL
-    | a=ID b=(','COMMA ID)* { param({a,b}) }
+COMPOUND:
+    | STATEMENT+
 
-PARAMLIST:
-    | NULL
-    | a=EXPR b=(','COMMA EXPR)* { vector<AST>(a,b) }
-
-ECHO:
-    | a=EXPR { Echo(a) }
+EXPORTCHECK:
+    | ε
+    | EXPORT
 
 EXPR:
-    | a=TERM (b=('+'PLUS | '-'MINUS) c=TERM)* {
-        b==NULL ? a : BinOp(a,b,c)
-    } 
+    | TERM (('+'PLUS | '-'MINUS) TERM)*
 
-TERM:
-    | a=FACTOR (b=('*'STAR | '/'SLASH) c=FACTOR)* {
-        b==NULL ? a : BinOp(a,b,c)
-    }
+EXPRCHECK:
+    | EXPR
+    | ARRAY
+    | STRING
 
 FACTOR:
-    | a=INTEGER { Num(a) }
-    | a=FLOAT {Num{a}}
-    | a=(TRUE | FALSE) { Boolean(a) }
-    | a='+'PLUS b=FACTOR { UnaryOp(a,b) }
-    | a='-'MINUS b=FACTOR { UnaryOp(a,b) }
-    | VARIABLE
-    | '('LPAR a=EXPR ')'RPAR { a }
-    | a=FUNCTIONCALL { a }
-    | SYNTAXEXCEPTION
+    | INTEGER 
+    | FLOAT
+    | TRUE 
+    | FALSE
+    | '+'PLUS FACTOR 
+    | '-'MINUS FACTOR 
+    | IDHEAD
+    | '('LPAR EXPR ')'RPAR
+
+FORSTATEMENT:
+    | FOR '('LPAR COMPOUND ';'SEMI EXPR ';'SEMI COMPOUND ')'RPAR DO COMPOUND DONE
+
+FUNCTIONBODY:
+    | ε
+    | '{'LBRACE COMPOUND '}'RBRACE
+
+FUNCTIONCALL:
+    | MODULENAME '('LPAR PARAMLIST ')'RPAR 
+
+FUNCTIONDECL:
+    | EXPORTCHECK FUNCTION ID '('LPAR PARAM ')'RPAR FUNCTIONTYPE FUNCTIONBODY
+
+FUNCTIONTYPE:
+    | ε
+    | '->'TO INNERTYPE
+
+IDHEAD:
+    | MODULENAME ASSIGNMENTORCALL
+
+IFLINK:
+    | ELIF '['LSQB EXPR ']'RSQB THEN COMPOUND IFLINK
+    | ELSE COMPOUND IFLINK
+    | FI
+
+IFSTATEMENT:
+    | IF '['LSQB EXPR ']'RSQB THEN COMPOUND IFLINK
+
+INNERTYPE:
+    | ID
+    | REAL
+    | VEC '['LSQB INNERTYPE ';'SEMI INTEGER ']'RSQB
+
+MODULEDEF:
+    | MODULE MODULENAME
+
+MODULEIMPORT:
+    | IMPORT MODULENAME
+
+MODULENAME:
+    | ID (':'COLON ':'COLON ID)*
+
+OBJECTDEF:
+    | OBJ ID '{'LBRACE PARAM '}'RBRACE
+
+PARAM:
+    | ε
+    | VARIABLE (','COMMA VARIABLE)* 
+
+PARAMLIST:
+    | ε
+    | EXPRCHECK (','COMMA EXPRCHECK)* 
 
 RETURNEXPR:
-    | RETURN a=EXPR { Return(a) }
-    | RETURN { Return(None) }
+    | RETURN RETURNEXPRCHECK
+
+RETURNEXPRCHECK:
+    | ε
+    | EXPRCHECK
+
+STATEMENT:
+    | ε
+    | FUNCTIONDECL
+    | IDHEAD
+    | RETURNEXPR
+    | IFSTATEMENT
+    | FORSTATEMENT
+    | WHILESTATEMENT
+    | OBJECTDEF
+    | MODULEDEF
+    | MODULEIMPORT
+
+TERM:
+    | FACTOR (('*'STAR | '/'SLASH) FACTOR)*
+
+TYPE:
+    | ε
+    | ':'COLON INNERTYPE
 
 VARIABLE:
-    | a=ID { Variable(a) }
+    | ID TYPE
+
+WHILESTATEMENT:
+    | WHILE EXPR DO COMPOUND DONE
