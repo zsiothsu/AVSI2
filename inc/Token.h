@@ -121,35 +121,89 @@ namespace AVSI {
     const static Token emptyToken(NONE, 0);
 
     const static TokenType ExprOp[] = {
-        INTEGER,
-        FLOAT,
-        STRING,
-        TRUE,
-        FALSE,
-        PLUS,
-        MINUS,
-        ID,
-        LPAR,
-        NOT
+            INTEGER,
+            FLOAT,
+            STRING,
+            TRUE,
+            FALSE,
+            PLUS,
+            MINUS,
+            ID,
+            LPAR,
+            NOT
     };
     const static TokenType ReOp[] = {
-        EQ,
-        NE,
-        GT,
-        LT,
-        GE,
-        LE,
-        OR,
-        AND
+            EQ,
+            NE,
+            GT,
+            LT,
+            GE,
+            LE,
+            OR,
+            AND
     };
 
-    const static TokenType StatementStartWith[] = {
-            FUNCTION,   RETURN,     ID,
-            IF,         FOR,        WHILE,
-            GLOBAL,     OBJ
+    const static TokenType FIRST_STATEMENT[] = {
+            EXPORT,FUNCTION,ID,RETURN,IF,FOR,WHILE,OBJ,MODULE,IMPORT
     };
 
-    std::string typeName(TokenType type);
+    static map<TokenType, string> token_name = {
+            {END,      "END"},
+            {INTEGER,  "INTEGER"},
+            {FLOAT,    "FLOAT"},
+            {STRING,   "STRING"},
+            {CHAR,     "CHAR"},
+            {COMPOUND, "COMPOUND"},
+            {ID,       "ID"},
+            {PLUS,     "PLUS"},
+            {MINUS,    "MINUS"},
+            {STAR,     "STAR"},
+            {SLASH,    "SLASH"},
+            {EQUAL,    "EQUAL"},
+            {NOT,      "NOT"},
+            {DOT,      "DOT"},
+            {EQ,       "EQ"},
+            {NE,       "NE"},
+            {GT,       "GT"},
+            {LT,       "LT"},
+            {GE,       "GE"},
+            {LE,       "LE"},
+            {OR,       "OR"},
+            {AND,      "AND"},
+            {LPAR,     "LPAR"},
+            {RPAR,     "RPAR"},
+            {LSQB,     "LSQB"},
+            {RSQB,     "RSQB"},
+            {LBRACE,   "LBRACE"},
+            {RBRACE,   "RBRACE"},
+            {SEMI,     "SEMI"},
+            {COMMA,    "COMMA"},
+            {DOLLAR,   "DOLLAR"},
+            {COLON,    "COLON"},
+            {TO,       "TO"},
+            {FUNCTION, "FUNCTION"},
+            {RETURN,   "RETURN"},
+            {TRUE,     "TRUE"},
+            {FALSE,    "FALSE"},
+            {IF,       "IF"},
+            {ELIF,     "ELIF"},
+            {ELSE,     "ELSE"},
+            {FI,       "FI"},
+            {THEN,     "THEN"},
+            {FOR,      "FOR"},
+            {WHILE,    "WHILE"},
+            {DO,       "DO"},
+            {DONE,     "DONE"},
+            {GLOBAL,   "GLOBAL"},
+            {IMPORT,   "IMPORT"},
+            {EXPORT,   "EXPORT"},
+            {MODULE,   "MODULE"},
+            {SIZEOF,   "SIZEOF"},
+            {TYPENAME, "TYPENAME"},
+            {REAL,     "REAL"},
+            {VEC,      "VEC"},
+            {OBJ,      "OBJ"}
+    };
 } // namespace AVSI
 
 #endif

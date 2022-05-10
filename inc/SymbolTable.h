@@ -16,6 +16,16 @@
 to_string(module_name.size()) + module_name + \
 to_string(string(x).size()) + string(x))
 
+#if (__SIZEOF_POINTER__ == 4)
+#define PTR_SIZE 4
+#define MACHINE_WIDTH_TY (llvm::Type::getInt32Ty((*the_context)))
+#elif (__SIZEOF_POINTER__ == 8)
+#define PTR_SIZE 8
+#define MACHINE_WIDTH_TY (llvm::Type::getInt64Ty((*the_context)))
+#else
+#err "unsupported machine"
+#endif
+
 #define ENTRY_NAME          "entry"
 
 namespace AVSI {

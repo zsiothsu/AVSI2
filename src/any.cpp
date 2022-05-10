@@ -66,6 +66,11 @@ namespace AVSI {
         this->valueBool = (bool)var;
     }
 
+    any::any(char* var) {
+        this->typeInfo = typeString;
+        this->valueString = string(var);
+    }
+
     any::any(string var) {
         this->typeInfo = typeString;
         this->valueString = var;
@@ -236,8 +241,8 @@ namespace AVSI {
     }
 
     any::operator string() {
-        if (this->typeInfo == typeBool) return string((this->valueBool == true) ? "true" : "false");
-        else if (this->typeInfo == typeChar) return to_string(this->valueChar);
+        if (this->typeInfo == typeBool) return string(this->valueBool ? "True" : "False");
+        else if (this->typeInfo == typeChar) return string(1,this->valueChar);
         else if (this->typeInfo == typeInt) return to_string(this->valueInt);
         else if (this->typeInfo == typeFloat) return to_string(this->valueFloat);
         else if (this->typeInfo == typeString) return this->valueString;
@@ -245,6 +250,7 @@ namespace AVSI {
     }
 
     ostream &operator<<(ostream &output, AVSI::any &d) {
+        output << d.typeInfo.name() << " ";
         if (d.typeInfo == typeEmpty) output << "None";
         else if (d.typeInfo == typeBool) output << (d.any_cast<bool>() == true ? "True" : "False");
         else if (d.typeInfo == typeChar) output << d.any_cast<char>();

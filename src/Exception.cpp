@@ -9,6 +9,9 @@
 #include <iostream>
 #include <cstring>
 
+extern uint16_t warn_count;
+extern uint16_t err_count;
+
 namespace AVSI {
     /*******************************************************
      *                    base exception                   *
@@ -52,10 +55,13 @@ namespace AVSI {
         exception.line = line;
         exception.column = column;
 
+        if(e != __ErrReport) err_count++;
+
         return exception;
     }
 
     void Warning(std::string type, std::string msg, int line, int column) {
+        warn_count++;
         std::cerr << __COLOR_YELLOW
                   << input_file_name
                   << ":" << line  << ":" << column + 1 << ": "

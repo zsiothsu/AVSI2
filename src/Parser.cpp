@@ -8,6 +8,29 @@
 #include "../inc/FileName.h"
 #include "SymbolTable.h"
 
+uint16_t err_count = 0;
+uint16_t warn_count = 0;
+
+#undef __AVSI_DEBUG__TOKEN_NAME
+#define __AVSI_DEBUG__PARSER
+
+#ifdef __AVSI_DEBUG__PARSER
+#define PARSE_LOG(NESYMBOL) _PARSE_LOG(NESYMBOL)
+#else
+#define PARSE_LOG(NESYMBOL)
+#endif
+
+#define _PARSE_LOG(NESYMBOL) \
+do { \
+    clog << "parsing M[" \
+         << #NESYMBOL \
+         << "," \
+         << token_name[this->currentToken.getType()] \
+         << "]" \
+         << endl; \
+} while(0)
+
+
 namespace AVSI {
     /*******************************************************
      *                     variable                        *
@@ -23,6 +46,7 @@ namespace AVSI {
     extern map<llvm::Type *, uint32_t> type_size;
 
     extern map<string, string> module_name_alias;
+
     /*******************************************************
      *                    constructor                      *
      *******************************************************/
@@ -32,6 +56,15 @@ namespace AVSI {
         this->lexer = lexer;
         this->currentToken = lexer->getNextToken();
         this->lastToken = this->currentToken;
+
+#ifdef __AVSI_DEBUG__TOKEN_NAME
+        cout << '<'
+             << token_name[this->currentToken.getType()]
+             << ','
+             << string(this->currentToken.getValue())
+             << '>'
+             << endl;
+#endif
     }
 
     Parser::~Parser() {}
@@ -56,19 +89,42 @@ namespace AVSI {
                 this->parenCnt--;
             this->lastToken = this->currentToken;
             this->currentToken = this->lexer->getNextToken();
+
+#ifdef __AVSI_DEBUG__TOKEN_NAME
+            cout << '<'
+                 << token_name[this->currentToken.getType()]
+                 << ','
+                 << string(this->currentToken.getValue())
+                 << '>'
+                 << endl;
+#endif
+
+#ifdef __AVSI_DEBUG__PARSER
+            clog << "get " << token_name[this->lastToken.getType()] << endl;
+#endif
         } else {
-            throw ExceptionFactory(__SyntaxException, "invalid syntax",
-                                   this->currentToken.line,
-                                   this->currentToken.column);
+            throw ExceptionFactory(
+                    __SyntaxException,
+                    "invalid syntax, expected " + token_name[type],
+                    this->currentToken.line,
+                    this->currentToken.column
+            );
         }
     }
 
-    AST *Parser::program() { return statementList(); }
+    AST *Parser::program() {
+        try {
+            return statementList();
+        } catch (Exception &e) {
+            throw e;
+        }
+    }
 
     AST *Parser::statementList() {
+        PARSE_LOG(COMPOUND);
+
         Compound *root = new Compound();
         AST *node;
-        int err_count = 0;
         while (this->currentToken.getType() != END) {
             try {
                 node = statement();
@@ -76,17 +132,15 @@ namespace AVSI {
                 root->child.push_back(node);
             } catch (Exception e) {
                 if (e.type() != __ErrReport) {
-                    err_count++;
+                    std::cerr << __COLOR_RED
+                              << input_file_name
+                              << ":" << e.line << ":" << e.column + 1 << ": "
+                              << e.what()
+                              << __COLOR_RESET << std::endl;
                 }
-                std::cerr << __COLOR_RED
-                          << input_file_name
-                          << ":" << e.line << ":" << e.column + 1 << ": "
-                          << e.what()
-                          << __COLOR_RESET << std::endl;
-
 
                 auto tokenIsNotAStart = [](Token t) -> bool {
-                    for (TokenType i: StatementStartWith) {
+                    for (TokenType i: FIRST_STATEMENT) {
                         if (i == t.getType()) return false;
                     }
                     return true;
@@ -104,7 +158,7 @@ namespace AVSI {
         err:
         throw ExceptionFactory(
                 __ErrReport,
-                "generated " + to_string(err_count) + " errors",
+                "",
                 0, 0
         );
     }
@@ -120,34 +174,45 @@ namespace AVSI {
         TokenType token_type = this->currentToken.getType();
 
         if (token_type == FUNCTION) {
+            PARSE_LOG(STATEMENT);
             FunctionDecl *may_be_export = (FunctionDecl *) functionDecl();
             may_be_export->is_export = is_export;
             return may_be_export;
         } else if (token_type == RETURN) {
+            PARSE_LOG(STATEMENT);
             return returnExpr();
         } else if (token_type == ID &&
                    this->lexer->currentChar == '(') {
+            PARSE_LOG(STATEMENT);
             AST *ast = functionCall();
             return ast;
         } else if (token_type == ID) {
+            PARSE_LOG(STATEMENT);
             return assignment();
         } else if (token_type == IF) {
+            PARSE_LOG(STATEMENT);
             return IfStatement();
         } else if (token_type == FOR) {
+            PARSE_LOG(STATEMENT);
             return forStatement();
         } else if (token_type == WHILE) {
+            PARSE_LOG(STATEMENT);
             return WhileStatement();
         } else if (token_type == GLOBAL) {
+            PARSE_LOG(STATEMENT);
             Global *may_be_export = (Global *) global();
             may_be_export->is_export = is_export;
             return may_be_export;
         } else if (token_type == OBJ) {
+            PARSE_LOG(STATEMENT);
             Object *may_be_export = (Object *) object();
             may_be_export->is_export = is_export;
             return may_be_export;
         } else if (this->currentToken.getType() == MODULE) {
+            PARSE_LOG(STATEMENT);
             return moduleDef();
         } else if (this->currentToken.getType() == IMPORT) {
+            PARSE_LOG(STATEMENT);
             return moduleImport();
         }
 
@@ -155,6 +220,8 @@ namespace AVSI {
     }
 
     AST *Parser::arraylist() {
+        PARSE_LOG(ARRAY);
+
         vector<AST *> elements;
         Token token = this->currentToken;
 
@@ -183,6 +250,8 @@ namespace AVSI {
     }
 
     AST *Parser::assignment() {
+        PARSE_LOG(ASSIGNMENT);
+
         AST *left = variable();
         Token token = this->currentToken;
         eat(EQUAL);
@@ -191,6 +260,8 @@ namespace AVSI {
     }
 
     AST *Parser::forStatement() {
+        PARSE_LOG(FORSTATEMENT);
+
         Token token = this->currentToken;
 
         AST *initList = nullptr;
@@ -220,6 +291,8 @@ namespace AVSI {
     }
 
     AST *Parser::functionDecl() {
+        PARSE_LOG(FUNCTIONDECL);
+
         Token token = this->currentToken;
         eat(FUNCTION);
         string id = this->currentToken.getValue().any_cast<string>();
@@ -242,11 +315,15 @@ namespace AVSI {
         Type retTy = Type(llvm::Type::getVoidTy(*the_context), "void");
 
         if (this->currentToken.getType() == TO) {
+            PARSE_LOG(FUNCTIONTYPE);
+
             eat(TO);
             retTy = eatType();
         }
 
         if (this->currentToken.getType() == LBRACE) {
+            PARSE_LOG(FUNCTIONBODY);
+
             eat(LBRACE);
             AST *compound = statementList();
             eat(RBRACE);
@@ -257,6 +334,8 @@ namespace AVSI {
     }
 
     AST *Parser::functionCall() {
+        PARSE_LOG(FUNCTIONCALL);
+
         Token token = this->currentToken;
         string id = this->currentToken.getValue().any_cast<string>();
         eat(ID);
@@ -282,6 +361,8 @@ namespace AVSI {
     }
 
     AST *Parser::global() {
+        PARSE_LOG(GLOBAL);
+
         Token token = this->currentToken;
         eat(GLOBAL);
 
@@ -291,6 +372,8 @@ namespace AVSI {
     }
 
     AST *Parser::moduleDef() {
+        PARSE_LOG(MODULEDEF);
+
         static bool mod_named = false;
 
         if (mod_named) {
@@ -311,14 +394,16 @@ namespace AVSI {
             the_module->setModuleIdentifier(module_name);
 
             string path_unresolved = getpathListToUnresolved(path);
-            path_unresolved += (path_unresolved.empty() ? "" : "::") + this->currentToken.getValue().any_cast<string>();
-            module_name_alias[path_unresolved]  =path_unresolved;
+            module_name_alias[path_unresolved] = path_unresolved;
+            module_name_alias[""] = path_unresolved;
         }
         eat(ID);
         return &ASTEmptyNotEnd;
     }
 
     AST *Parser::moduleImport() {
+        PARSE_LOG(MODULEIMPORT);
+
         eat(IMPORT);
         if (this->currentToken.getType() == ID) {
             vector<string> path = this->currentToken.getModInfo();
@@ -334,6 +419,8 @@ namespace AVSI {
     }
 
     AST *Parser::object() {
+        PARSE_LOG(OBJECTDEF);
+
         string id;
         Token token = this->currentToken;
         Token last_token = this->lastToken;
@@ -380,8 +467,10 @@ namespace AVSI {
             }
 
             // turn array to pointer
-            member_types.push_back(i->Ty.first->isArrayTy() ? i->Ty.first->getPointerTo() : i->Ty.first);
-            struct_size += type_size[member_types.back()];
+            bool i_is_array = i->Ty.first->isArrayTy();
+
+            member_types.push_back(i_is_array ? i->Ty.first->getPointerTo() : i->Ty.first);
+            struct_size += i_is_array ? type_size[i->Ty.first] : type_size[member_types.back()];
             member_index[i->id] = index++;
         }
 
@@ -419,23 +508,27 @@ namespace AVSI {
         bool noCondition = false;
 
         if (type == FI) {
+            PARSE_LOG(IfLINK);
             eat(FI);
             return &ASTEmpty;
         }
 
         if (type == IF) {
+            PARSE_LOG(IfSTATEMENT);
             eat(IF);
             eat(LSQB);
             condition = expr();
             eat(RSQB);
             eat(THEN);
         } else if (type == ELIF) {
+            PARSE_LOG(IfLINK);
             eat(ELIF);
             eat(LSQB);
             condition = expr();
             eat(RSQB);
             eat(THEN);
         } else {
+            PARSE_LOG(IfLINK);
             eat(ELSE);
             noCondition = true;
         }
@@ -447,6 +540,8 @@ namespace AVSI {
     }
 
     AST *Parser::param() {
+        PARSE_LOG(PARAM);
+
         Param *param = new Param();
         set<string> paramSet;
         while (this->currentToken.getType() == ID) {
@@ -495,6 +590,8 @@ namespace AVSI {
      *                  term: Integer;
      */
     AST *Parser::expr(void) {
+        PARSE_LOG(EXPR);
+
         if (this->currentToken.getType() == SEMI) return &ASTEmpty;
 
         AST *res = term();
@@ -523,6 +620,8 @@ namespace AVSI {
     }
 
     AST *Parser::checkedExpr() {
+        PARSE_LOG(EXPRCHECK);
+
         if (this->currentToken.getType() == LBRACE) return arraylist();
         if (this->currentToken.getType() == STRING) {
             Token token = this->currentToken;
@@ -540,6 +639,8 @@ namespace AVSI {
      * @grammar:        Integer | LPAREN
      */
     AST *Parser::factor(void) {
+        PARSE_LOG(FACTOR);
+
         Token token = this->currentToken;
 
         if (token.getType() == SIZEOF) {
@@ -594,6 +695,8 @@ namespace AVSI {
     AST *Parser::parse(void) { return program(); }
 
     AST *Parser::returnExpr(void) {
+        PARSE_LOG(RETURNEXPR);
+
         Token token = this->currentToken;
         eat(RETURN);
 
@@ -612,6 +715,8 @@ namespace AVSI {
      *                  factor: Integer
      */
     AST *Parser::term(void) {
+        PARSE_LOG(TERM);
+
         AST *res = factor();
         while (this->currentToken.getType() == STAR ||
                this->currentToken.getType() == SLASH) {
@@ -631,6 +736,8 @@ namespace AVSI {
     }
 
     AST *Parser::sizeOf() {
+        PARSE_LOG(SIZEOF);
+
         Token token = this->currentToken;
 
         eat(SIZEOF);
@@ -648,6 +755,8 @@ namespace AVSI {
     }
 
     AST *Parser::variable() {
+        PARSE_LOG(VARIABLE);
+
         if (this->currentToken.getType() == DOLLAR)
             eat(DOLLAR);
 
@@ -689,6 +798,8 @@ namespace AVSI {
     }
 
     AST *Parser::WhileStatement() {
+        PARSE_LOG(WHILESTATEMENT);
+
         Token token = this->currentToken;
         AST *condition;
         AST *compound;
@@ -703,6 +814,8 @@ namespace AVSI {
     }
 
     Type Parser::eatType() {
+        PARSE_LOG(INNERTYPE);
+
         if (this->currentToken.getType() == REAL) {
             eat(REAL);
             return Type(llvm::Type::getDoubleTy(*the_context), "real");
@@ -733,12 +846,14 @@ namespace AVSI {
                     type_name[Ty] = "vec[" + type_name[nest.first] + ";" + to_string(array_size) + "]";
                     type_name[Ty->getPointerTo()] = type_name[Ty] + "*";
                     type_size[Ty] = type_size[nest.first] * array_size;
+                    type_name[Ty->getPointerTo()] = PTR_SIZE;
                     return Type(Ty, "vec");
                 } else {
                     llvm::Type *Ty = nest.first->getPointerTo();
                     type_name[Ty] = type_name[nest.first] + "*";
                     type_name[Ty->getPointerTo()] = type_name[Ty] + "*";
-                    type_size[Ty] = sizeof(size_t *);
+                    type_size[Ty] = PTR_SIZE;
+                    type_name[Ty->getPointerTo()] = PTR_SIZE;
                     return Type(Ty, "vec");
                 }
             }

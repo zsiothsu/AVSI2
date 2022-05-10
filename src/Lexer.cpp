@@ -90,12 +90,11 @@ namespace AVSI {
             }
             if (this->currentChar == '"') { return str(); }
             if (this->currentChar == '\'') { return character();}
-            if (this->currentChar == '\'') { return character(); }
             if (this->currentChar == '|') {
                 if (peek() == '|') {
                     advance();
                     advance();
-                    return Token(OR, 'o', line, column);
+                    return Token(OR, string("||"), line, column);
                 }
                 return Token::empty();
             }
@@ -103,7 +102,7 @@ namespace AVSI {
                 if (peek() == '&') {
                     advance();
                     advance();
-                    return Token(AND, 'o', line, column);
+                    return Token(AND, string("&&"), line, column);
                 }
                 return Token::empty();
             }
@@ -114,7 +113,7 @@ namespace AVSI {
                 } else if (peek() == '=') {
                     advance();
                     advance();
-                    return Token(EQ, 'o', line, column);
+                    return Token(EQ, string("=="), line, column);
                 } else
                     return Token::empty();
             }
@@ -126,31 +125,31 @@ namespace AVSI {
                 if (peek() == '=') {
                     advance();
                     advance();
-                    return Token(NE, 'o', line, column);
+                    return Token(NE, string("!="), line, column);
                 } else
                     return Token::empty();
             }
             if (this->currentChar == '>') {
                 if (peek() != '=') {
                     advance();
-                    return Token(GT, 'o', line, column);
+                    return Token(GT, string(">"), line, column);
                 }
                 if (peek() == '=') {
                     advance();
                     advance();
-                    return Token(GE, 'o', line, column);
+                    return Token(GE, string(">="), line, column);
                 } else
                     return Token::empty();
             }
             if (this->currentChar == '<') {
                 if (peek() != '=') {
                     advance();
-                    return Token(LT, '!', line, column);
+                    return Token(LT, string("<"), line, column);
                 }
                 if (peek() == '=') {
                     advance();
                     advance();
-                    return Token(LE, 'o', line, column);
+                    return Token(LE, string("<="), line, column);
                 } else
                     return Token::empty();
             }
@@ -161,52 +160,53 @@ namespace AVSI {
                     advance();
                     advance();
                     advance();
-                    return Token(EQ, 'o', line, column);
+                    return Token(EQ, string("-eq"), line, column);
                 }
                 if (_peek2 == "ne") {
                     advance();
                     advance();
                     advance();
-                    return Token(NE, 'o', line, column);
+                    return Token(NE, string("-ne"), line, column);
                 }
                 if (_peek2 == "gt") {
                     advance();
                     advance();
                     advance();
-                    return Token(GT, 'o', line, column);
+                    return Token(GT, string("-gt"), line, column);
+                    return Token(GT, string("-gt"), line, column);
                 }
                 if (_peek2 == "lt") {
                     advance();
                     advance();
                     advance();
-                    return Token(LT, 'o', line, column);
+                    return Token(LT, string("-lt"), line, column);
                 }
                 if (_peek2 == "ge") {
                     advance();
                     advance();
                     advance();
-                    return Token(GE, 'o', line, column);
+                    return Token(GE, string("-ge"), line, column);
                 }
                 if (_peek2 == "le") {
                     advance();
                     advance();
                     advance();
-                    return Token(LE, 'o', line, column);
+                    return Token(LE, string("-le"), line, column);
                 }
                 if (_peek == 'o') {
                     advance();
                     advance();
-                    return Token(OR, 'o', line, column);
+                    return Token(OR, string("-o"), line, column);
                 }
                 if (_peek == 'a') {
                     advance();
                     advance();
-                    return Token(AND, 'o', line, column);
+                    return Token(AND, string("-a"), line, column);
                 }
                 if (_peek == '>') {
                     advance();
                     advance();
-                    return Token(TO, 'o', line, column);
+                    return Token(TO, string("->"), line, column);
                 }
             }
             map<char, TokenType>::iterator iter =
@@ -218,7 +218,7 @@ namespace AVSI {
             }
             return Token::empty();
         }
-        return Token(END, EOF, 0, 0);
+        return Token(END, string("EOF"), 0, 0);
     }
 
     /**
@@ -232,8 +232,7 @@ namespace AVSI {
         double num = 0, scale = 0;
         int subscale = 0, signsubscale = 1;
 
-        if (this->currentChar == '0') advance(); // is zero
-        if (this->currentChar >= '1' && this->currentChar <= '9')
+        if (this->currentChar >= '0' && this->currentChar <= '9')
             do {
                 num = num * 10.0 + (this->currentChar - '0');
                 advance();

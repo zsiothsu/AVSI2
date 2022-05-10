@@ -144,6 +144,9 @@ int main(int argc, char **argv) {
         dest << "\n";
     }
 
+    extern uint16_t err_count;
+    extern uint16_t warn_count;
+
     try {
         llvm_global_context_reset();
         llvm_machine_init();
@@ -155,16 +158,28 @@ int main(int argc, char **argv) {
         if (opt_reliance) return 0;
         tree->codeGen();
 
+        std::cerr << __COLOR_RESET
+                  << std::endl
+                  << input_file_name
+                  << ":"
+                  << "generate " << err_count << " errors,"
+                  << warn_count << " warnings"
+                  << __COLOR_RESET << std::endl;
+
         if (opt_ir) llvm_module_printIR();
         if (opt_asm) llvm_asm_output();
         if (opt_module) llvm_module_output();
         if (!(opt_ir || opt_asm))llvm_obj_output();
     } catch (Exception &e) {
-        std::cerr << __COLOR_RED
-                  << basename(fileName)
-                  << ":" << e.line << ":" << e.column + 1 << ": "
-                  << e.what()
-                  << __COLOR_RESET << std::endl;
+        if (e.type() == __ErrReport) {
+            std::cerr << __COLOR_RED
+                      << std::endl
+                      << input_file_name
+                      << ":"
+                      << "generate " << err_count << " errors,"
+                      << warn_count << " warnings"
+                      << __COLOR_RESET << std::endl;
+        }
         return 1;
     }
     return 0;

@@ -66,15 +66,17 @@ namespace AVSI {
     public:
         any(void);
 
-        any(bool var);
-
         any(char var);
 
         any(int var);
 
         any(double var);
 
+        any(char* var);
+
         any(string var);
+
+        any(bool var);
 
         ~any();
 
