@@ -14,7 +14,7 @@ namespace AVSI {
     }
 
     llvm::AllocaInst *SymbolMap::find(string &name) {
-        if(this->named_values.find(name) != this->named_values.end()) {
+        if (this->named_values.find(name) != this->named_values.end()) {
             return this->named_values[name.c_str()];
         }
         return nullptr;
@@ -26,19 +26,29 @@ namespace AVSI {
 
     vector<llvm::AllocaInst *> SymbolMap::getAllocaList() {
         vector<llvm::AllocaInst *> addrs;
-        for(const auto& iter : this->named_values) {
+        for (const auto &iter: this->named_values) {
             addrs.push_back(iter.second);
         }
         return addrs;
     }
 
     void SymbolTable::push(llvm::BasicBlock *BB) {
+        llvm::BasicBlock *last_breake_to = nullptr;
+        llvm::BasicBlock *last_continue_to = nullptr;
+        if(!this->maps.empty()) {
+            last_breake_to = this->maps.back()->break_to;
+            last_continue_to = this->maps.back()->continue_to;
+        }
+
         auto *symbol_map = new SymbolMap(BB);
+        symbol_map->break_to = last_breake_to;
+        symbol_map->continue_to = last_continue_to;
+
         this->maps.push_back(symbol_map);
     }
 
     vector<llvm::AllocaInst *> SymbolTable::pop() {
-        if(this->maps.empty()) {
+        if (this->maps.empty()) {
             return {};
         }
 
@@ -55,9 +65,9 @@ namespace AVSI {
     }
 
     llvm::AllocaInst *SymbolTable::find(string &name) {
-        for(auto iter = this->maps.rbegin(); iter != this->maps.rend(); iter++) {
+        for (auto iter = this->maps.rbegin(); iter != this->maps.rend(); iter++) {
             auto ret = (*iter)->find(name);
-            if(ret != nullptr) {
+            if (ret != nullptr) {
                 return ret;
             }
         }
@@ -68,15 +78,31 @@ namespace AVSI {
         this->maps.back()->insert(name, addr);
     }
 
+    llvm::BasicBlock *SymbolTable::getBreakTo() {
+        return this->maps.back()->break_to;
+    }
+
+    llvm::BasicBlock *SymbolTable::getContinueTo() {
+        return this->maps.back()->continue_to;
+    }
+
+    void SymbolTable::setBreakTo(llvm::BasicBlock *BB) {
+        this->maps.back()->break_to = BB;
+    }
+
+    void SymbolTable::setContinueTo(llvm::BasicBlock *BB) {
+        this->maps.back()->continue_to = BB;
+    }
+
     string __getModuleNameByPath(vector<string> path) {
-        if(path.empty()) {
+        if (path.empty()) {
             return module_name;
         }
 
         string name;
         bool flag_first = true;
-        for(string i : path) {
-            if(!flag_first) name += "_";
+        for (string i: path) {
+            if (!flag_first) name += "_";
             flag_first = false;
             name += i;
         }
@@ -91,8 +117,8 @@ namespace AVSI {
     string getpathListToUnresolved(vector<string> path) {
         string ret;
         bool flag_isFirst = true;
-        for(auto i : path) {
-            if(!flag_isFirst) ret+="::";
+        for (auto i: path) {
+            if (!flag_isFirst) ret += "::";
             flag_isFirst = false;
             ret += i;
         }

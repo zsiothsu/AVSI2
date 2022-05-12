@@ -28,25 +28,28 @@ TYPENAME        typename
 REAL            real
 VEC             vec
 OBJ             obj
+BREAK           break
+CONTINUE        continue
 
 # structure
 COMPOUND
 
-# operator
-PLUS            '+'
-MINUS           '-'
-STAR            '*'
-SLASH           '/'
-EQUAL           '='
-NOT             '!'
-EQ              '=='        '-eq'
-NE              '!='        '-ne'
-GT              '>'         '-gt'
-LT              '<'         '-lt'
-GE              '>='        '-ge'
-LE              '<='        '-le'
-OR              '||'        '-o'
-AND             '&&'        '-a'
+# operator                              priority
+NOT             '!'                         1
+
+STAR            '*'                         2
+SLASH           '/'                         2
+PLUS            '+'                         3
+MINUS           '-'                         3
+GT              '>'         '-gt'           4
+LT              '<'         '-lt'           4
+GE              '>='        '-ge'           4
+LE              '<='        '-le'           4
+EQ              '=='        '-eq'           5
+NE              '!='        '-ne'           5
+AND             '&&'        '-a'            6
+OR              '||'        '-o'            6
+EQUAL           '='                         7
 
 # symbol
 LPAR            '('

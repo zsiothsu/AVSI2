@@ -75,6 +75,8 @@ namespace AVSI {
         REAL,
         VEC,
         OBJ,
+        BREAK,
+        CONTINUE
     } TokenType;
 
     class Token {
@@ -144,7 +146,7 @@ namespace AVSI {
     };
 
     const static TokenType FIRST_STATEMENT[] = {
-            EXPORT,FUNCTION,ID,RETURN,IF,FOR,WHILE,OBJ,MODULE,IMPORT
+            EXPORT, FUNCTION, ID, RETURN, IF, FOR, WHILE, OBJ, MODULE, IMPORT
     };
 
     static map<TokenType, string> token_name = {
@@ -202,7 +204,9 @@ namespace AVSI {
             {TYPENAME, "TYPENAME"},
             {REAL,     "REAL"},
             {VEC,      "VEC"},
-            {OBJ,      "OBJ"}
+            {OBJ,      "OBJ"},
+            {BREAK,    "BREAK"},
+            {CONTINUE, "CONTINUE"}
     };
 } // namespace AVSI
 

@@ -95,7 +95,9 @@ namespace AVSI {
             {"obj",      OBJ},
             {"char",     CHAR},
             {"sizeof",   SIZEOF},
-            {"typename", TYPENAME}};
+            {"typename", TYPENAME},
+            {"break",       BREAK},
+            {"continue",    CONTINUE}};
 } // namespace AVSI
 
 #endif

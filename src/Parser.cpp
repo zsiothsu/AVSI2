@@ -128,7 +128,7 @@ namespace AVSI {
         while (this->currentToken.getType() != END) {
             try {
                 node = statement();
-                if (node == &ASTEmpty) break;
+                if (node == ASTEmpty) break;
                 root->child.push_back(node);
             } catch (Exception e) {
                 if (e.type() != __ErrReport) {
@@ -208,15 +208,18 @@ namespace AVSI {
             Object *may_be_export = (Object *) object();
             may_be_export->is_export = is_export;
             return may_be_export;
-        } else if (this->currentToken.getType() == MODULE) {
+        } else if (token_type == BREAK || token_type == CONTINUE) {
+            PARSE_LOG(LOOPCTRL);
+            return loopCtrl();
+        } else if (token_type == MODULE) {
             PARSE_LOG(STATEMENT);
             return moduleDef();
-        } else if (this->currentToken.getType() == IMPORT) {
+        } else if (token_type == IMPORT) {
             PARSE_LOG(STATEMENT);
             return moduleImport();
         }
 
-        return &ASTEmpty;
+        return ASTEmpty;
     }
 
     AST *Parser::arraylist() {
@@ -398,7 +401,7 @@ namespace AVSI {
             module_name_alias[""] = path_unresolved;
         }
         eat(ID);
-        return &ASTEmptyNotEnd;
+        return ASTEmptyNotEnd;
     }
 
     AST *Parser::moduleImport() {
@@ -415,7 +418,7 @@ namespace AVSI {
         }
         eat(ID);
 
-        return &ASTEmptyNotEnd;
+        return ASTEmptyNotEnd;
     }
 
     AST *Parser::object() {
@@ -510,20 +513,43 @@ namespace AVSI {
         if (type == FI) {
             PARSE_LOG(IfLINK);
             eat(FI);
-            return &ASTEmpty;
+            return ASTEmpty;
         }
 
         if (type == IF) {
             PARSE_LOG(IfSTATEMENT);
             eat(IF);
-            eat(LSQB);
+
+            bool have_SQB = false;
+            if (this->currentToken.getType() == LSQB) {
+                eat(LSQB);
+                have_SQB = true;
+            }
+
+            if ((have_SQB && this->currentToken.getType() == RSQB) || this->currentToken.getType() == THEN) {
+                throw ExceptionFactory(
+                        __LogicException,
+                        "if condition must be privided",
+                        this->lastToken.line, this->lastToken.column
+                );
+            }
+
             condition = expr();
-            eat(RSQB);
+            if (have_SQB) eat(RSQB);
             eat(THEN);
         } else if (type == ELIF) {
             PARSE_LOG(IfLINK);
             eat(ELIF);
             eat(LSQB);
+
+            if (this->currentToken.getType() == RSQB) {
+                throw ExceptionFactory(
+                        __LogicException,
+                        "if condition must be privided",
+                        this->lastToken.line, this->lastToken.column
+                );
+            }
+
             condition = expr();
             eat(RSQB);
             eat(THEN);
@@ -581,6 +607,78 @@ namespace AVSI {
         return param;
     }
 
+    AST *Parser::expr() {
+        return logic_or_expr();
+    }
+
+    AST *Parser::logic_or_expr() {
+        PARSE_LOG(OREXPR);
+
+        if (this->currentToken.getType() == SEMI) return ASTEmpty;
+
+        AST *res = logic_and_expr();
+        auto type = this->currentToken.getType();
+        while (type == OR) {
+            Token opt = this->currentToken;
+            eat(OR);
+            res = new BinOp(res, opt, logic_and_expr());
+            type = this->currentToken.getType();
+        }
+
+        return res;
+    }
+
+    AST *Parser::logic_and_expr() {
+        PARSE_LOG(ANDEXPR);
+
+        if (this->currentToken.getType() == SEMI) return ASTEmpty;
+
+        AST *res = equivalence_expr();
+        auto type = this->currentToken.getType();
+        while (type == AND) {
+            Token opt = this->currentToken;
+            eat(AND);
+            res = new BinOp(res, opt, equivalence_expr());
+            type = this->currentToken.getType();
+        }
+
+        return res;
+    }
+
+    AST *Parser::equivalence_expr() {
+        PARSE_LOG(EQEXPR);
+
+        if (this->currentToken.getType() == SEMI) return ASTEmpty;
+
+        AST *res = compare_expr();
+        auto type = this->currentToken.getType();
+        while (type == EQ || type == NE) {
+            Token opt = this->currentToken;
+            eat(type);
+            res = new BinOp(res, opt, compare_expr());
+            type = this->currentToken.getType();
+        }
+
+        return res;
+    }
+
+    AST *Parser::compare_expr() {
+        PARSE_LOG(CMPEXPR);
+
+        if (this->currentToken.getType() == SEMI) return ASTEmpty;
+
+        AST *res = basic_expr();
+        auto type = this->currentToken.getType();
+        while (type == GT || type == LT || type == GE || type == LE) {
+            Token opt = this->currentToken;
+            eat(type);
+            res = new BinOp(res, opt, basic_expr());
+            type = this->currentToken.getType();
+        }
+
+        return res;
+    }
+
     /**
      * @description:    arithmetic expression parser / interpreter.
      * @param:          None
@@ -589,31 +687,25 @@ namespace AVSI {
      * @grammar:        expr: term ((ADD | DEC) term)*
      *                  term: Integer;
      */
-    AST *Parser::expr(void) {
+    AST *Parser::basic_expr(void) {
         PARSE_LOG(EXPR);
 
-        if (this->currentToken.getType() == SEMI) return &ASTEmpty;
+        if (this->currentToken.getType() == SEMI) return ASTEmpty;
 
         AST *res = term();
         while (this->currentToken.getType() == PLUS ||
                this->currentToken.getType() == MINUS) {
             Token opt = this->currentToken;
-            if (opt.getValue() == '+') {
+            if (this->currentToken.getType() == PLUS) {
                 eat(PLUS);
                 res = new BinOp(res, opt, term());
-            } else if (opt.getValue() == '-') {
+            } else if (this->currentToken.getType() == MINUS) {
                 eat(MINUS);
                 res = new BinOp(res, opt, term());
             } else
                 throw ExceptionFactory(__SyntaxException,
                                        "unrecognized operator", opt.line,
                                        opt.column);
-        }
-
-        while (this->currentToken.isReOp()) {
-            Token opt = this->currentToken;
-            eat(opt.getType());
-            res = new BinOp(res, opt, expr());
         }
 
         return res;
@@ -805,12 +897,38 @@ namespace AVSI {
         AST *compound;
 
         eat(WHILE);
+
+        bool have_SQB = false;
+        if (this->currentToken.getType() == LSQB) {
+            eat(LSQB);
+            have_SQB = true;
+        }
+
+        if ((have_SQB && this->currentToken.getType() == RSQB) || this->currentToken.getType() == DO) {
+            throw ExceptionFactory(
+                    __LogicException,
+                    "while condition must be privided",
+                    this->lastToken.line, this->lastToken.column
+            );
+        }
+
         condition = expr();
+        if(have_SQB) eat(RSQB);
         eat(DO);
         compound = statementList();
         eat(DONE);
 
         return new While(condition, compound, token);
+    }
+
+    AST *Parser::loopCtrl() {
+        if (this->currentToken.getType() == BREAK) {
+            eat(BREAK);
+            return new LoopCtrl(LoopCtrl::LoopCtrlType::CTRL_BREAK);
+        } else {
+            eat(CONTINUE);
+            return new LoopCtrl(LoopCtrl::LoopCtrlType::CTRL_CONTINUE);
+        }
     }
 
     Type Parser::eatType() {

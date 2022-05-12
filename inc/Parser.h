@@ -62,6 +62,16 @@ namespace AVSI {
 
         AST *expr();
 
+        AST *logic_or_expr();
+
+        AST *logic_and_expr();
+
+        AST *equivalence_expr();
+
+        AST *compare_expr();
+
+        AST *basic_expr();
+
         AST *checkedExpr();
 
         AST *factor();
@@ -77,6 +87,8 @@ namespace AVSI {
         AST *variable();
 
         AST *WhileStatement();
+
+        AST *loopCtrl();
 
         Type eatType();
 

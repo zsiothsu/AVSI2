@@ -43,6 +43,7 @@
 #define __GLOBAL_NAME           "Global"
 #define __IF_NAME               "If"
 #define __INPUT_NAME            "Input"
+#define __LOOPCTRL_NAME         "LoopCtrl"
 #define __NUM_NAME              "Num"
 #define __OBJECT_NAME           "Object"
 #define __PARAM_NAME            "Param"
@@ -267,6 +268,22 @@ namespace AVSI {
         llvm::Value *codeGen() override;
     };
 
+    class LoopCtrl: public AST {
+    public:
+        enum LoopCtrlType {
+            CTRL_BREAK = 0,
+            CTRL_CONTINUE = 1
+        };
+
+        LoopCtrlType type;
+
+        LoopCtrl() : AST(__LOOPCTRL_NAME) {}
+
+        LoopCtrl(LoopCtrlType type): AST(__LOOPCTRL_NAME), type(type) {}
+
+        llvm::Value *codeGen() override;
+    };
+
     class Num : public AST {
     private:
         any value;
@@ -485,8 +502,8 @@ namespace AVSI {
         llvm::Value *codeGen() override;
     };
 
-    static AST ASTEmpty = NoneAST();
-    static AST ASTEmptyNotEnd = NoneAST();
+    extern AST *ASTEmpty;
+    extern AST *ASTEmptyNotEnd;
 
     void llvm_import_module(vector<string> path, string mod, int line, int col);
 

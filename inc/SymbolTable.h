@@ -39,11 +39,20 @@ namespace AVSI {
         map<string, llvm::AllocaInst *> named_values;
 
     public:
-        SymbolMap() : BB(nullptr), named_values(map<string, llvm::AllocaInst *>()) {}
+        llvm::BasicBlock *break_to;
+        llvm::BasicBlock *continue_to;
+
+        SymbolMap()
+                : BB(nullptr),
+                  named_values(map < string, llvm::AllocaInst * > ()),
+                  break_to(nullptr),
+                  continue_to(nullptr) {}
 
         SymbolMap(llvm::BasicBlock *BB)
                 : BB(BB),
-                  named_values(map<string, llvm::AllocaInst *>()) {}
+                  named_values(map < string, llvm::AllocaInst * > ()),
+                  break_to(nullptr),
+                  continue_to(nullptr) {}
 
         ~SymbolMap() = default;;
 
@@ -58,10 +67,10 @@ namespace AVSI {
 
     class SymbolTable {
     private:
-        deque<SymbolMap*> maps;
+        deque<SymbolMap *> maps;
 
     public:
-        SymbolTable (): maps(deque<SymbolMap*>()) {}
+        SymbolTable() : maps(deque<SymbolMap *>()) {}
 
         ~SymbolTable() = default;
 
@@ -73,6 +82,14 @@ namespace AVSI {
 
         llvm::AllocaInst *find(string &name);
 
+        llvm::BasicBlock *getBreakTo();
+
+        llvm::BasicBlock *getContinueTo();
+
+        void setBreakTo(llvm::BasicBlock * BB);
+
+        void setContinueTo(llvm::BasicBlock * BB);
+
         void insert(string name, llvm::AllocaInst *addr);
     };
 
@@ -82,7 +99,7 @@ namespace AVSI {
 
         StructDef() = default;
 
-        StructDef(llvm::StructType *Ty): Ty(Ty), members(map<string, int>()) {}
+        StructDef(llvm::StructType *Ty) : Ty(Ty), members(map<string, int>()) {}
 
         ~StructDef() = default;
     };
