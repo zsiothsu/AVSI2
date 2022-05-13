@@ -36,13 +36,13 @@ namespace AVSI {
         llvm::BasicBlock *last_breake_to = nullptr;
         llvm::BasicBlock *last_continue_to = nullptr;
         if(!this->maps.empty()) {
-            last_breake_to = this->maps.back()->break_to;
-            last_continue_to = this->maps.back()->continue_to;
+            last_breake_to = this->maps.back()->loop_exit;
+            last_continue_to = this->maps.back()->loop_entry;
         }
 
         auto *symbol_map = new SymbolMap(BB);
-        symbol_map->break_to = last_breake_to;
-        symbol_map->continue_to = last_continue_to;
+        symbol_map->loop_exit = last_breake_to;
+        symbol_map->loop_entry = last_continue_to;
 
         this->maps.push_back(symbol_map);
     }
@@ -78,20 +78,20 @@ namespace AVSI {
         this->maps.back()->insert(name, addr);
     }
 
-    llvm::BasicBlock *SymbolTable::getBreakTo() {
-        return this->maps.back()->break_to;
+    llvm::BasicBlock *SymbolTable::getLoopExit() {
+        return this->maps.back()->loop_exit;
     }
 
-    llvm::BasicBlock *SymbolTable::getContinueTo() {
-        return this->maps.back()->continue_to;
+    llvm::BasicBlock *SymbolTable::getLoopEntry() {
+        return this->maps.back()->loop_entry;
     }
 
-    void SymbolTable::setBreakTo(llvm::BasicBlock *BB) {
-        this->maps.back()->break_to = BB;
+    void SymbolTable::setLoopExit(llvm::BasicBlock *BB) {
+        this->maps.back()->loop_exit = BB;
     }
 
-    void SymbolTable::setContinueTo(llvm::BasicBlock *BB) {
-        this->maps.back()->continue_to = BB;
+    void SymbolTable::setLoopEntry(llvm::BasicBlock *BB) {
+        this->maps.back()->loop_entry = BB;
     }
 
     string __getModuleNameByPath(vector<string> path) {

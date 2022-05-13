@@ -12,7 +12,7 @@ uint16_t err_count = 0;
 uint16_t warn_count = 0;
 
 #undef __AVSI_DEBUG__TOKEN_NAME
-#define __AVSI_DEBUG__PARSER
+#undef __AVSI_DEBUG__PARSER
 
 #ifdef __AVSI_DEBUG__PARSER
 #define PARSE_LOG(NESYMBOL) _PARSE_LOG(NESYMBOL)

@@ -754,115 +754,199 @@ namespace AVSI {
     }
 
     llvm::Value *BinOp::codeGen() {
-        llvm::Value *lv = this->left->codeGen();
-        llvm::Value *rv = this->right->codeGen();
+        auto token_type = this->getToken().getType();
 
-        if (!lv || !rv) {
-            return nullptr;
-        }
+        if (token_type != AND && token_type != OR) {
+            llvm::Value *lv = this->left->codeGen();
+            llvm::Value *rv = this->right->codeGen();
 
-        llvm::Type *l_type = lv->getType();
-        llvm::Type *r_type = rv->getType();
+            if (!lv || !rv) {
+                return nullptr;
+            }
 
-        if (
-                simple_types.find(l_type) == simple_types.end() ||
-                simple_types.find(r_type) == simple_types.end()
-                ) {
-            return nullptr;
-        }
+            llvm::Type *l_type = lv->getType();
+            llvm::Type *r_type = rv->getType();
 
-        int result_type_bitmap = simple_types_map[l_type] | simple_types_map[r_type];
-        bool float_point = false;
-        if (result_type_bitmap >= 0x04) float_point = true;
+            if (
+                    simple_types.find(l_type) == simple_types.end() ||
+                    simple_types.find(r_type) == simple_types.end()
+                    ) {
+                return nullptr;
+            }
 
-        llvm::Value *cmp_value_boolean;
-        llvm::Value *lv_bool = nullptr;
-        llvm::Value *rv_bool = nullptr;
+            int result_type_bitmap = simple_types_map[l_type] | simple_types_map[r_type];
+            bool float_point = false;
+            if (result_type_bitmap >= 0x04) float_point = true;
 
-        llvm::Value *lv_real = nullptr;
-        llvm::Value *rv_real = nullptr;
+            llvm::Value *cmp_value_boolean;
+            llvm::Value *lv_bool = nullptr;
+            llvm::Value *rv_bool = nullptr;
 
-        if (float_point) {
-            lv_real = l_type->isDoubleTy() ? lv : builder->CreateSIToFP(lv, REAL_TY);
-            rv_real = r_type->isDoubleTy() ? rv : builder->CreateSIToFP(rv, REAL_TY);
-        }
+            llvm::Value *lv_real = nullptr;
+            llvm::Value *rv_real = nullptr;
 
-        switch (this->op.getType()) {
-            case PLUS:
-                if (float_point) return builder->CreateFAdd(lv_real, rv_real, "addTmp");
-                else return builder->CreateAdd(lv, rv, "addTmp");
-            case MINUS:
-                if (float_point) return builder->CreateFSub(lv_real, rv_real, "subTmp");
-                else return builder->CreateSub(lv, rv, "subTmp");
-            case STAR:
-                if (float_point) return builder->CreateFMul(lv_real, rv_real, "mulTmp");
-                else if (float_point) return builder->CreateMul(lv, rv, "mulTmp");
-            case SLASH:
+            if (float_point) {
                 lv_real = l_type->isDoubleTy() ? lv : builder->CreateSIToFP(lv, REAL_TY);
                 rv_real = r_type->isDoubleTy() ? rv : builder->CreateSIToFP(rv, REAL_TY);
-                return builder->CreateFDiv(lv_real, rv_real, "divTmp");
-            case EQ:
-                if (float_point) {
-                    cmp_value_boolean = builder->CreateFCmpOEQ(lv_real, rv_real, "cmpEQTmp");
-                } else {
-                    cmp_value_boolean = builder->CreateICmpEQ(lv, rv, "cmpEQTmp");
+            }
+
+            switch (this->op.getType()) {
+                case PLUS:
+                    if (float_point) return builder->CreateFAdd(lv_real, rv_real, "addTmp");
+                    else return builder->CreateAdd(lv, rv, "addTmp");
+                case MINUS:
+                    if (float_point) return builder->CreateFSub(lv_real, rv_real, "subTmp");
+                    else return builder->CreateSub(lv, rv, "subTmp");
+                case STAR:
+                    if (float_point) return builder->CreateFMul(lv_real, rv_real, "mulTmp");
+                    else if (float_point) return builder->CreateMul(lv, rv, "mulTmp");
+                case SLASH:
+                    lv_real = l_type->isDoubleTy() ? lv : builder->CreateSIToFP(lv, REAL_TY);
+                    rv_real = r_type->isDoubleTy() ? rv : builder->CreateSIToFP(rv, REAL_TY);
+                    return builder->CreateFDiv(lv_real, rv_real, "divTmp");
+                case EQ:
+                    if (float_point) {
+                        cmp_value_boolean = builder->CreateFCmpOEQ(lv_real, rv_real, "cmpEQTmp");
+                    } else {
+                        cmp_value_boolean = builder->CreateICmpEQ(lv, rv, "cmpEQTmp");
+                    }
+                    return cmp_value_boolean;
+                case NE:
+                    if (float_point) {
+                        cmp_value_boolean = builder->CreateFCmpONE(lv_real, rv_real, "cmpNETmp");
+                    } else {
+                        cmp_value_boolean = builder->CreateICmpNE(lv, rv, "cmpNETmp");
+                    }
+                    return cmp_value_boolean;
+                case GT:
+                    if (float_point) {
+                        cmp_value_boolean = builder->CreateFCmpOGT(lv_real, rv_real, "cmpGTTmp");
+                    } else {
+                        cmp_value_boolean = builder->CreateICmpSGT(lv, rv, "cmpGTTmp");
+                    }
+                    return cmp_value_boolean;
+                case LT:
+                    if (float_point) {
+                        cmp_value_boolean = builder->CreateFCmpOGT(lv_real, rv_real, "cmpLTTmp");
+                    } else {
+                        cmp_value_boolean = builder->CreateICmpSGT(lv, rv, "cmpLTTmp");
+                    }
+                    return cmp_value_boolean;
+                case GE:
+                    if (float_point) {
+                        cmp_value_boolean = builder->CreateFCmpOGT(lv_real, rv_real, "cmpGETmp");
+                    } else {
+                        cmp_value_boolean = builder->CreateICmpSGT(lv, rv, "cmpGETmp");
+                    }
+                    return cmp_value_boolean;
+                case LE:
+                    if (float_point) {
+                        cmp_value_boolean = builder->CreateFCmpOGT(lv_real, rv_real, "cmpLETmp");
+                    } else {
+                        cmp_value_boolean = builder->CreateICmpSGT(lv, rv, "cmpLETmp");
+                    }
+                    return cmp_value_boolean;
+//                case OR:
+//                    if (float_point) {
+//                        lv_bool = builder->CreateFCmpUNE(lv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+//                        rv_bool = builder->CreateFCmpUNE(rv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+//                    } else {
+//                        lv_bool = builder->CreateICmpNE(lv, llvm::ConstantInt::get(lv->getType(), 0), "toBool");
+//                        rv_bool = builder->CreateICmpNE(rv, llvm::ConstantInt::get(lv->getType(), 0), "toBool");
+//                    }
+//                    return builder->CreateOr(lv_bool, rv_bool, "boolOrTmp");
+//                case AND:
+//                    if (float_point) {
+//                        lv_bool = builder->CreateFCmpUNE(lv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+//                        rv_bool = builder->CreateFCmpUNE(rv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+//                    } else {
+//                        lv_bool = builder->CreateICmpNE(lv, llvm::ConstantInt::get(lv->getType(), 0), "toBool");
+//                        rv_bool = builder->CreateICmpNE(rv, llvm::ConstantInt::get(lv->getType(), 0), "toBool");
+//                    }
+//                    return builder->CreateAnd(lv_bool, rv_bool, "boolAndTmp");
+                default:
+                    return nullptr;
+            }
+        } else {
+            if (token_type == AND) {
+                auto l = this->left->codeGen();
+                if (!l) {
+                    return nullptr;
                 }
-                return cmp_value_boolean;
-            case NE:
-                if (float_point) {
-                    cmp_value_boolean = builder->CreateFCmpONE(lv_real, rv_real, "cmpNETmp");
+                auto l_phi_path = builder->GetInsertBlock();
+
+                auto the_function = builder->GetInsertBlock()->getParent();
+                auto current = builder->GetInsertBlock();
+                auto Positive = llvm::BasicBlock::Create(*the_context, "land.lhs.positive.rhs.head", the_function);
+                auto Negative = llvm::BasicBlock::Create(*the_context, "land.end", the_function);
+
+                if (l->getType()->isIntegerTy()) {
+                    l = builder->CreateICmpNE(l, llvm::ConstantInt::get(l->getType(), 0),"toBool");
                 } else {
-                    cmp_value_boolean = builder->CreateICmpNE(lv, rv, "cmpNETmp");
+                    l = builder->CreateFCmpUNE(l, llvm::ConstantFP::get(REAL_TY, 0.0),"toBool");
                 }
-                return cmp_value_boolean;
-            case GT:
-                if (float_point) {
-                    cmp_value_boolean = builder->CreateFCmpOGT(lv_real, rv_real, "cmpGTTmp");
+                builder->CreateCondBr(l, Positive, Negative);
+
+                the_function->getBasicBlockList().push_back(Positive);
+                builder->SetInsertPoint(Positive);
+                auto r = this->right->codeGen();
+                auto r_phi_path = builder->GetInsertBlock();
+                if (r->getType()->isIntegerTy()) {
+                    r = builder->CreateICmpNE(r, llvm::ConstantInt::get(r->getType(), 0),"toBool");
                 } else {
-                    cmp_value_boolean = builder->CreateICmpSGT(lv, rv, "cmpGTTmp");
+                    r = builder->CreateFCmpUNE(r, llvm::ConstantFP::get(REAL_TY, 0.0),"toBool");
                 }
-                return cmp_value_boolean;
-            case LT:
-                if (float_point) {
-                    cmp_value_boolean = builder->CreateFCmpOGT(lv_real, rv_real, "cmpLTTmp");
+                builder->CreateBr(Negative);
+
+                the_function->getBasicBlockList().push_back(Negative);
+                builder->SetInsertPoint(Negative);
+
+                llvm::PHINode *PN = builder->CreatePHI(BOOL_TY,
+                                                       2);
+                PN->addIncoming(l, l_phi_path);
+                PN->addIncoming(r, r_phi_path);
+
+                return PN;
+            } else {
+                auto l = this->left->codeGen();
+                if (!l) {
+                    return nullptr;
+                }
+                auto l_phi_path = builder->GetInsertBlock();
+
+                auto the_function = builder->GetInsertBlock()->getParent();
+                auto current = builder->GetInsertBlock();
+                auto Negative = llvm::BasicBlock::Create(*the_context, "lor.lhs.negative.rhs.head", the_function);
+                auto Positive = llvm::BasicBlock::Create(*the_context, "lor.end", the_function);
+
+                if (l->getType()->isIntegerTy()) {
+                    l = builder->CreateICmpNE(l, llvm::ConstantInt::get(l->getType(), 0),"toBool");
                 } else {
-                    cmp_value_boolean = builder->CreateICmpSGT(lv, rv, "cmpLTTmp");
+                    l = builder->CreateFCmpUNE(l, llvm::ConstantFP::get(REAL_TY, 0.0),"toBool");
                 }
-                return cmp_value_boolean;
-            case GE:
-                if (float_point) {
-                    cmp_value_boolean = builder->CreateFCmpOGT(lv_real, rv_real, "cmpGETmp");
+                builder->CreateCondBr(l, Positive, Negative);
+
+                the_function->getBasicBlockList().push_back(Negative);
+                builder->SetInsertPoint(Negative);
+                auto r = this->right->codeGen();
+                auto r_phi_path = builder->GetInsertBlock();
+                if (r->getType()->isIntegerTy()) {
+                    r = builder->CreateICmpNE(r, llvm::ConstantInt::get(r->getType(), 0),"toBool");
                 } else {
-                    cmp_value_boolean = builder->CreateICmpSGT(lv, rv, "cmpGETmp");
+                    r = builder->CreateFCmpUNE(r, llvm::ConstantFP::get(REAL_TY, 0.0),"toBool");
                 }
-                return cmp_value_boolean;
-            case LE:
-                if (float_point) {
-                    cmp_value_boolean = builder->CreateFCmpOGT(lv_real, rv_real, "cmpLETmp");
-                } else {
-                    cmp_value_boolean = builder->CreateICmpSGT(lv, rv, "cmpLETmp");
-                }
-                return cmp_value_boolean;
-            case OR:
-                if (float_point) {
-                    lv_bool = builder->CreateFCmpUNE(lv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "boolTmp");
-                    rv_bool = builder->CreateFCmpUNE(rv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "boolTmp");
-                } else {
-                    lv_bool = builder->CreateICmpNE(lv, llvm::ConstantInt::get(lv->getType(), 0), "boolTmp");
-                    rv_bool = builder->CreateICmpNE(rv, llvm::ConstantInt::get(lv->getType(), 0), "boolTmp");
-                }
-                return builder->CreateOr(lv_bool, rv_bool, "boolOrTmp");
-            case AND:
-                if (float_point) {
-                    lv_bool = builder->CreateFCmpUNE(lv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "boolTmp");
-                    rv_bool = builder->CreateFCmpUNE(rv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "boolTmp");
-                } else {
-                    lv_bool = builder->CreateICmpNE(lv, llvm::ConstantInt::get(lv->getType(), 0), "boolTmp");
-                    rv_bool = builder->CreateICmpNE(rv, llvm::ConstantInt::get(lv->getType(), 0), "boolTmp");
-                }
-                return builder->CreateAnd(lv_bool, rv_bool, "boolAndTmp");
-            default:
-                return nullptr;
+                builder->CreateBr(Positive);
+
+                the_function->getBasicBlockList().push_back(Positive);
+                builder->SetInsertPoint(Positive);
+
+                llvm::PHINode *PN = builder->CreatePHI(BOOL_TY,
+                                                       2);
+                PN->addIncoming(l, l_phi_path);
+                PN->addIncoming(r, r_phi_path);
+
+                return PN;
+            }
         }
     }
 
@@ -883,8 +967,8 @@ namespace AVSI {
 
         // not region of headBB, but symbol table should be pushed before initial list
         symbol_table->push(headBB);
-        symbol_table->setBreakTo(mergeBB);
-        symbol_table->setContinueTo(loopBB);
+        symbol_table->setLoopExit(mergeBB);
+        symbol_table->setLoopEntry(loopBB);
 
         llvm::Value *start = this->initList->codeGen();
         if (!(((Compound *) (this->initList))->child.empty()) && (!start)) {
@@ -904,7 +988,8 @@ namespace AVSI {
             if (cond->getType()->isIntegerTy()) {
                 cond = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "loopCond");
             } else {
-                cond = builder->CreateFCmpUNE(cond, llvm::ConstantFP::get(*the_context, llvm::APFloat(0.0)), "loopCond");
+                cond = builder->CreateFCmpUNE(cond, llvm::ConstantFP::get(*the_context, llvm::APFloat(0.0)),
+                                              "loopCond");
             }
             llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
             llvm::IRBuilder<> blockEntry(
@@ -1320,38 +1405,6 @@ namespace AVSI {
                 return nullptr;
             }
 
-            /*
-                store cont to local variable
-                I don't know why I must add these code... but it will cause error if remove allco
-                For example:
-                    if [ 0.0 ] then
-                    fi
-                1. IR code generated without alloca: (error)
-                    br i1 ture, label %if.then, label %if.else
-                2. IR code generated without alloca: (pass)
-                    %ifCondAlloca = alloca double, align 8
-                    store i1 true, double* %ifCondAlloca, align 1
-                    %0 = load i1, double* %ifCondAlloca, align 1
-                    br i1 %0, label %if.then, label %if.else
-            */
-
-            if (cond->getType()->isIntegerTy()) {
-                cond = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "ifCond");
-            } else {
-                cond = builder->CreateFCmpUNE(cond, llvm::ConstantFP::get(*the_context, llvm::APFloat(0.0)), "ifCond");
-            }
-            llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
-            llvm::IRBuilder<> blockEntry(
-                    &the_scope->getEntryBlock(),
-                    the_scope->getEntryBlock().begin()
-            );
-            llvm::AllocaInst *new_var_alloca = blockEntry.CreateAlloca(
-                    BOOL_TY,
-                    0,
-                    "ifCondAlloca"
-            );
-            builder->CreateStore(cond, new_var_alloca);
-
             llvm::Function *the_function = builder->GetInsertBlock()->getParent();
 
             llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(*the_context, "if.then", the_function);
@@ -1361,7 +1414,6 @@ namespace AVSI {
             uint8_t non_ret_block_then = 0;
             uint8_t non_ret_block_else = 0;
 
-            cond = builder->CreateLoad(BOOL_TY, new_var_alloca);\
             if (elseBB != nullptr) {
                 builder->CreateCondBr(cond, thenBB, elseBB);
             } else {
@@ -1425,7 +1477,7 @@ namespace AVSI {
 
     llvm::Value *LoopCtrl::codeGen() {
         if (this->type == LoopCtrl::LoopCtrlType::CTRL_BREAK) {
-            auto break_to = symbol_table->getBreakTo();
+            auto break_to = symbol_table->getLoopExit();
             if (break_to != nullptr) {
                 builder->CreateBr(break_to);
             } else {
@@ -1436,7 +1488,7 @@ namespace AVSI {
                 );
             }
         } else {
-            auto continue_to = symbol_table->getContinueTo();
+            auto continue_to = symbol_table->getLoopEntry();
             if (continue_to != nullptr) {
                 builder->CreateBr(continue_to);
             } else {
@@ -1487,9 +1539,8 @@ namespace AVSI {
                     "unarySubTmp"
             );
         } else if (this->op.getType() == NOT) {
-            llvm::Value *rv_bool = builder->CreateFPToUI(rv, BOOL_TY, "boolTmp");
-            llvm::Value *v = builder->CreateNot(rv_bool, "unaryNotTmp");
-            return builder->CreateUIToFP(v, REAL_TY, "boolTmp");
+            llvm::Value *rv_bool = builder->CreateFCmpUNE(rv, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+            return builder->CreateNot(rv_bool, "unaryNotTmp");
         } else {
             return nullptr;
         }
@@ -1618,8 +1669,8 @@ namespace AVSI {
         builder->SetInsertPoint(headBB);
 
         symbol_table->push(headBB);
-        symbol_table->setBreakTo(mergeBB);
-        symbol_table->setContinueTo(loopBB);
+        symbol_table->setLoopExit(mergeBB);
+        symbol_table->setLoopEntry(loopBB);
 
         llvm::Value *cond = this->condition->codeGen();
         if (!cond) {

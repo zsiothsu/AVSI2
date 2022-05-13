@@ -39,20 +39,20 @@ namespace AVSI {
         map<string, llvm::AllocaInst *> named_values;
 
     public:
-        llvm::BasicBlock *break_to;
-        llvm::BasicBlock *continue_to;
+        llvm::BasicBlock *loop_exit;
+        llvm::BasicBlock *loop_entry;
 
         SymbolMap()
                 : BB(nullptr),
                   named_values(map < string, llvm::AllocaInst * > ()),
-                  break_to(nullptr),
-                  continue_to(nullptr) {}
+                  loop_exit(nullptr),
+                  loop_entry(nullptr) {}
 
         SymbolMap(llvm::BasicBlock *BB)
                 : BB(BB),
                   named_values(map < string, llvm::AllocaInst * > ()),
-                  break_to(nullptr),
-                  continue_to(nullptr) {}
+                  loop_exit(nullptr),
+                  loop_entry(nullptr) {}
 
         ~SymbolMap() = default;;
 
@@ -82,13 +82,13 @@ namespace AVSI {
 
         llvm::AllocaInst *find(string &name);
 
-        llvm::BasicBlock *getBreakTo();
+        llvm::BasicBlock *getLoopExit();
 
-        llvm::BasicBlock *getContinueTo();
+        llvm::BasicBlock *getLoopEntry();
 
-        void setBreakTo(llvm::BasicBlock * BB);
+        void setLoopExit(llvm::BasicBlock * BB);
 
-        void setContinueTo(llvm::BasicBlock * BB);
+        void setLoopEntry(llvm::BasicBlock * BB);
 
         void insert(string name, llvm::AllocaInst *addr);
     };
