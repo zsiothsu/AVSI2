@@ -279,7 +279,7 @@ namespace AVSI {
 
         LoopCtrl() : AST(__LOOPCTRL_NAME) {}
 
-        LoopCtrl(LoopCtrlType type): AST(__LOOPCTRL_NAME), type(type) {}
+        LoopCtrl(LoopCtrlType type, Token token): AST(__LOOPCTRL_NAME,token), type(type) {}
 
         llvm::Value *codeGen() override;
     };

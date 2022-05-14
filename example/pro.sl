@@ -1,30 +1,19 @@
-mod root::pro
+mod com::avsi::mod1
 
-import root::mod3
-
-obj a{
-    a: real
-    b: real
-}
-
-obj vecStruct {
-    a: vec[real; 2]
-    b: vec[vec[real;2];2]
-}
-
-function test1() -> real {
-    a = {123, 456}
-    b = vecStruct(a)
-    b.b[0] = a
-    b.b[1] = a
-    c = {7890, 12}
-    d = {c,c}
-
-    e = sizeof(b.b)
-    f = sizeof(d)
-}
-
-export function entry() {
-    d = a()
-    e = root::mod3::foo(d)
+function entry() {
+    cond = true
+    for(i = 0; i < 10;i = i + 1) do
+        if [ i >= 5 && cond] then
+            break
+        fi
+    done
+    
+    i = 10
+    while [ i > 0] do 
+        if [ i >= 5] then
+            i = i - 1
+        else 
+            break
+        fi
+    done
 }

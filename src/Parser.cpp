@@ -924,10 +924,10 @@ namespace AVSI {
     AST *Parser::loopCtrl() {
         if (this->currentToken.getType() == BREAK) {
             eat(BREAK);
-            return new LoopCtrl(LoopCtrl::LoopCtrlType::CTRL_BREAK);
+            return new LoopCtrl(LoopCtrl::LoopCtrlType::CTRL_BREAK, this->currentToken);
         } else {
             eat(CONTINUE);
-            return new LoopCtrl(LoopCtrl::LoopCtrlType::CTRL_CONTINUE);
+            return new LoopCtrl(LoopCtrl::LoopCtrlType::CTRL_CONTINUE, this->currentToken);
         }
     }
 

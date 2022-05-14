@@ -611,7 +611,8 @@ namespace AVSI {
                 builder->CreateMemCpy(l_ptr, llvm::MaybeAlign(), r_ptr, llvm::MaybeAlign(),
                                       size);
             } else {
-                builder->CreateStore(r_value, l_alloca_addr);
+                r_ptr = builder->CreatePointerCast(r_ptr, l_ptr->getType(), "ptr.cast");
+                builder->CreateStore(r_ptr, l_alloca_addr);
             }
         } else if (
                 l_alloca_addr != nullptr &&
@@ -691,7 +692,8 @@ namespace AVSI {
 
                 } else {
                     if (l_excepted_type != VOID_TY) {
-                        if (isTheSameBasicType((llvm::PointerType *) r_type, (llvm::PointerType *) l_excepted_type)) {
+                        if (l_excepted_type->isPtrOrPtrVectorTy() &&
+                            isTheSameBasicType((llvm::PointerType *) r_type, (llvm::PointerType *) l_excepted_type)) {
                             cast_to_type = l_excepted_type;
                             cast_to_name = l_base_name + ".cast.array2ptr";
                             r_value = builder->CreatePointerCast(r_value, l_excepted_type);
@@ -710,7 +712,6 @@ namespace AVSI {
                     goto assign_begin;
                 }
             } else {
-                // if right is a normal pointer
                 if (
                         r_type->isPtrOrPtrVectorTy() &&
                         l_excepted_type->isPtrOrPtrVectorTy() &&
@@ -718,11 +719,23 @@ namespace AVSI {
                         isTheSameBasicType((llvm::PointerType *) r_type,
                                            (llvm::PointerType *) l_excepted_type)
                         ) {
+                    // if right is a normal pointer
                     cast_to_type = l_excepted_type;
                     r_value = builder->CreatePointerCast(r_value, cast_to_type);
                     cast_to_name = l_base_name + ".cast.ptr2array";
                 } else {
                     cast_to_type = r_type;
+                    if (l_excepted_type != VOID_TY) {
+                        Warning(
+                                __Warning,
+                                "failed to cast type '" +
+                                type_name[cast_to_type] +
+                                "' to '"
+                                + type_name[l_excepted_type] +
+                                "', the left type will be ignored ",
+                                assigin_ast->getToken().line, assigin_ast->getToken().column
+                        );
+                    }
                 }
                 goto assign_begin;
             }
@@ -779,8 +792,8 @@ namespace AVSI {
             if (result_type_bitmap >= 0x04) float_point = true;
 
             llvm::Value *cmp_value_boolean;
-            llvm::Value *lv_bool = nullptr;
-            llvm::Value *rv_bool = nullptr;
+            // llvm::Value *lv_bool = nullptr;
+            // llvm::Value *rv_bool = nullptr;
 
             llvm::Value *lv_real = nullptr;
             llvm::Value *rv_real = nullptr;
@@ -876,14 +889,15 @@ namespace AVSI {
                 auto l_phi_path = builder->GetInsertBlock();
 
                 auto the_function = builder->GetInsertBlock()->getParent();
-                auto current = builder->GetInsertBlock();
-                auto Positive = llvm::BasicBlock::Create(*the_context, "land.lhs.positive.rhs.head", the_function);
+                auto Positive = llvm::BasicBlock::Create(*the_context, "land.lhs.true.rhs.head", the_function);
                 auto Negative = llvm::BasicBlock::Create(*the_context, "land.end", the_function);
 
-                if (l->getType()->isIntegerTy()) {
-                    l = builder->CreateICmpNE(l, llvm::ConstantInt::get(l->getType(), 0),"toBool");
-                } else {
-                    l = builder->CreateFCmpUNE(l, llvm::ConstantFP::get(REAL_TY, 0.0),"toBool");
+                if (l->getType() != BOOL_TY) {
+                    if (l->getType()->isIntegerTy()) {
+                        l = builder->CreateICmpNE(l, llvm::ConstantInt::get(l->getType(), 0), "toBool");
+                    } else {
+                        l = builder->CreateFCmpUNE(l, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+                    }
                 }
                 builder->CreateCondBr(l, Positive, Negative);
 
@@ -891,10 +905,12 @@ namespace AVSI {
                 builder->SetInsertPoint(Positive);
                 auto r = this->right->codeGen();
                 auto r_phi_path = builder->GetInsertBlock();
-                if (r->getType()->isIntegerTy()) {
-                    r = builder->CreateICmpNE(r, llvm::ConstantInt::get(r->getType(), 0),"toBool");
-                } else {
-                    r = builder->CreateFCmpUNE(r, llvm::ConstantFP::get(REAL_TY, 0.0),"toBool");
+                if (r->getType() != BOOL_TY) {
+                    if (r->getType()->isIntegerTy()) {
+                        r = builder->CreateICmpNE(r, llvm::ConstantInt::get(r->getType(), 0), "toBool");
+                    } else {
+                        r = builder->CreateFCmpUNE(r, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+                    }
                 }
                 builder->CreateBr(Negative);
 
@@ -915,14 +931,15 @@ namespace AVSI {
                 auto l_phi_path = builder->GetInsertBlock();
 
                 auto the_function = builder->GetInsertBlock()->getParent();
-                auto current = builder->GetInsertBlock();
-                auto Negative = llvm::BasicBlock::Create(*the_context, "lor.lhs.negative.rhs.head", the_function);
+                auto Negative = llvm::BasicBlock::Create(*the_context, "lor.lhs.false.rhs.head", the_function);
                 auto Positive = llvm::BasicBlock::Create(*the_context, "lor.end", the_function);
 
-                if (l->getType()->isIntegerTy()) {
-                    l = builder->CreateICmpNE(l, llvm::ConstantInt::get(l->getType(), 0),"toBool");
-                } else {
-                    l = builder->CreateFCmpUNE(l, llvm::ConstantFP::get(REAL_TY, 0.0),"toBool");
+                if (l->getType() != BOOL_TY) {
+                    if (l->getType()->isIntegerTy()) {
+                        l = builder->CreateICmpNE(l, llvm::ConstantInt::get(l->getType(), 0), "toBool");
+                    } else {
+                        l = builder->CreateFCmpUNE(l, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+                    }
                 }
                 builder->CreateCondBr(l, Positive, Negative);
 
@@ -930,10 +947,12 @@ namespace AVSI {
                 builder->SetInsertPoint(Negative);
                 auto r = this->right->codeGen();
                 auto r_phi_path = builder->GetInsertBlock();
-                if (r->getType()->isIntegerTy()) {
-                    r = builder->CreateICmpNE(r, llvm::ConstantInt::get(r->getType(), 0),"toBool");
-                } else {
-                    r = builder->CreateFCmpUNE(r, llvm::ConstantFP::get(REAL_TY, 0.0),"toBool");
+                if (r->getType() != BOOL_TY) {
+                    if (r->getType()->isIntegerTy()) {
+                        r = builder->CreateICmpNE(r, llvm::ConstantInt::get(r->getType(), 0), "toBool");
+                    } else {
+                        r = builder->CreateFCmpUNE(r, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+                    }
                 }
                 builder->CreateBr(Positive);
 
@@ -971,7 +990,7 @@ namespace AVSI {
         symbol_table->setLoopEntry(loopBB);
 
         llvm::Value *start = this->initList->codeGen();
-        if (!(((Compound *) (this->initList))->child.empty()) && (!start)) {
+        if (!(((Compound * )(this->initList))->child.empty()) && (!start)) {
             return nullptr;
         }
 
@@ -985,25 +1004,15 @@ namespace AVSI {
             if (!cond) {
                 return nullptr;
             }
-            if (cond->getType()->isIntegerTy()) {
-                cond = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "loopCond");
-            } else {
-                cond = builder->CreateFCmpUNE(cond, llvm::ConstantFP::get(*the_context, llvm::APFloat(0.0)),
-                                              "loopCond");
-            }
-            llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
-            llvm::IRBuilder<> blockEntry(
-                    &the_scope->getEntryBlock(),
-                    the_scope->getEntryBlock().begin()
-            );
-            llvm::AllocaInst *new_var_alloca = blockEntry.CreateAlloca(
-                    BOOL_TY,
-                    0,
-                    "ifCondAlloca"
-            );
-            builder->CreateStore(cond, new_var_alloca);
 
-            cond = builder->CreateLoad(BOOL_TY, new_var_alloca);
+            if (cond->getType() != BOOL_TY) {
+                if (cond->getType()->isIntegerTy()) {
+                    cond = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "toBool");
+                } else {
+                    cond = builder->CreateFCmpUNE(cond, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+                }
+            }
+
             builder->CreateCondBr(cond, loopBB, mergeBB);
             headBB = builder->GetInsertBlock();
         } else {
@@ -1014,18 +1023,21 @@ namespace AVSI {
         builder->SetInsertPoint(loopBB);
 
         llvm::Value *body = this->compound->codeGen();
-        if (!(((Compound *) (this->compound))->child.empty()) && (!body)) {
+        if (!(((Compound * )(this->compound))->child.empty()) && (!body)) {
             return nullptr;
         }
-        llvm::Value *adjust = this->adjustment->codeGen();
-        if (!(((Compound *) (this->adjustment))->child.empty()) && (!adjust)) {
-            return nullptr;
-        }
-        symbol_table->pop();
 
-        auto t = builder->GetInsertBlock()->getTerminator();
-        if (!t) {
-            builder->CreateBr(headBB);
+        if (!builder->GetInsertBlock()->getTerminator()) {
+            llvm::Value *adjust = this->adjustment->codeGen();
+            if (!(((Compound * )(this->adjustment))->child.empty()) && (!adjust)) {
+                return nullptr;
+            }
+            symbol_table->pop();
+
+            auto t = builder->GetInsertBlock()->getTerminator();
+            if (!t) {
+                builder->CreateBr(headBB);
+            }
         }
         loopBB = builder->GetInsertBlock();
 
@@ -1127,6 +1139,8 @@ namespace AVSI {
             // create body
             llvm::BasicBlock *BB = llvm::BasicBlock::Create(*the_context, "entry", the_function);
             symbol_table->push(BB);
+            symbol_table->setLoopEntry(nullptr);
+            symbol_table->setLoopExit(nullptr);
             builder->SetInsertPoint(BB);
 
             // initialize param
@@ -1404,6 +1418,13 @@ namespace AVSI {
             if (!cond) {
                 return nullptr;
             }
+            if (cond->getType() != BOOL_TY) {
+                if (cond->getType()->isIntegerTy()) {
+                    cond = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "toBool");
+                } else {
+                    cond = builder->CreateFCmpUNE(cond, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+                }
+            }
 
             llvm::Function *the_function = builder->GetInsertBlock()->getParent();
 
@@ -1411,8 +1432,6 @@ namespace AVSI {
             llvm::BasicBlock *elseBB = nullptr;
             if (this->next != ASTEmpty) elseBB = llvm::BasicBlock::Create(*the_context, "if.else", the_function);
             llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*the_context, "if.end", the_function);
-            uint8_t non_ret_block_then = 0;
-            uint8_t non_ret_block_else = 0;
 
             if (elseBB != nullptr) {
                 builder->CreateCondBr(cond, thenBB, elseBB);
@@ -1433,7 +1452,6 @@ namespace AVSI {
             auto t = builder->GetInsertBlock()->getTerminator();
             if (!t) {
                 builder->CreateBr(mergeBB);
-                non_ret_block_then = 1;
             }
             thenBB = builder->GetInsertBlock();
 
@@ -1452,22 +1470,12 @@ namespace AVSI {
                 t = builder->GetInsertBlock()->getTerminator();
                 if (!t) {
                     builder->CreateBr(mergeBB);
-                    non_ret_block_else = 1;
                 }
                 elseBB = builder->GetInsertBlock();
             }
 
             the_function->getBasicBlockList().push_back(mergeBB);
             builder->SetInsertPoint(mergeBB);
-
-            if (elseBB != nullptr && non_ret_block_then && non_ret_block_else) {
-                llvm::PHINode *PN = builder->CreatePHI(REAL_TY,
-                                                       2, "ifTmp");
-                PN->addIncoming(thenv, thenBB);
-                PN->addIncoming(elsev, elseBB);
-
-                return PN;
-            }
 
             return llvm::Constant::getNullValue(REAL_TY);
         } else {
@@ -1611,9 +1619,22 @@ namespace AVSI {
         int err_count = 0;
         bool is_err = false;
 
+        size_t cnt = 0;
+        size_t child_size = this->child.size();
         for (AST *ast: this->child) {
             try {
                 ast->codeGen();
+                cnt++;
+                if (builder->GetInsertBlock() && builder->GetInsertBlock()->getTerminator()) {
+                    if (cnt != child_size) {
+                        Warning(
+                                __Warning,
+                                "terminator detected, subsequent code will be ignored",
+                                ast->getToken().line, ast->getToken().column
+                        );
+                    }
+                    break;
+                }
             } catch (Exception e) {
                 if (e.type() != __ErrReport) {
                     err_count++;
@@ -1676,23 +1697,13 @@ namespace AVSI {
         if (!cond) {
             return nullptr;
         }
-        if (cond->getType()->isIntegerTy()) {
-            cond = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "loopCond");
-        } else {
-            cond = builder->CreateFCmpUNE(cond, llvm::ConstantFP::get(*the_context, llvm::APFloat(0.0)), "loopCond");
+        if (cond->getType() != BOOL_TY) {
+            if (cond->getType()->isIntegerTy()) {
+                cond = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "toBool");
+            } else {
+                cond = builder->CreateFCmpUNE(cond, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+            }
         }
-        llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
-        llvm::IRBuilder<> blockEntry(
-                &the_scope->getEntryBlock(),
-                the_scope->getEntryBlock().begin()
-        );
-        llvm::AllocaInst *new_var_alloca = blockEntry.CreateAlloca(
-                BOOL_TY,
-                0,
-                "ifCondAlloca"
-        );
-        builder->CreateStore(cond, new_var_alloca);
-        cond = builder->CreateLoad(BOOL_TY, new_var_alloca);
         builder->CreateCondBr(cond, loopBB, mergeBB);
 
         the_function->getBasicBlockList().push_back(loopBB);
