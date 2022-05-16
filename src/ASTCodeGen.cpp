@@ -67,12 +67,12 @@ namespace AVSI {
      *                     function                        *
      *******************************************************/
     void llvm_module_fpm_init() {
-//        the_fpm->add(llvm::createReassociatePass());
-//        the_fpm->add(llvm::createGVNPass());
-//        the_fpm->add(llvm::createInstructionCombiningPass());
-//        the_fpm->add(llvm::createCFGSimplificationPass());
-//        the_fpm->add(llvm::createDeadCodeEliminationPass());
-//        the_fpm->add(llvm::createFlattenCFGPass());
+        //        the_fpm->add(llvm::createReassociatePass());
+        //        the_fpm->add(llvm::createGVNPass());
+        //        the_fpm->add(llvm::createInstructionCombiningPass());
+        //        the_fpm->add(llvm::createCFGSimplificationPass());
+        //        the_fpm->add(llvm::createDeadCodeEliminationPass());
+        //        the_fpm->add(llvm::createFlattenCFGPass());
 
         the_fpm->doInitialization();
     }
@@ -106,6 +106,11 @@ namespace AVSI {
             string unresolved_path = getpathListToUnresolved(path);
             unresolved_path += (unresolved_path.empty() ? "" : "::") + mod;
             module_name_alias[unresolved_path] = unresolved_path;
+
+            path.erase(path.begin(),path.begin() + path_size);
+            string unresolved_path_relative = getpathListToUnresolved(path);
+            unresolved_path_relative += (unresolved_path_relative.empty() ? "" : "::") + mod;
+            module_name_alias[unresolved_path_relative] = unresolved_path;
         } else {
             module_file_system_path =
                     output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER;
@@ -116,6 +121,7 @@ namespace AVSI {
             string unresolved_path_absolute = getpathListToUnresolved(module_path);
             unresolved_path_absolute += "::" + unresolved_path;
             module_name_alias[unresolved_path] = unresolved_path_absolute;
+            module_name_alias[unresolved_path_absolute] = unresolved_path_absolute;
         }
         for (int i = search_begin_index; i < path.size(); i++) {
             module_file_system_path += SYSTEM_PATH_DIVIDER + path[i];
@@ -131,16 +137,16 @@ namespace AVSI {
         // generate .r for Makefile
         if (opt_reliance) {
             auto OFilename =
-                    output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
-                    + string(input_file_name_no_suffix) + ".o";
+                    output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
+                    string(input_file_name_no_suffix) + ".o";
 
             auto BCFilename =
-                    output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
-                    + string(input_file_name_no_suffix) + ".bc";
+                    output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
+                    string(input_file_name_no_suffix) + ".bc";
 
             auto RFilename =
-                    output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
-                    + string(input_file_name_no_suffix) + ".r";
+                    output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
+                    string(input_file_name_no_suffix) + ".r";
 
             llvm_create_dir(filesystem::path(RFilename).parent_path());
             std::error_code EC;
@@ -160,8 +166,7 @@ namespace AVSI {
             throw ExceptionFactory(
                     __MissingException,
                     "module " + unparsed_name + " is not found",
-                    line, col
-            );
+                    line, col);
         }
 
         // read bc file to memory buffer
@@ -177,8 +182,7 @@ namespace AVSI {
                 throw ExceptionFactory(
                         __MissingException,
                         "error occurred when reading module " + unparsed_name,
-                        line, col
-                );
+                        line, col);
             }
         }
 
@@ -247,8 +251,7 @@ namespace AVSI {
         simple_types_map = {
                 {REAL_TY, 0x04},
                 {CHAR_TY, 0x02},
-                {BOOL_TY, 0x01}
-        };
+                {BOOL_TY, 0x01}};
         type_name = {
                 {REAL_TY, "real"},
                 {CHAR_TY, "char"},
@@ -304,13 +307,11 @@ namespace AVSI {
 
     void llvm_obj_output() {
         auto Filename =
-                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
-                + string(input_file_name_no_suffix) + ".o";
+                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
+                string(input_file_name_no_suffix) + ".o";
         llvm_create_dir(filesystem::path(Filename).parent_path());
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
-
-        cout << Filename << endl;
 
         if (EC) {
             llvm::errs() << "Could not open file: " << EC.message();
@@ -333,8 +334,8 @@ namespace AVSI {
 
     void llvm_asm_output() {
         auto Filename =
-                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
-                + string(input_file_name_no_suffix) + ".s";
+                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
+                string(input_file_name_no_suffix) + ".s";
         llvm_create_dir(filesystem::path(Filename).parent_path());
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
@@ -360,13 +361,11 @@ namespace AVSI {
 
     void llvm_module_output() {
         auto Filename =
-                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
-                + string(input_file_name_no_suffix) + ".bc";
+                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
+                string(input_file_name_no_suffix) + ".bc";
         llvm_create_dir(filesystem::path(Filename).parent_path());
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
-
-        cout << Filename << endl;
 
         llvm::WriteBitcodeToFile(*the_module, dest);
 
@@ -376,8 +375,8 @@ namespace AVSI {
 
     void llvm_module_printIR() {
         auto Filename =
-                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER
-                + string(input_file_name_no_suffix) + ".ll";
+                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
+                string(input_file_name_no_suffix) + ".ll";
         llvm_create_dir(filesystem::path(Filename).parent_path());
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
@@ -386,13 +385,15 @@ namespace AVSI {
     }
 
     void debug_type(llvm::Value *v) {
-        if (!v) return;
+        if (!v)
+            return;
         v->getType()->print(llvm::outs());
         cout << endl;
     }
 
     void debug_type(llvm::Type *v) {
-        if (!v) return;
+        if (!v)
+            return;
         v->print(llvm::outs());
         cout << endl;
     }
@@ -410,7 +411,8 @@ namespace AVSI {
      *******************************************************/
     llvm::PointerType *getArrayBasicTypePointer(llvm::PointerType *Ty) {
         llvm::Type *basic = Ty->getPointerElementType();
-        while (basic->isArrayTy()) basic = basic->getArrayElementType();
+        while (basic->isArrayTy())
+            basic = basic->getArrayElementType();
         return basic->getPointerTo();
     }
 
@@ -418,8 +420,10 @@ namespace AVSI {
         llvm::Type *basicl = l->getPointerElementType();
         llvm::Type *basicr = r->getPointerElementType();
 
-        while (basicl->isArrayTy()) basicl = basicl->getArrayElementType();
-        while (basicr->isArrayTy()) basicr = basicr->getArrayElementType();
+        while (basicl->isArrayTy())
+            basicl = basicl->getArrayElementType();
+        while (basicr->isArrayTy())
+            basicr = basicr->getArrayElementType();
 
         return basicl == basicr;
     }
@@ -427,14 +431,12 @@ namespace AVSI {
     llvm::AllocaInst *allocaBlockEntry(llvm::Function *fun, string name, llvm::Type *Ty) {
         llvm::IRBuilder<> blockEntry(
                 &fun->getEntryBlock(),
-                fun->getEntryBlock().begin()
-        );
+                fun->getEntryBlock().begin());
 
         return blockEntry.CreateAlloca(
                 Ty,
                 0,
-                name.c_str()
-        );
+                name.c_str());
     }
 
     llvm::Value *getAlloca(Variable *var) {
@@ -455,8 +457,7 @@ namespace AVSI {
 
         if (!v) {
             v = the_module->getGlobalVariable(
-                    getFunctionNameMangling(getpathUnresolvedToList(mod_path), var->id)
-            );
+                    getFunctionNameMangling(getpathUnresolvedToList(mod_path), var->id));
         }
 
         if (v && !var->offset.empty()) {
@@ -473,8 +474,7 @@ namespace AVSI {
                 offset_list.push_back(llvm::ConstantInt::get(
                         llvm::Type::getInt32Ty(*the_context),
                         0,
-                        true)
-                );
+                        true));
                 if (i.first == Variable::ARRAY) {
                     llvm::Value *index = i.second->codeGen();
                     index = builder->CreateFPToSI(index, MACHINE_WIDTH_TY);
@@ -487,9 +487,7 @@ namespace AVSI {
                                                            MACHINE_WIDTH_TY,
                                                            v->getType()->getPointerElementType()->isPtrOrPtrVectorTy()
                                                            ? PTR_SIZE
-                                                           : type_size[v->getType()->getPointerElementType()]
-                                                   )
-                        );
+                                                           : type_size[v->getType()->getPointerElementType()]));
 
                         llvm::Type *v_oldTy = v->getType();
                         v = builder->CreatePtrToInt(v, MACHINE_WIDTH_TY);
@@ -501,14 +499,13 @@ namespace AVSI {
                                     llvm::cast<llvm::PointerType>(v->getType()->getScalarType())->getElementType(),
                                     v,
                                     offset_list,
-                                    var->id
-                            );
-                        } catch (...) {
+                                    var->id);
+                        }
+                        catch (...) {
                             throw ExceptionFactory(
                                     __TypeException,
                                     "index out of range or not an array",
-                                    i.second->getToken().line, i.second->getToken().column
-                            );
+                                    i.second->getToken().line, i.second->getToken().column);
                         }
                     }
                 } else {
@@ -526,8 +523,7 @@ namespace AVSI {
                             offset_list.push_back(llvm::ConstantInt::get(
                                     llvm::Type::getInt32Ty(*the_context),
                                     index,
-                                    true)
-                            );
+                                    true));
                             find_flag = true;
                             break;
                         }
@@ -538,14 +534,12 @@ namespace AVSI {
                                 llvm::cast<llvm::PointerType>(v->getType()->getScalarType())->getElementType(),
                                 v,
                                 offset_list,
-                                var->id
-                        );
+                                var->id);
                     } else {
                         throw ExceptionFactory(
                                 __MissingException,
                                 "unrecognized member '" + member_name + "'",
-                                i.second->getToken().line, i.second->getToken().column
-                        );
+                                i.second->getToken().line, i.second->getToken().column);
                     }
                 }
                 if (v->getType()->getPointerElementType()->isArrayTy()) {
@@ -561,7 +555,6 @@ namespace AVSI {
         return v;
     }
 
-
     llvm::Value *AST::codeGen() {
         return llvm::Constant::getNullValue(REAL_TY);
     }
@@ -575,8 +568,7 @@ namespace AVSI {
             throw ExceptionFactory(
                     __LogicException,
                     "cannot assign void to variable",
-                    ast->getToken().line, ast->getToken().column
-            );
+                    ast->getToken().line, ast->getToken().column);
         }
 
         llvm::Type *l_type = l_alloca_addr ? l_alloca_addr->getType()->getPointerElementType() : nullptr;
@@ -596,28 +588,31 @@ namespace AVSI {
              * array of pointer of low-dimensional array,
              * so the role of assign is copy right array to left
              */
-            llvm::Value *l_ptr = builder->CreateLoad(l_alloca_addr->getType()->getPointerElementType(), l_alloca_addr,
-                                                     "dest.addr");
             auto &r_ptr = r_value;
 
             uint32_t size = 0;
             if (l_type->getPointerElementType()->isArrayTy() && r_type->getPointerElementType()->isArrayTy()) {
-                size = min(type_size[l_ptr->getType()->getPointerElementType()],
-                           type_size[r_ptr->getType()->getPointerElementType()]);
+                llvm::Value *l_ptr = builder->CreateLoad(l_alloca_addr->getType()->getPointerElementType(),
+                                                         l_alloca_addr,
+                                                         "dest.addr");
+                size = min(type_size[l_type->getPointerElementType()],
+                           type_size[l_type->getPointerElementType()]);
                 builder->CreateMemCpy(l_ptr, llvm::MaybeAlign(), r_ptr, llvm::MaybeAlign(),
                                       size);
             } else if (l_type->getPointerElementType()->isArrayTy()) {
-                size = type_size[l_ptr->getType()->getPointerElementType()];
+                llvm::Value *l_ptr = builder->CreateLoad(l_alloca_addr->getType()->getPointerElementType(),
+                                                         l_alloca_addr,
+                                                         "dest.addr");
+                size = type_size[l_type->getPointerElementType()];
                 builder->CreateMemCpy(l_ptr, llvm::MaybeAlign(), r_ptr, llvm::MaybeAlign(),
                                       size);
             } else {
-                r_ptr = builder->CreatePointerCast(r_ptr, l_ptr->getType(), "ptr.cast");
+                r_ptr = builder->CreatePointerCast(r_ptr, l_type, "ptr.cast");
                 builder->CreateStore(r_ptr, l_alloca_addr);
             }
         } else if (
                 l_alloca_addr != nullptr &&
-                l_type == r_type
-                ) {
+                l_type == r_type) {
             builder->CreateStore(r_value, l_alloca_addr);
         } else if (assignment && ((Variable *) assigin_ast->left)->offset.empty()) {
             llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
@@ -630,8 +625,7 @@ namespace AVSI {
             // if right value is an array initializer or another array
             if (
                     r_type->isPtrOrPtrVectorTy() &&
-                    r_type->getPointerElementType()->isArrayTy()
-                    ) {
+                    r_type->getPointerElementType()->isArrayTy()) {
                 cast_to_type = r_type;
                 cast_to_name = l_base_name + ".addr";
 
@@ -639,13 +633,11 @@ namespace AVSI {
                         l_excepted_type->isPtrOrPtrVectorTy() &&
                         l_excepted_type->getPointerElementType()->isArrayTy() &&
                         isTheSameBasicType((llvm::PointerType *) r_type,
-                                           (llvm::PointerType *) l_excepted_type)
-                        ) {
+                                           (llvm::PointerType *) l_excepted_type)) {
 
                     if (
-                            type_size[l_excepted_type->getPointerElementType()]
-                            <= type_size[r_type->getPointerElementType()]
-                            ) {
+                            type_size[l_excepted_type->getPointerElementType()] <=
+                            type_size[r_type->getPointerElementType()]) {
                         /*
                          * if excepted array size less than or equal right,
                          * create a pointer to right value
@@ -672,11 +664,9 @@ namespace AVSI {
                                 new_array_alloca,
                                 llvm::ConstantInt::get(
                                         llvm::Type::getInt8Ty(*the_context),
-                                        0
-                                ),
+                                        0),
                                 type_size[l_excepted_type->getPointerElementType()],
-                                llvm::MaybeAlign()
-                        );
+                                llvm::MaybeAlign());
 
                         llvm::AllocaInst *new_ptr = allocaBlockEntry(the_scope, l_base_name + ".ArrayInit.Ptr",
                                                                      cast_to_type);
@@ -689,7 +679,6 @@ namespace AVSI {
                         symbol_table->insert(l_base_name, new_ptr);
                         goto assign_end;
                     }
-
                 } else {
                     if (l_excepted_type != VOID_TY) {
                         if (l_excepted_type->isPtrOrPtrVectorTy() &&
@@ -702,11 +691,9 @@ namespace AVSI {
                                     __Warning,
                                     "failed to cast type '" +
                                     type_name[cast_to_type] +
-                                    "' to '"
-                                    + type_name[l_excepted_type] +
+                                    "' to '" + type_name[l_excepted_type] +
                                     "', the left type will be ignored ",
-                                    assigin_ast->getToken().line, assigin_ast->getToken().column
-                            );
+                                    assigin_ast->getToken().line, assigin_ast->getToken().column);
                         }
                     }
                     goto assign_begin;
@@ -717,8 +704,7 @@ namespace AVSI {
                         l_excepted_type->isPtrOrPtrVectorTy() &&
                         l_excepted_type->getPointerElementType()->isArrayTy() &&
                         isTheSameBasicType((llvm::PointerType *) r_type,
-                                           (llvm::PointerType *) l_excepted_type)
-                        ) {
+                                           (llvm::PointerType *) l_excepted_type)) {
                     // if right is a normal pointer
                     cast_to_type = l_excepted_type;
                     r_value = builder->CreatePointerCast(r_value, cast_to_type);
@@ -730,11 +716,9 @@ namespace AVSI {
                                 __Warning,
                                 "failed to cast type '" +
                                 type_name[cast_to_type] +
-                                "' to '"
-                                + type_name[l_excepted_type] +
+                                "' to '" + type_name[l_excepted_type] +
                                 "', the left type will be ignored ",
-                                assigin_ast->getToken().line, assigin_ast->getToken().column
-                        );
+                                assigin_ast->getToken().line, assigin_ast->getToken().column);
                     }
                 }
                 goto assign_begin;
@@ -747,11 +731,10 @@ namespace AVSI {
         } else {
             throw ExceptionFactory(
                     __LogicException,
-                    "not matched type, left: " + \
-                    type_name[l_alloca_addr->getType()->getPointerElementType()] + \
+                    "not matched type, left: " +
+                    type_name[l_alloca_addr->getType()->getPointerElementType()] +
                     ", right: " + type_name[r_type],
-                    ast->getToken().line, ast->getToken().column
-            );
+                    ast->getToken().line, ast->getToken().column);
         }
         assign_end:
         return llvm::Constant::getNullValue(REAL_TY);
@@ -782,14 +765,14 @@ namespace AVSI {
 
             if (
                     simple_types.find(l_type) == simple_types.end() ||
-                    simple_types.find(r_type) == simple_types.end()
-                    ) {
+                    simple_types.find(r_type) == simple_types.end()) {
                 return nullptr;
             }
 
             int result_type_bitmap = simple_types_map[l_type] | simple_types_map[r_type];
             bool float_point = false;
-            if (result_type_bitmap >= 0x04) float_point = true;
+            if (result_type_bitmap >= 0x04)
+                float_point = true;
 
             llvm::Value *cmp_value_boolean;
             // llvm::Value *lv_bool = nullptr;
@@ -805,14 +788,20 @@ namespace AVSI {
 
             switch (this->op.getType()) {
                 case PLUS:
-                    if (float_point) return builder->CreateFAdd(lv_real, rv_real, "addTmp");
-                    else return builder->CreateAdd(lv, rv, "addTmp");
+                    if (float_point)
+                        return builder->CreateFAdd(lv_real, rv_real, "addTmp");
+                    else
+                        return builder->CreateAdd(lv, rv, "addTmp");
                 case MINUS:
-                    if (float_point) return builder->CreateFSub(lv_real, rv_real, "subTmp");
-                    else return builder->CreateSub(lv, rv, "subTmp");
+                    if (float_point)
+                        return builder->CreateFSub(lv_real, rv_real, "subTmp");
+                    else
+                        return builder->CreateSub(lv, rv, "subTmp");
                 case STAR:
-                    if (float_point) return builder->CreateFMul(lv_real, rv_real, "mulTmp");
-                    else if (float_point) return builder->CreateMul(lv, rv, "mulTmp");
+                    if (float_point)
+                        return builder->CreateFMul(lv_real, rv_real, "mulTmp");
+                    else if (float_point)
+                        return builder->CreateMul(lv, rv, "mulTmp");
                 case SLASH:
                     lv_real = l_type->isDoubleTy() ? lv : builder->CreateSIToFP(lv, REAL_TY);
                     rv_real = r_type->isDoubleTy() ? rv : builder->CreateSIToFP(rv, REAL_TY);
@@ -859,24 +848,24 @@ namespace AVSI {
                         cmp_value_boolean = builder->CreateICmpSGT(lv, rv, "cmpLETmp");
                     }
                     return cmp_value_boolean;
-//                case OR:
-//                    if (float_point) {
-//                        lv_bool = builder->CreateFCmpUNE(lv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
-//                        rv_bool = builder->CreateFCmpUNE(rv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
-//                    } else {
-//                        lv_bool = builder->CreateICmpNE(lv, llvm::ConstantInt::get(lv->getType(), 0), "toBool");
-//                        rv_bool = builder->CreateICmpNE(rv, llvm::ConstantInt::get(lv->getType(), 0), "toBool");
-//                    }
-//                    return builder->CreateOr(lv_bool, rv_bool, "boolOrTmp");
-//                case AND:
-//                    if (float_point) {
-//                        lv_bool = builder->CreateFCmpUNE(lv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
-//                        rv_bool = builder->CreateFCmpUNE(rv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
-//                    } else {
-//                        lv_bool = builder->CreateICmpNE(lv, llvm::ConstantInt::get(lv->getType(), 0), "toBool");
-//                        rv_bool = builder->CreateICmpNE(rv, llvm::ConstantInt::get(lv->getType(), 0), "toBool");
-//                    }
-//                    return builder->CreateAnd(lv_bool, rv_bool, "boolAndTmp");
+                    //                case OR:
+                    //                    if (float_point) {
+                    //                        lv_bool = builder->CreateFCmpUNE(lv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+                    //                        rv_bool = builder->CreateFCmpUNE(rv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+                    //                    } else {
+                    //                        lv_bool = builder->CreateICmpNE(lv, llvm::ConstantInt::get(lv->getType(), 0), "toBool");
+                    //                        rv_bool = builder->CreateICmpNE(rv, llvm::ConstantInt::get(lv->getType(), 0), "toBool");
+                    //                    }
+                    //                    return builder->CreateOr(lv_bool, rv_bool, "boolOrTmp");
+                    //                case AND:
+                    //                    if (float_point) {
+                    //                        lv_bool = builder->CreateFCmpUNE(lv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+                    //                        rv_bool = builder->CreateFCmpUNE(rv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+                    //                    } else {
+                    //                        lv_bool = builder->CreateICmpNE(lv, llvm::ConstantInt::get(lv->getType(), 0), "toBool");
+                    //                        rv_bool = builder->CreateICmpNE(rv, llvm::ConstantInt::get(lv->getType(), 0), "toBool");
+                    //                    }
+                    //                    return builder->CreateAnd(lv_bool, rv_bool, "boolAndTmp");
                 default:
                     return nullptr;
             }
@@ -990,7 +979,7 @@ namespace AVSI {
         symbol_table->setLoopEntry(loopBB);
 
         llvm::Value *start = this->initList->codeGen();
-        if (!(((Compound * )(this->initList))->child.empty()) && (!start)) {
+        if (!(((Compound *) (this->initList))->child.empty()) && (!start)) {
             return nullptr;
         }
 
@@ -1022,14 +1011,18 @@ namespace AVSI {
         the_function->getBasicBlockList().push_back(loopBB);
         builder->SetInsertPoint(loopBB);
 
+        // push headBB again, to avoid statements that referring the
+        // variable defined at body in adjustment
+        symbol_table->push(headBB);
         llvm::Value *body = this->compound->codeGen();
-        if (!(((Compound * )(this->compound))->child.empty()) && (!body)) {
+        if (!(((Compound *) (this->compound))->child.empty()) && (!body)) {
             return nullptr;
         }
+        symbol_table->pop();
 
         if (!builder->GetInsertBlock()->getTerminator()) {
             llvm::Value *adjust = this->adjustment->codeGen();
-            if (!(((Compound * )(this->adjustment))->child.empty()) && (!adjust)) {
+            if (!(((Compound *) (this->adjustment))->child.empty()) && (!adjust)) {
                 return nullptr;
             }
             symbol_table->pop();
@@ -1078,28 +1071,24 @@ namespace AVSI {
                 ? getArrayBasicTypePointer(this->retTy.first->getPointerTo())
                 : this->retTy.first,
                 Tys,
-                false
-        );
+                false);
 
         if (the_module->getFunction(this->id) == nullptr) {
             builder->ClearInsertionPoint();
             // check is re-definition
             auto funType = function_protos.find(this->id);
-            if (funType != function_protos.end() && (
-                    (funType->second != FT) || (the_module->getFunction(this->id) != nullptr)
-            )) {
+            if (funType != function_protos.end() &&
+                ((funType->second != FT) || (the_module->getFunction(this->id) != nullptr))) {
                 throw ExceptionFactory(
                         __LogicException,
                         "function redefined there",
-                        this->token.line, this->token.column
-                );
+                        this->token.line, this->token.column);
             }
 
             auto link_type =
                     this->is_export
                     ? llvm::Function::ExternalLinkage
                     : llvm::Function::PrivateLinkage;
-
 
             // create function
             string func_name =
@@ -1111,14 +1100,12 @@ namespace AVSI {
                     FT,
                     link_type,
                     func_name,
-                    the_module
-            );
+                    the_module);
             function_protos[this->id] = FT;
 
             uint8_t param_index = 0;
             for (auto &arg: the_function->args()) {
-                Variable *var = ((Param *)
-                        this->paramList)->paramList[param_index++];
+                Variable *var = ((Param *) this->paramList)->paramList[param_index++];
                 arg.setName(var->id);
             }
 
@@ -1176,28 +1163,25 @@ namespace AVSI {
         string mod_path = getpathListToUnresolved(this->getToken().getModInfo());
         mod_path = module_name_alias[mod_path];
         llvm::Function *fun = the_module->getFunction(
-                getFunctionNameMangling(getpathUnresolvedToList(mod_path), this->id)
-        );
+                getFunctionNameMangling(getpathUnresolvedToList(mod_path), this->id));
 
         if (!fun) {
             throw ExceptionFactory(
                     __MissingException,
                     "function '" + this->id + "' is not declared",
-                    this->getToken().line, this->getToken().column
-            );
+                    this->getToken().line, this->getToken().column);
         }
 
         if (fun->arg_size() != this->paramList.size()) {
             // if function has declared, check parameters' size
             throw ExceptionFactory(
                     __LogicException,
-                    "candidate function not viable: requires " + \
-                to_string(fun->arg_size()) + \
-                " arguments, but " + \
-                to_string(this->paramList.size()) + \
-                " were provided",
-                    this->token.line, this->token.column
-            );
+                    "candidate function not viable: requires " +
+                    to_string(fun->arg_size()) +
+                    " arguments, but " +
+                    to_string(this->paramList.size()) +
+                    " were provided",
+                    this->token.line, this->token.column);
         }
 
         vector<llvm::Value *> args;
@@ -1216,25 +1200,22 @@ namespace AVSI {
                     caller_type->isPtrOrPtrVectorTy() &&
                     callee_type->isPtrOrPtrVectorTy() &&
                     isTheSameBasicType((llvm::PointerType *) caller_type,
-                                       (llvm::PointerType *) callee_type)
-                    ) {
+                                       (llvm::PointerType *) callee_type)) {
                 v = builder->CreatePointerCast(v, callee_type);
             } else if (
                     caller_type->isStructTy() &&
                     caller_type->isStructTy() &&
-                    ((llvm::StructType *) caller_type)->isLayoutIdentical((llvm::StructType *) callee_type)
-                    ) {
+                    ((llvm::StructType *) caller_type)->isLayoutIdentical((llvm::StructType *) callee_type)) {
                 v = getLoadStorePointerOperand(v);
                 v = builder->CreatePointerCast(v, callee_type->getPointerTo());
                 v = builder->CreateLoad(callee_type, v);
             } else if (callee_type != caller_type) {
                 throw ExceptionFactory(
                         __LogicException,
-                        "unmatched type, provided: " + \
-                            type_name[caller_type] + \
-                            ", excepted: " + type_name[callee_arg_iter->getType()],
-                        this->getToken().line, this->getToken().column
-                );
+                        "unmatched type, provided: " +
+                        type_name[caller_type] +
+                        ", excepted: " + type_name[callee_arg_iter->getType()],
+                        this->getToken().line, this->getToken().column);
             }
 
             args.push_back(v);
@@ -1259,13 +1240,12 @@ namespace AVSI {
         if (param_num > member_num) {
             throw ExceptionFactory(
                     __LogicException,
-                    "candidate function not viable: requires " + \
-                    to_string(member_num) + \
-                    " or less arguments, but " + \
-                    to_string(param_num) + \
+                    "candidate function not viable: requires " +
+                    to_string(member_num) +
+                    " or less arguments, but " +
+                    to_string(param_num) +
                     " were provided",
-                    this->token.line, this->token.column
-            );
+                    this->token.line, this->token.column);
         }
 
         // initialize struct
@@ -1281,8 +1261,7 @@ namespace AVSI {
                             llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), 0),
                             llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), i),
                     },
-                    id + ".member." + to_string(i)
-            );
+                    id + ".member." + to_string(i));
 
             store(this, member_addr, rv, false, id + ".member." + to_string(i));
         }
@@ -1318,65 +1297,105 @@ namespace AVSI {
                     array_alloca,
                     llvm::ConstantInt::get(
                             llvm::Type::getInt8Ty(*the_context),
-                            0
-                    ),
+                            0),
                     type_size[arr_type],
-                    llvm::MaybeAlign()
-            );
+                    llvm::MaybeAlign());
 
             return array_alloca;
         }
 
-        llvm::Value *head_rv = this->paramList[0]->codeGen();
-        auto eleTy = head_rv->getType();
-        auto arr_type = llvm::ArrayType::get(eleTy, element_num);
+        bool is_const_array = true;
+        bool is_char_array = true;
 
-        type_name[arr_type] = "vec[" + type_name[eleTy] + ";" + to_string(element_num) + "]";
-        type_name[arr_type->getPointerTo()] = "vec[" + type_name[eleTy] + ";" + to_string(element_num) + "]*";
-        type_size[arr_type] = (eleTy->isPointerTy() ? PTR_SIZE : type_size[eleTy]) * element_num;
-        // initialize array
-        llvm::AllocaInst *array_alloca = allocaBlockEntry(the_scope, "ArrayInit.begin", arr_type);
+        string ele_ast_type = this->paramList[0]->__AST_name;
+        for (auto i: this->paramList) {
+            if (i->__AST_name != __NUM_NAME) {
+                is_const_array = false;
+                break;
+            }
+            if (((Num *) i)->getToken().getType() != CHAR) {
+                is_char_array = false;
+            }
+        }
+        if(is_const_array) {
+            llvm::Constant* arr = nullptr;
+            llvm::Type* tname;
+            int tsize;
+            if(is_char_array) {
+                string str;
+                for (auto i: this->paramList) {
+                    str += ((Num*)i)->getToken().getValue().any_cast<char>();
+                }
+                arr = llvm::ConstantDataArray::getString(*the_context, str);
+                tname = CHAR_TY;
+                tsize = type_size[CHAR_TY];
+            } else {
+                vector<double> data;
+                for (auto i: this->paramList) {
+                    data.push_back(((Num*)i)->getToken().getValue().any_cast<double>());
+                }
+                arr = llvm::ConstantDataArray::get(*the_context, data);
+                tname = REAL_TY;
+                tsize = type_size[REAL_TY];
+            }
 
-        // store first element
-        auto first_element_addr = builder->CreateGEP(
-                llvm::cast<llvm::PointerType>(array_alloca->getType()->getScalarType())->getElementType(),
-                array_alloca,
-                {
-                        llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), 0),
-                        llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), 0),
-                },
-                "ArrayInit.element." + to_string(0)
-        );
-        builder->CreateStore(head_rv, first_element_addr);
+            llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
+            auto addr_alloca = allocaBlockEntry(the_scope, "const.array", arr->getType());
+            builder->CreateStore(arr, addr_alloca);
 
-        // initialize other elements
-        for (int i = 1; i < element_num; i++) {
-            AST *param = this->paramList[i];
-            llvm::Value *rv = param->codeGen();
-            auto element_addr = builder->CreateGEP(
+            type_name[arr->getType()] = "vec[" + type_name[tname] + ";" + to_string(element_num) + "]";
+            type_name[arr->getType()->getPointerTo()] = "vec[" + type_name[tname] + ";" + to_string(element_num) + "]*";
+            type_size[arr->getType()] = tsize * element_num;
+
+            return addr_alloca;
+        } else {
+            llvm::Value *head_rv = this->paramList[0]->codeGen();
+            auto eleTy = head_rv->getType();
+            auto arr_type = llvm::ArrayType::get(eleTy, element_num);
+
+            type_name[arr_type] = "vec[" + type_name[eleTy] + ";" + to_string(element_num) + "]";
+            type_name[arr_type->getPointerTo()] = "vec[" + type_name[eleTy] + ";" + to_string(element_num) + "]*";
+            type_size[arr_type] = (eleTy->isPointerTy() ? PTR_SIZE : type_size[eleTy]) * element_num;
+            // initialize array
+            llvm::AllocaInst *array_alloca = allocaBlockEntry(the_scope, "ArrayInit.begin", arr_type);
+
+            // store first element
+            auto first_element_addr = builder->CreateGEP(
                     llvm::cast<llvm::PointerType>(array_alloca->getType()->getScalarType())->getElementType(),
                     array_alloca,
                     {
                             llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), 0),
-                            llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), i),
+                            llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), 0),
                     },
-                    "ArrayInit.element." + to_string(i)
-            );
+                    "ArrayInit.element." + to_string(0));
+            builder->CreateStore(head_rv, first_element_addr);
 
-            if (rv->getType() != eleTy) {
-                throw ExceptionFactory(
-                        __LogicException,
-                        "not matched type, element type: " + \
-                        type_name[rv->getType()] + \
-                        ", array type: " + type_name[eleTy],
-                        this->getToken().line, this->getToken().column
-                );
+            // initialize other elements
+            for (int i = 1; i < element_num; i++) {
+                AST *param = this->paramList[i];
+                llvm::Value *rv = param->codeGen();
+                auto element_addr = builder->CreateGEP(
+                        llvm::cast<llvm::PointerType>(array_alloca->getType()->getScalarType())->getElementType(),
+                        array_alloca,
+                        {
+                                llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), 0),
+                                llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), i),
+                        },
+                        "ArrayInit.element." + to_string(i));
+
+                if (rv->getType() != eleTy) {
+                    throw ExceptionFactory(
+                            __LogicException,
+                            "not matched type, element type: " +
+                            type_name[rv->getType()] +
+                            ", array type: " + type_name[eleTy],
+                            this->getToken().line, this->getToken().column);
+                }
+
+                builder->CreateStore(rv, element_addr);
             }
-
-            builder->CreateStore(rv, element_addr);
+            return array_alloca;
         }
-
-        return array_alloca;
     }
 
     llvm::Value *Global::codeGen() {
@@ -1387,8 +1406,7 @@ namespace AVSI {
             throw ExceptionFactory(
                     __LogicException,
                     "missing type of global variable '" + name + "'",
-                    this->getToken().column, this->getToken().column
-            );
+                    this->getToken().column, this->getToken().column);
         }
 
         auto link_type =
@@ -1406,8 +1424,7 @@ namespace AVSI {
                             link_type,
                             llvm::Constant::getNullValue(v->Ty.first),
                             NAME_MANGLING(name));
-                }
-        );
+                });
 
         return llvm::Constant::getNullValue(REAL_TY);
     }
@@ -1430,7 +1447,8 @@ namespace AVSI {
 
             llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(*the_context, "if.then", the_function);
             llvm::BasicBlock *elseBB = nullptr;
-            if (this->next != ASTEmpty) elseBB = llvm::BasicBlock::Create(*the_context, "if.else", the_function);
+            if (this->next != ASTEmpty)
+                elseBB = llvm::BasicBlock::Create(*the_context, "if.else", the_function);
             llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*the_context, "if.end", the_function);
 
             if (elseBB != nullptr) {
@@ -1492,8 +1510,7 @@ namespace AVSI {
                 throw ExceptionFactory(
                         __LogicException,
                         "break must be used in a loop",
-                        this->token.line, this->token.column
-                );
+                        this->token.line, this->token.column);
             }
         } else {
             auto continue_to = symbol_table->getLoopEntry();
@@ -1503,15 +1520,14 @@ namespace AVSI {
                 throw ExceptionFactory(
                         __LogicException,
                         "continue must be used in a loop",
-                        this->token.line, this->token.column
-                );
+                        this->token.line, this->token.column);
             }
         }
         return llvm::Constant::getNullValue(REAL_TY);
     }
 
     llvm::Value *Num::codeGen() {
-//        auto t = llvm::ConstantFP::get(*the_context, llvm::APFloat((double)this->value));
+        //        auto t = llvm::ConstantFP::get(*the_context, llvm::APFloat((double)this->value));
         if (this->token.getType() == CHAR) {
             return llvm::ConstantInt::get(CHAR_TY, this->getValue().any_cast<char>());
         } else {
@@ -1530,22 +1546,19 @@ namespace AVSI {
             throw ExceptionFactory(
                     __LogicException,
                     "unknown right value of unary op",
-                    this->token.line, this->token.column
-            );
+                    this->token.line, this->token.column);
         }
 
         if (this->op.getType() == MINUS) {
             return builder->CreateFSub(
                     llvm::ConstantFP::get(REAL_TY, 0.0),
                     rv,
-                    "unaryAddTmp"
-            );
+                    "unaryAddTmp");
         } else if (this->op.getType() == PLUS) {
             return builder->CreateFAdd(
                     llvm::ConstantFP::get(REAL_TY, 0.0),
                     rv,
-                    "unarySubTmp"
-            );
+                    "unarySubTmp");
         } else if (this->op.getType() == NOT) {
             llvm::Value *rv_bool = builder->CreateFCmpUNE(rv, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
             return builder->CreateNot(rv_bool, "unaryNotTmp");
@@ -1562,8 +1575,7 @@ namespace AVSI {
                 throw ExceptionFactory(
                         __MissingException,
                         "variable '" + ((Variable *) (this->id))->id + "' is not defined",
-                        this->token.line, this->token.column
-                );
+                        this->token.line, this->token.column);
             }
 
             llvm::Type *type = v->getType()->getPointerElementType();
@@ -1602,8 +1614,7 @@ namespace AVSI {
             throw ExceptionFactory(
                     __MissingException,
                     "variable '" + this->id + "' is not defined",
-                    this->token.line, this->token.column
-            );
+                    this->token.line, this->token.column);
         }
 
         // if v is an array pointer, return pointer directly
@@ -1613,7 +1624,6 @@ namespace AVSI {
 
         return builder->CreateLoad(v->getType()->getPointerElementType(), v, this->id.c_str());
     }
-
 
     llvm::Value *Compound::codeGen() {
         int err_count = 0;
@@ -1625,17 +1635,20 @@ namespace AVSI {
             try {
                 ast->codeGen();
                 cnt++;
-                if (builder->GetInsertBlock() && builder->GetInsertBlock()->getTerminator()) {
+                if (
+                        ast->__AST_name != __FUNCTIONDECL_NAME &&
+                        builder->GetInsertBlock() &&
+                        builder->GetInsertBlock()->getTerminator()) {
                     if (cnt != child_size) {
                         Warning(
                                 __Warning,
                                 "terminator detected, subsequent code will be ignored",
-                                ast->getToken().line, ast->getToken().column
-                        );
+                                ast->getToken().line, ast->getToken().column);
                     }
                     break;
                 }
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 if (e.type() != __ErrReport) {
                     err_count++;
                     std::cerr << __COLOR_RED
@@ -1653,8 +1666,7 @@ namespace AVSI {
             throw ExceptionFactory(
                     __ErrReport,
                     "generated " + to_string(err_count) + " errors",
-                    0, 0
-            );
+                    0, 0);
         }
 
         return llvm::Constant::getNullValue(REAL_TY);
