@@ -20,7 +20,7 @@ About options, see `avsi --help`
 
 use `clang` to link obj file generated and `libavsi.a`
 ```shell
-$ clang a.o -L [Path to libavsi.a] -lavsi
+$ clang yourcode.o -L [Path to libavsi.a] -lavsi
 ```
 
 run executable file
