@@ -43,6 +43,8 @@ namespace AVSI {
             return IRErrException();
         } else if (e == __ErrReport) {
             return ErrReport();
+        } else if (e == __SysErrException) {
+            return SysErrException();
         }
         return Exception();
     }

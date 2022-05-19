@@ -6,6 +6,8 @@
 
 #include "../inc/FileName.h"
 
+std::string compiler_command_line;
+
 std::string compiler_exec_path;
 std::string output_root_path;
 
@@ -14,4 +16,3 @@ std::string input_file_path;
 std::string input_file_name_no_suffix;
 std::string input_file_path_absolut;
 std::string input_file_path_relative;
-

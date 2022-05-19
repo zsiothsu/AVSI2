@@ -6,6 +6,9 @@
 #include <cstdlib>
 #include <set>
 #include <cstdint>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/file.h>
 
 #include "../inc/AST.h"
 #include "../inc/SymbolTable.h"
@@ -23,7 +26,10 @@
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 
+#define UNUSED(x) ((void)(x))
+
 extern bool opt_reliance;
+extern bool opt_verbose;
 
 namespace AVSI {
     /*******************************************************
@@ -80,8 +86,14 @@ namespace AVSI {
     void llvm_import_module(vector<string> path, string mod, int line, int col) {
         // import module can use absolute path or relative path
         // resolve path to locate module
+        if (input_file_name_no_suffix == MODULE_INIT_NAME) {
+            std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
+            module_path.push_back(dir);
+        }
+
         int path_size = module_path.size();
         bool is_absolute_module_path = true;
+
         if (path.size() < path_size) {
             is_absolute_module_path = false;
         } else {
@@ -93,27 +105,28 @@ namespace AVSI {
             }
         }
 
-        int search_begin_index = 0;
-        if (is_absolute_module_path) {
-            search_begin_index = path_size;
-        }
-
         // get bc file path in file system
         string module_file_system_path;
+        string module_source_file_system_path;
         if (is_absolute_module_path) {
-            module_file_system_path = output_root_path + SYSTEM_PATH_DIVIDER;
+            module_file_system_path =
+                    output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER;
+            module_source_file_system_path =
+                    compiler_exec_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER;
 
             string unresolved_path = getpathListToUnresolved(path);
             unresolved_path += (unresolved_path.empty() ? "" : "::") + mod;
             module_name_alias[unresolved_path] = unresolved_path;
 
-            path.erase(path.begin(),path.begin() + path_size);
+            path.erase(path.begin(), path.begin() + path_size);
             string unresolved_path_relative = getpathListToUnresolved(path);
             unresolved_path_relative += (unresolved_path_relative.empty() ? "" : "::") + mod;
             module_name_alias[unresolved_path_relative] = unresolved_path;
         } else {
             module_file_system_path =
                     output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER;
+            module_source_file_system_path =
+                    compiler_exec_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER;
 
             // create alias: relative -> absolute
             string unresolved_path = getpathListToUnresolved(path);
@@ -123,37 +136,85 @@ namespace AVSI {
             module_name_alias[unresolved_path] = unresolved_path_absolute;
             module_name_alias[unresolved_path_absolute] = unresolved_path_absolute;
         }
-        for (int i = search_begin_index; i < path.size(); i++) {
+        for (int i = 0; i < path.size(); i++) {
             module_file_system_path += SYSTEM_PATH_DIVIDER + path[i];
+            module_source_file_system_path += SYSTEM_PATH_DIVIDER + path[i];
         }
         module_file_system_path += SYSTEM_PATH_DIVIDER + mod;
+        module_source_file_system_path += SYSTEM_PATH_DIVIDER + mod;
+        string module_file_system_path_not_gen = module_file_system_path;
         if (std::filesystem::is_directory(std::filesystem::path(module_file_system_path))) {
             module_file_system_path += SYSTEM_PATH_DIVIDER + mod + ".bc";
         } else {
             module_file_system_path += ".bc";
         }
+        if (std::filesystem::is_directory(std::filesystem::path(module_source_file_system_path))) {
+            module_source_file_system_path += SYSTEM_PATH_DIVIDER + string(MODULE_INIT_NAME) + ".sl";
+        } else {
+            module_source_file_system_path += ".sl";
+        }
         std::filesystem::path bcfile = module_file_system_path;
+        std::filesystem::path sourcefile = module_source_file_system_path;
+        if (
+                !std::filesystem::exists(bcfile) ||
+                (
+                        std::filesystem::exists(sourcefile) &&
+                        last_write_time(sourcefile) > last_write_time(bcfile)
+                ) ||
+                sourcefile.filename().stem() == MODULE_INIT_NAME
+                ) {
+            pid_t pid = fork();
+            int status = 0;
+            if (pid == -1) {
+                throw ExceptionFactory(
+                        __SysErrException,
+                        "unable to fork program. paused",
+                        line, col);
+            } else if (pid > 1) {
+                wait(&status);
 
-        // generate .r for Makefile
-        if (opt_reliance) {
-            auto OFilename =
-                    output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
-                    string(input_file_name_no_suffix) + ".o";
+                if (std::filesystem::is_directory(std::filesystem::path(module_file_system_path_not_gen))) {
+                    module_file_system_path = module_file_system_path_not_gen + SYSTEM_PATH_DIVIDER + mod + ".bc";
+                } else {
+                    module_file_system_path = module_file_system_path_not_gen + ".bc";
+                }
+                bcfile = module_file_system_path;
+            } else {
+                string program = compiler_command_line;
+                 char const *args[7] = {
+                        program.c_str(),
+                        module_source_file_system_path.c_str(),
+                        "-o",
+                        output_root_path.c_str(),
+                        "-m",
+                        (char *) 0,
+                        (char *) 0
+                };
+                if(opt_verbose) args[5] = "-v";
 
-            auto BCFilename =
-                    output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
-                    string(input_file_name_no_suffix) + ".bc";
+                clog << "importing "
+                     << __COLOR_GREEN
+                     << getpathListToUnresolved(module_path)
+                     << "::"
+                     << (path.empty() ? "" : (getpathListToUnresolved(path) + "::"))
+                     << mod
+                     << __COLOR_RESET << " by " << __COLOR_GREEN
+                     << getpathListToUnresolved(module_path)
+                     << "::"
+                     << module_name
+                     << __COLOR_RESET << endl;
+                if (opt_verbose) {
+                    clog << args[0] << " "
+                         << filesystem::absolute(sourcefile) << " "
+                         << args[2] << " "
+                         << filesystem::absolute(filesystem::path(output_root_path)) << " "
+                         << args[4] << " "
+                         << args[5] << endl;
+                }
 
-            auto RFilename =
-                    output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
-                    string(input_file_name_no_suffix) + ".r";
-
-            llvm_create_dir(filesystem::path(RFilename).parent_path());
-            std::error_code EC;
-            llvm::raw_fd_ostream dest(RFilename, EC, llvm::sys::fs::OF_None);
-
-            dest << OFilename << " " << BCFilename << ":" << bcfile.string() << "\n";
-            return;
+                execve(compiler_command_line.c_str(), (char *const *) args, nullptr);
+                exit(-1);
+            }
         }
 
         if (!std::filesystem::exists(bcfile)) {
@@ -163,10 +224,17 @@ namespace AVSI {
             }
             unparsed_name += mod;
 
-            throw ExceptionFactory(
-                    __MissingException,
-                    "module " + unparsed_name + " is not found",
-                    line, col);
+            std::cerr << __COLOR_RED
+                      << input_file_name
+                      << ":" << line << ":" << col + 1 << ": "
+                      << __MissingException << ": "
+                      << "module "
+                      << unparsed_name
+                      << " is not found"
+                      << __COLOR_RESET << std::endl;
+
+            cout << bcfile << endl;
+            exit(-1);
         }
 
         // read bc file to memory buffer
@@ -306,9 +374,12 @@ namespace AVSI {
     }
 
     void llvm_obj_output() {
+        std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
+        string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
+
         auto Filename =
                 output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
-                string(input_file_name_no_suffix) + ".o";
+                string(file_basename) + ".o";
         llvm_create_dir(filesystem::path(Filename).parent_path());
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
@@ -329,13 +400,16 @@ namespace AVSI {
         pass.run(*the_module);
         dest.flush();
 
-        llvm::outs() << "Wrote " << Filename << "\n";
+        if (opt_verbose) llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
     }
 
     void llvm_asm_output() {
+        std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
+        string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
+
         auto Filename =
                 output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
-                string(input_file_name_no_suffix) + ".s";
+                string(file_basename) + ".s";
         llvm_create_dir(filesystem::path(Filename).parent_path());
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
@@ -356,13 +430,16 @@ namespace AVSI {
         pass.run(*the_module);
         dest.flush();
 
-        llvm::outs() << "Wrote " << Filename << "\n";
+        if (opt_verbose) llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
     }
 
     void llvm_module_output() {
+        std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
+        string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
+
         auto Filename =
                 output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
-                string(input_file_name_no_suffix) + ".bc";
+                string(file_basename) + ".bc";
         llvm_create_dir(filesystem::path(Filename).parent_path());
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
@@ -370,18 +447,25 @@ namespace AVSI {
         llvm::WriteBitcodeToFile(*the_module, dest);
 
         dest.flush();
-        llvm::outs() << "Wrote " << Filename << "\n";
+
+        FILE *file = fopen(Filename.c_str(), "r");
+        fflush(file);
+
+        if (opt_verbose) llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
     }
 
     void llvm_module_printIR() {
+        std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
+        string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
+
         auto Filename =
                 output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
-                string(input_file_name_no_suffix) + ".ll";
+                string(file_basename) + ".ll";
         llvm_create_dir(filesystem::path(Filename).parent_path());
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
         the_module->print(dest, nullptr);
-        llvm::outs() << "Wrote " << Filename << "\n";
+        if (opt_verbose) llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
     }
 
     void debug_type(llvm::Value *v) {
@@ -829,23 +913,23 @@ namespace AVSI {
                     return cmp_value_boolean;
                 case LT:
                     if (float_point) {
-                        cmp_value_boolean = builder->CreateFCmpOGT(lv_real, rv_real, "cmpLTTmp");
+                        cmp_value_boolean = builder->CreateFCmpOLT(lv_real, rv_real, "cmpLTTmp");
                     } else {
-                        cmp_value_boolean = builder->CreateICmpSGT(lv, rv, "cmpLTTmp");
+                        cmp_value_boolean = builder->CreateICmpSLT(lv, rv, "cmpLTTmp");
                     }
                     return cmp_value_boolean;
                 case GE:
                     if (float_point) {
-                        cmp_value_boolean = builder->CreateFCmpOGT(lv_real, rv_real, "cmpGETmp");
+                        cmp_value_boolean = builder->CreateFCmpOGE(lv_real, rv_real, "cmpGETmp");
                     } else {
-                        cmp_value_boolean = builder->CreateICmpSGT(lv, rv, "cmpGETmp");
+                        cmp_value_boolean = builder->CreateICmpSGE(lv, rv, "cmpGETmp");
                     }
                     return cmp_value_boolean;
                 case LE:
                     if (float_point) {
-                        cmp_value_boolean = builder->CreateFCmpOGT(lv_real, rv_real, "cmpLETmp");
+                        cmp_value_boolean = builder->CreateFCmpOLE(lv_real, rv_real, "cmpLETmp");
                     } else {
-                        cmp_value_boolean = builder->CreateICmpSGT(lv, rv, "cmpLETmp");
+                        cmp_value_boolean = builder->CreateICmpSLE(lv, rv, "cmpLETmp");
                     }
                     return cmp_value_boolean;
                     //                case OR:
@@ -998,7 +1082,15 @@ namespace AVSI {
                 if (cond->getType()->isIntegerTy()) {
                     cond = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "toBool");
                 } else {
-                    cond = builder->CreateFCmpUNE(cond, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+                    cond = builder->CreateFCmpUNE(cond, llvm::ConstantFP::get(cond->getType(), 0.0), "toBool");
+                }
+            }
+
+            if (auto *LC = llvm::dyn_cast<llvm::ConstantInt>(cond)) {
+                if (LC->isOne()) {
+                    builder->CreateBr(loopBB);
+                } else {
+                    builder->CreateBr(mergeBB);
                 }
             }
 
@@ -1034,8 +1126,13 @@ namespace AVSI {
         }
         loopBB = builder->GetInsertBlock();
 
-        the_function->getBasicBlockList().push_back(mergeBB);
-        builder->SetInsertPoint(mergeBB);
+        auto pred = mergeBB->getSinglePredecessor();
+        if (pred) {
+            the_function->getBasicBlockList().push_back(mergeBB);
+            builder->SetInsertPoint(mergeBB);
+        } else {
+            mergeBB->eraseFromParent();
+        }
 
         return llvm::Constant::getNullValue(REAL_TY);
     }
@@ -1145,7 +1242,12 @@ namespace AVSI {
                     builder->CreateRet(llvm::ConstantFP::get(REAL_TY, 0.0));
                 }
                 symbol_table->pop();
-                llvm::verifyFunction(*the_function, &llvm::errs());
+                if (llvm::verifyFunction(*the_function, &llvm::outs())) {
+                    throw ExceptionFactory(
+                            __IRErrException,
+                            "some errors occurred when generating function",
+                            this->token.line, this->token.column);
+                }
                 the_fpm->run(*the_function);
                 if (last_BB != nullptr) {
                     builder->SetInsertPoint(last_BB, last_pt);
@@ -1161,7 +1263,9 @@ namespace AVSI {
 
     llvm::Value *FunctionCall::codeGen() {
         string mod_path = getpathListToUnresolved(this->getToken().getModInfo());
-        mod_path = module_name_alias[mod_path];
+        if (module_name_alias.find(mod_path) != module_name_alias.end()) {
+            mod_path = module_name_alias[mod_path];
+        }
         llvm::Function *fun = the_module->getFunction(
                 getFunctionNameMangling(getpathUnresolvedToList(mod_path), this->id));
 
@@ -1317,14 +1421,14 @@ namespace AVSI {
                 is_char_array = false;
             }
         }
-        if(is_const_array) {
-            llvm::Constant* arr = nullptr;
-            llvm::Type* tname;
+        if (is_const_array) {
+            llvm::Constant *arr = nullptr;
+            llvm::Type *tname;
             int tsize;
-            if(is_char_array) {
+            if (is_char_array) {
                 string str;
                 for (auto i: this->paramList) {
-                    str += ((Num*)i)->getToken().getValue().any_cast<char>();
+                    str += ((Num *) i)->getToken().getValue().any_cast<char>();
                 }
                 arr = llvm::ConstantDataArray::getString(*the_context, str);
                 tname = CHAR_TY;
@@ -1332,7 +1436,7 @@ namespace AVSI {
             } else {
                 vector<double> data;
                 for (auto i: this->paramList) {
-                    data.push_back(((Num*)i)->getToken().getValue().any_cast<double>());
+                    data.push_back(((Num *) i)->getToken().getValue().any_cast<double>());
                 }
                 arr = llvm::ConstantDataArray::get(*the_context, data);
                 tname = REAL_TY;
@@ -1439,63 +1543,88 @@ namespace AVSI {
                 if (cond->getType()->isIntegerTy()) {
                     cond = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "toBool");
                 } else {
-                    cond = builder->CreateFCmpUNE(cond, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+                    cond = builder->CreateFCmpUNE(cond, llvm::ConstantFP::get(cond->getType(), 0.0), "toBool");
                 }
             }
 
-            llvm::Function *the_function = builder->GetInsertBlock()->getParent();
-
-            llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(*the_context, "if.then", the_function);
-            llvm::BasicBlock *elseBB = nullptr;
-            if (this->next != ASTEmpty)
-                elseBB = llvm::BasicBlock::Create(*the_context, "if.else", the_function);
-            llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*the_context, "if.end", the_function);
-
-            if (elseBB != nullptr) {
-                builder->CreateCondBr(cond, thenBB, elseBB);
+            if (auto *LC = llvm::dyn_cast<llvm::ConstantInt>(cond)) {
+                if (LC->isOne()) {
+                    this->compound->codeGen();
+                    return llvm::Constant::getNullValue(REAL_TY);
+                } else {
+                    return this->next->codeGen();
+                }
             } else {
-                builder->CreateCondBr(cond, thenBB, mergeBB);
-            }
+                llvm::Function *the_function = builder->GetInsertBlock()->getParent();
 
-            the_function->getBasicBlockList().push_back(thenBB);
-            builder->SetInsertPoint(thenBB);
-            symbol_table->push(thenBB);
-            llvm::Value *thenv = this->compound->codeGen();
-            if (((Compound *) this->compound)->child.empty()) {
-                builder->CreateBr(mergeBB);
-            } else if (!thenv) {
-                return nullptr;
-            }
-            symbol_table->pop();
-            auto t = builder->GetInsertBlock()->getTerminator();
-            if (!t) {
-                builder->CreateBr(mergeBB);
-            }
-            thenBB = builder->GetInsertBlock();
+                llvm::BasicBlock *loop_mergeBB = symbol_table->getLoopExit();
 
-            llvm::Value *elsev;
-            if (elseBB != nullptr) {
-                the_function->getBasicBlockList().push_back(elseBB);
-                builder->SetInsertPoint(elseBB);
-                symbol_table->push(elseBB);
-                elsev = this->next->codeGen();
-                if (((Compound *) this->compound)->child.empty()) {
-                    builder->CreateBr(mergeBB);
-                } else if (!elsev) {
+                // bool have_merge = false;
+
+                llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(*the_context, "if.then", the_function,
+                                                                    loop_mergeBB);
+                llvm::BasicBlock *elseBB = nullptr;
+                if (this->next != ASTEmpty)
+                    elseBB = llvm::BasicBlock::Create(*the_context, "if.else", the_function, loop_mergeBB);
+                llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*the_context, "if.end", the_function,
+                                                                     loop_mergeBB);
+
+                if (elseBB != nullptr) {
+                    builder->CreateCondBr(cond, thenBB, elseBB);
+                } else {
+                    builder->CreateCondBr(cond, thenBB, mergeBB);
+                }
+
+                the_function->getBasicBlockList().push_back(thenBB);
+                builder->SetInsertPoint(thenBB);
+                symbol_table->push(thenBB);
+
+                // I don't know why the instruction must be placed here.
+                // Removing it will result in segmentation fault
+                auto ph = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "placeholder");
+                UNUSED(ph);
+                llvm::Value *thenv = this->compound->codeGen();
+                if (!thenv) {
                     return nullptr;
                 }
                 symbol_table->pop();
-                t = builder->GetInsertBlock()->getTerminator();
-                if (!t) {
+                auto t_then = builder->GetInsertBlock()->getTerminator();
+                if (!t_then) {
+                    // have_merge = true;
                     builder->CreateBr(mergeBB);
                 }
-                elseBB = builder->GetInsertBlock();
+                thenBB = builder->GetInsertBlock();
+
+                llvm::Value *elsev;
+                llvm::Instruction *t_else = nullptr;
+                if (elseBB != nullptr) {
+                    the_function->getBasicBlockList().push_back(elseBB);
+                    builder->SetInsertPoint(elseBB);
+                    symbol_table->push(elseBB);
+                    ph = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "placeholder");
+                    elsev = this->next->codeGen();
+                    if (!elsev) {
+                        return nullptr;
+                    }
+                    symbol_table->pop();
+                    t_else = builder->GetInsertBlock()->getTerminator();
+                    if (!t_else) {
+                        // have_merge = true;
+                        builder->CreateBr(mergeBB);
+                    }
+                    elseBB = builder->GetInsertBlock();
+                }
+
+                auto pred = mergeBB->getSinglePredecessor();
+                if (pred) {
+                    the_function->getBasicBlockList().push_back(mergeBB);
+                    builder->SetInsertPoint(mergeBB);
+                } else {
+                    mergeBB->removeFromParent();
+                }
+
+                return llvm::Constant::getNullValue(REAL_TY);
             }
-
-            the_function->getBasicBlockList().push_back(mergeBB);
-            builder->SetInsertPoint(mergeBB);
-
-            return llvm::Constant::getNullValue(REAL_TY);
         } else {
             return this->compound->codeGen();
         }
@@ -1505,7 +1634,8 @@ namespace AVSI {
         if (this->type == LoopCtrl::LoopCtrlType::CTRL_BREAK) {
             auto break_to = symbol_table->getLoopExit();
             if (break_to != nullptr) {
-                builder->CreateBr(break_to);
+//                builder->CreateBr(break_to);
+                builder->Insert(llvm::BranchInst::Create(break_to));
             } else {
                 throw ExceptionFactory(
                         __LogicException,
@@ -1636,15 +1766,14 @@ namespace AVSI {
                 ast->codeGen();
                 cnt++;
                 if (
+                        cnt != child_size &&
                         ast->__AST_name != __FUNCTIONDECL_NAME &&
                         builder->GetInsertBlock() &&
                         builder->GetInsertBlock()->getTerminator()) {
-                    if (cnt != child_size) {
-                        Warning(
-                                __Warning,
-                                "terminator detected, subsequent code will be ignored",
-                                ast->getToken().line, ast->getToken().column);
-                    }
+                    Warning(
+                            __Warning,
+                            "terminator detected, subsequent code will be ignored",
+                            ast->getToken().line, ast->getToken().column);
                     break;
                 }
             }
@@ -1713,10 +1842,19 @@ namespace AVSI {
             if (cond->getType()->isIntegerTy()) {
                 cond = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "toBool");
             } else {
-                cond = builder->CreateFCmpUNE(cond, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
+                cond = builder->CreateFCmpUNE(cond, llvm::ConstantFP::get(cond->getType(), 0.0), "toBool");
             }
         }
-        builder->CreateCondBr(cond, loopBB, mergeBB);
+
+        if (auto *LC = llvm::dyn_cast<llvm::ConstantInt>(cond)) {
+            if (LC->isOne()) {
+                builder->CreateBr(loopBB);
+            } else {
+                builder->CreateBr(mergeBB);
+            }
+        } else {
+            builder->CreateCondBr(cond, loopBB, mergeBB);
+        }
 
         the_function->getBasicBlockList().push_back(loopBB);
         builder->SetInsertPoint(loopBB);

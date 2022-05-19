@@ -32,6 +32,7 @@ static struct option long_options[] = {
         {"reliance", no_argument,       NULL, 'r'},
         {"output",   required_argument, NULL, 'o'},
         {"help",     no_argument,       NULL, 'h'},
+        {"verbose",  no_argument,       NULL, 'v'},
         {0, 0, 0,                             0}
 };
 
@@ -40,6 +41,7 @@ static bool opt_asm = false;
 static bool opt_module = false;
 bool opt_reliance = false;
 static bool opt_help = false;
+bool opt_verbose = false;
 
 void printHelp(void) {
     string msg = \
@@ -51,13 +53,14 @@ void printHelp(void) {
     "    -m             --module    Generate .bc module file. \n"
     "    -r             --reliance  Generate .r reliance file for Makefile.\n"
     "    -o <dir>       --output    output to <dir>.\n"
-    "    -h             --help      Display available options.\n";
+    "    -h             --help      Display available options.\n"
+    "    -v             --verbose   Display more details during building.\n";
 
     printf("%s", msg.c_str());
 }
 
 void getOption(int argc, char **argv) {
-    while ((opt = getopt_long(argc, argv, "lSmro:h", long_options, &loidx)) != -1) {
+    while ((opt = getopt_long(argc, argv, "lSmro:hv", long_options, &loidx)) != -1) {
         if (opt == 0) {
             opt = lopt;
         }
@@ -83,6 +86,9 @@ void getOption(int argc, char **argv) {
             case 'h':
                 opt_help = true;
                 break;
+            case 'v':
+                opt_verbose = true;
+                break;
             default:
                 printf("error: unsupported option");
                 break;
@@ -94,6 +100,8 @@ void getOption(int argc, char **argv) {
  *                  program entry                      *
  *******************************************************/
 int main(int argc, char **argv) {
+    compiler_command_line = string(argv[0]);
+
     getOption(argc, argv);
 
     if (opt_help) {
@@ -118,20 +126,20 @@ int main(int argc, char **argv) {
     }
 
     filesystem::path p = fileName;
-    input_file_path_relative = p.parent_path().string();
+    input_file_path_relative = filesystem::absolute(p.parent_path()).string();
     p = filesystem::absolute(p);
     input_file_path_absolut = p.parent_path().string();
-    compiler_exec_path = filesystem::current_path().string();
+    compiler_exec_path = filesystem::absolute(filesystem::current_path()).string();
 
-    if (input_file_path_relative.find(compiler_exec_path)) {
+    if (input_file_path_relative.find(compiler_exec_path) != string::npos) {
         input_file_path_relative =
                 "./" +
                 input_file_path_relative.substr(
-                        0, input_file_path_relative.find(compiler_exec_path)
+                        input_file_path_relative.find(compiler_exec_path) + compiler_exec_path.size()
                 );
     }
 
-    if (output_root_path.empty()) output_root_path = compiler_exec_path;
+    if (output_root_path.empty()) output_root_path = compiler_exec_path + SYSTEM_PATH_DIVIDER + "build";
 
     if (opt_reliance) {
         auto RFilename =
@@ -158,13 +166,15 @@ int main(int argc, char **argv) {
         if (opt_reliance) return 0;
         tree->codeGen();
 
-        std::cerr << __COLOR_RESET
+        if(err_count + warn_count != 0) {
+            std::cerr << __COLOR_RESET
                   << std::endl
                   << input_file_name
                   << ":"
                   << "generate " << err_count << " errors,"
                   << warn_count << " warnings"
                   << __COLOR_RESET << std::endl;
+        }
 
         if (opt_ir) llvm_module_printIR();
         if (opt_asm) llvm_asm_output();

@@ -19,6 +19,10 @@
 #endif
 #endif
 
+#define MODULE_INIT_NAME    "__init__"
+
+extern std::string compiler_command_line;
+
 extern std::string compiler_exec_path;
 extern std::string output_root_path;
 

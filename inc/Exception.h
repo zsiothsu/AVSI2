@@ -15,6 +15,7 @@
 #define __LogicException    "LogicException"
 #define __MissingException  "MissingException"
 #define __IRErrException    "IRErrException"
+#define __SysErrException   "SysErrException"
 #define __ErrReport         "ErrReport"
 
 #define __Warning           "Warning"
@@ -22,6 +23,7 @@
 
 #define __COLOR_RESET       "\033[0m"
 #define __COLOR_RED         "\033[31m"
+#define __COLOR_GREEN       "\033[32m"
 #define __COLOR_YELLOW      "\033[33m"
 
 namespace AVSI {
@@ -90,6 +92,13 @@ namespace AVSI {
         using Exception::Exception;
 
         IRErrException() : Exception(__IRErrException) {};
+    };
+
+    class SysErrException: public Exception {
+    public:
+        using Exception::Exception;
+
+        SysErrException() : SysErrException(__SysErrException) {};
     };
 
     class ErrReport : public Exception {
