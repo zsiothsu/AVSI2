@@ -103,8 +103,7 @@ namespace AVSI {
             clog << "get " << token_name[this->lastToken.getType()] << endl;
 #endif
         } else {
-            throw ExceptionFactory(
-                    __SyntaxException,
+            throw ExceptionFactory<SyntaxException>(
                     "invalid syntax, expected " + token_name[type],
                     this->currentToken.line,
                     this->currentToken.column
@@ -156,28 +155,31 @@ namespace AVSI {
         return root;
 
         err:
-        throw ExceptionFactory(
-                __ErrReport,
-                "",
-                0, 0
-        );
+        throw ExceptionFactory<ErrReport>("",0, 0);
     }
 
     AST *Parser::statement() {
         bool is_export = false;
+        bool is_mangle = true;
 
         if (this->currentToken.getType() == EXPORT) {
             is_export = true;
             eat(EXPORT);
         }
 
+        if (this->currentToken.getType() == NOMANGLE) {
+            is_mangle = false;
+            eat(NOMANGLE);
+        }
+
         TokenType token_type = this->currentToken.getType();
 
         if (token_type == FUNCTION) {
             PARSE_LOG(STATEMENT);
-            FunctionDecl *may_be_export = (FunctionDecl *) functionDecl();
-            may_be_export->is_export = is_export;
-            return may_be_export;
+            FunctionDecl *function = (FunctionDecl *) functionDecl();
+            function->is_export = is_export;
+            function->is_mangle = is_mangle;
+            return function;
         } else if (token_type == RETURN) {
             PARSE_LOG(STATEMENT);
             return returnExpr();
@@ -306,8 +308,7 @@ namespace AVSI {
         // check types
         for (Variable *i: paramList->paramList) {
             if (i->Ty.first == nullptr) {
-                throw ExceptionFactory(
-                        __SyntaxException,
+                throw ExceptionFactory<SyntaxException>(
                         "missing type of member '" + i->id + "'",
                         i->getToken().line, i->getToken().column
                 );
@@ -381,7 +382,6 @@ namespace AVSI {
 
         if (mod_named) {
             Warning(
-                    __Warning,
                     "Module has named before.",
                     this->currentToken.line, this->currentToken.column
             );
@@ -409,14 +409,23 @@ namespace AVSI {
 
         eat(IMPORT);
         if (this->currentToken.getType() == ID) {
-            vector<string> path = this->currentToken.getModInfo();
+            Token id = this->currentToken;
+            vector<string> path = id.getModInfo();
+            eat(ID);
+            string as;
+            if(this->currentToken.getType() == AS) {
+                eat(AS);
+                as = this->currentToken.getValue().any_cast<string>();
+                eat(ID);
+            }
+
             llvm_import_module(
                     path,
-                    this->currentToken.getValue().any_cast<string>(),
-                    this->currentToken.line,
-                    this->currentToken.column);
+                    id.getValue().any_cast<string>(),
+                    id.line,
+                    id.column,
+                    as);
         }
-        eat(ID);
 
         return ASTEmptyNotEnd;
     }
@@ -444,16 +453,14 @@ namespace AVSI {
         // map members' name to sequence
         for (Variable *i: li) {
             if (i->Ty.first == nullptr) {
-                throw ExceptionFactory(
-                        __SyntaxException,
+                throw ExceptionFactory<SyntaxException>(
                         "missing type of member '" + i->id + "'",
                         i->getToken().line, i->getToken().column
                 );
             }
 
             if (i->Ty.second == id) {
-                throw ExceptionFactory(
-                        __MissingException,
+                throw ExceptionFactory<MissingException>(
                         "incomplete type '" + i->Ty.second + "'",
                         i->getToken().line, i->getToken().column
                 );
@@ -461,8 +468,7 @@ namespace AVSI {
 
             if (i->Ty.second != "real" && i->Ty.second != "vec") {
                 if (struct_types.find(i->id) == struct_types.end()) {
-                    throw ExceptionFactory(
-                            __MissingException,
+                    throw ExceptionFactory<MissingException>(
                             "missing type '" + i->Ty.second + "'",
                             i->getToken().line, i->getToken().column
                     );
@@ -527,8 +533,7 @@ namespace AVSI {
             }
 
             if ((have_SQB && this->currentToken.getType() == RSQB) || this->currentToken.getType() == THEN) {
-                throw ExceptionFactory(
-                        __LogicException,
+                throw ExceptionFactory<LogicException>(
                         "if condition must be privided",
                         this->lastToken.line, this->lastToken.column
                 );
@@ -543,8 +548,7 @@ namespace AVSI {
             eat(LSQB);
 
             if (this->currentToken.getType() == RSQB) {
-                throw ExceptionFactory(
-                        __LogicException,
+                throw ExceptionFactory<SyntaxException>(
                         "if condition must be privided",
                         this->lastToken.line, this->lastToken.column
                 );
@@ -576,9 +580,11 @@ namespace AVSI {
             if (paramSet.find(id) != paramSet.end()) {
                 string msg =
                         "duplicate variable '" + id + "' in parameters";
-                throw ExceptionFactory(__SyntaxException, msg,
-                                       this->currentToken.line,
-                                       this->currentToken.column);
+                throw ExceptionFactory<SyntaxException>(
+                        msg,
+                        this->currentToken.line,
+                        this->currentToken.column
+                );
             }
             paramSet.insert(id);
             var->id = id;
@@ -601,9 +607,11 @@ namespace AVSI {
         if (this->currentToken.getType() != ID) {
             return param;
         }
-        throw ExceptionFactory(
-                __SyntaxException, "unexpected symbol in parameter list",
-                this->currentToken.line, this->currentToken.column);
+        throw ExceptionFactory<SyntaxException>(
+                "unexpected symbol in parameter list",
+                this->currentToken.line,
+                this->currentToken.column
+        );
         return param;
     }
 
@@ -703,9 +711,11 @@ namespace AVSI {
                 eat(MINUS);
                 res = new BinOp(res, opt, term());
             } else
-                throw ExceptionFactory(__SyntaxException,
-                                       "unrecognized operator", opt.line,
-                                       opt.column);
+                throw ExceptionFactory<SyntaxException>(
+                        "unrecognized operator",
+                        opt.line,
+                        opt.column
+                );
         }
 
         return res;
@@ -770,13 +780,16 @@ namespace AVSI {
         }
         if (token.getType() == RPAR) {
             if (this->parenCnt <= 0)
-                throw ExceptionFactory(__SyntaxException, "unmatched ')'",
-                                       token.line, token.column);
+                throw ExceptionFactory<SyntaxException>(
+                        "unmatched ')'",
+                        token.line, token.column
+                );
             return new NoneAST();
         } else
-            throw ExceptionFactory(__SyntaxException,
-                                   "unrecognized factor in expression",
-                                   token.line, token.column);
+            throw ExceptionFactory<SyntaxException>(
+                    "unrecognized factor in expression",
+                    token.line, token.column
+            );
     }
 
     /**
@@ -820,9 +833,10 @@ namespace AVSI {
                 eat(SLASH);
                 res = new BinOp(res, opt, factor());
             } else
-                throw ExceptionFactory(__SyntaxException,
-                                       "unrecognized operator", opt.line,
-                                       opt.column);
+                throw ExceptionFactory<SyntaxException>(
+                        "unrecognized operator",
+                        opt.line, opt.column
+                );
         }
         return res;
     }
@@ -905,10 +919,10 @@ namespace AVSI {
         }
 
         if ((have_SQB && this->currentToken.getType() == RSQB) || this->currentToken.getType() == DO) {
-            throw ExceptionFactory(
-                    __LogicException,
+            throw ExceptionFactory<LogicException>(
                     "while condition must be privided",
-                    this->lastToken.line, this->lastToken.column
+                    this->lastToken.line,
+                    this->lastToken.column
             );
         }
 
@@ -952,10 +966,10 @@ namespace AVSI {
                     array_size = this->currentToken.getValue().any_cast<int>();
                     eat(INTEGER);
                 } else {
-                    throw ExceptionFactory(
-                            __SyntaxException,
+                    throw ExceptionFactory<SyntaxException>(
                             "array size must be provided",
-                            this->currentToken.line, this->currentToken.column
+                            this->currentToken.line,
+                            this->currentToken.column
                     );
                 }
                 eat(RSQB);
@@ -975,18 +989,18 @@ namespace AVSI {
                     return Type(Ty, "vec");
                 }
             }
-            throw ExceptionFactory(
-                    __SyntaxException,
+            throw ExceptionFactory<SyntaxException>(
                     "array type and size must be provided",
-                    this->currentToken.line, this->currentToken.column
+                    this->currentToken.line,
+                    this->currentToken.column
             );
         } else if (this->currentToken.getType() == ID) {
             string id = this->currentToken.getValue().any_cast<string>();
             if (struct_types.find(id) == struct_types.end()) {
-                throw ExceptionFactory(
-                        __MissingException,
+                throw ExceptionFactory<MissingException>(
                         "missing type '" + id + "'",
-                        this->currentToken.line, this->currentToken.column
+                        this->currentToken.line,
+                        this->currentToken.column
                 );
             }
 
@@ -994,10 +1008,10 @@ namespace AVSI {
             eat(ID);
             return Ty;
         } else {
-            throw ExceptionFactory(
-                    __SyntaxException,
+            throw ExceptionFactory<SyntaxException>(
                     "type is unrecognized",
-                    this->currentToken.line, this->currentToken.column
+                    this->currentToken.line,
+                    this->currentToken.column
             );
         }
     }

@@ -52,6 +52,7 @@ namespace AVSI {
 
         Token character();
 
+
         Token Id();
     };
 
@@ -73,31 +74,34 @@ namespace AVSI {
             {'.', DOT}};
 
     static map<string, TokenType> reservedKeyword = {
-            {"function", FUNCTION},
-            {"return",   RETURN},
-            {"true",     TRUE},
-            {"false",    FALSE},
-            {"if",       IF},
-            {"else",     ELSE},
-            {"elif",     ELIF},
-            {"fi",       FI},
-            {"then",     THEN},
-            {"for",      FOR},
-            {"while",    WHILE},
-            {"do",       DO},
-            {"done",     DONE},
-            {"global",   GLOBAL},
-            {"import",   IMPORT},
-            {"export",   EXPORT},
-            {"mod",      MODULE},
-            {"real",     REAL},
-            {"vec",      VEC},
-            {"obj",      OBJ},
-            {"char",     CHAR},
-            {"sizeof",   SIZEOF},
-            {"typename", TYPENAME},
-            {"break",       BREAK},
-            {"continue",    CONTINUE}};
+            {"function",  FUNCTION},
+            {"return",    RETURN},
+            {"true",      TRUE},
+            {"false",     FALSE},
+            {"if",        IF},
+            {"else",      ELSE},
+            {"elif",      ELIF},
+            {"fi",        FI},
+            {"then",      THEN},
+            {"for",       FOR},
+            {"while",     WHILE},
+            {"do",        DO},
+            {"done",      DONE},
+            {"global",    GLOBAL},
+            {"import",    IMPORT},
+            {"export",    EXPORT},
+            {"mod",       MODULE},
+            {"real",      REAL},
+            {"vec",       VEC},
+            {"obj",       OBJ},
+            {"char",      CHAR},
+            {"sizeof",    SIZEOF},
+            {"typename",  TYPENAME},
+            {"break",     BREAK},
+            {"continue",  CONTINUE},
+            {"no_mangle", NOMANGLE},
+            {"as",        AS}
+    };
 } // namespace AVSI
 
 #endif

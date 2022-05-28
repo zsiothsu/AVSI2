@@ -311,7 +311,7 @@ namespace AVSI {
             string msg = "unsupported operand type(s) for " +
                          op + ": '" + typeMap[left] +
                          "' and '" + typeMap[right] + "'";
-            throw ExceptionFactory(__TypeException, msg, 0, 0);
+            throw ExceptionFactory<TypeException>(msg, 0, 0);
         }
         return true;
     }

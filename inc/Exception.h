@@ -8,6 +8,8 @@
 #define ___EXCEPTION_H___
 
 #include <string>
+#include <iostream>
+#include "FileName.h"
 
 #define __SyntaxException   "SyntaxException"
 #define __MathException     "MathException"
@@ -26,9 +28,15 @@
 #define __COLOR_GREEN       "\033[32m"
 #define __COLOR_YELLOW      "\033[33m"
 
+extern uint16_t warn_count;
+extern uint16_t err_count;
+
 namespace AVSI {
     using namespace std;
 
+    /*******************************************************
+     *                    base exception                   *
+     *******************************************************/
     class Exception : public exception {
     protected:
         std::string str;
@@ -44,14 +52,23 @@ namespace AVSI {
 
         ~Exception() {};
 
-        void setMsg(std::string s);
+        void setMsg(std::string s) {
+            this->str = this->eType + ": " + s + " ";
+        }
 
-        std::string type();
+        std::string type() {
+            return this->eType;
+        }
 
         using exception::what;
-        const char *what();
+        const char *what() {
+            return this->str.c_str();
+        }
     };
 
+    /*******************************************************
+     *                     exceptions                      *
+     *******************************************************/
     class SyntaxException : public Exception {
     public:
         using Exception::Exception;
@@ -108,12 +125,37 @@ namespace AVSI {
         ErrReport() : Exception(__ErrReport) {};
     };
 
-    const Exception ExceptionFactory(std::string e);
+    /*******************************************************
+     *                     functions                       *
+     *******************************************************/
+    template<typename T>
+    inline const Exception ExceptionFactory() {
+        return T();
+    }
 
-    const Exception
-    ExceptionFactory(std::string e, std::string msg, int line, int column);
+    template<typename T>
+    inline const Exception
+    ExceptionFactory(std::string msg, int line, int column) {
+        Exception exception = ExceptionFactory<T>();
 
-    void Warning(std::string type, std::string msg, int line, int column);
+        exception.setMsg(msg);
+        exception.line = line;
+        exception.column = column;
+
+        if(exception.type() != __ErrReport) err_count++;
+
+        return exception;
+    }
+
+    static inline void Warning(std::string msg, int line, int column) {
+        warn_count++;
+        std::cerr << __COLOR_YELLOW
+                  << input_file_name
+                  << ":" << line  << ":" << column + 1 << ": "
+                  << __Warning << ": "
+                  << msg
+                  << __COLOR_RESET << std::endl;
+    }
 } // namespace AVSI
 
 #endif

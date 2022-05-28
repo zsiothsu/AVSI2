@@ -1,29 +1,43 @@
 /*
- * @Author: Chipen Hsiao
- * @Date: 2022-03-11
- * @Description: llvm code generator
+ * ASTCodeGen.cpp 2022
+ *
+ * MIT License
+ *
+ * Copyright (c) 2022 Chipen Hsiao
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
-#include <cstdlib>
+
 #include <set>
 #include <cstdint>
 #include <unistd.h>
-#include <sys/wait.h>
-#include <sys/file.h>
 
 #include "../inc/AST.h"
 #include "../inc/SymbolTable.h"
-#include "../inc/FileName.h"
 #include <filesystem>
 #include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/Host.h>
-#include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Target/TargetMachine.h>
-#include <llvm/Target/TargetOptions.h>
 #include <llvm/Support/MemoryBuffer.h>
-#include <llvm/IRReader/IRReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 
 #define UNUSED(x) ((void)(x))
@@ -68,427 +82,6 @@ namespace AVSI {
     map<llvm::Type *, uint32_t> type_size;
 
     map<string, string> module_name_alias;
-
-    /*******************************************************
-     *                     function                        *
-     *******************************************************/
-    void llvm_module_fpm_init() {
-        //        the_fpm->add(llvm::createReassociatePass());
-        //        the_fpm->add(llvm::createGVNPass());
-        //        the_fpm->add(llvm::createInstructionCombiningPass());
-        //        the_fpm->add(llvm::createCFGSimplificationPass());
-        //        the_fpm->add(llvm::createDeadCodeEliminationPass());
-        //        the_fpm->add(llvm::createFlattenCFGPass());
-
-        the_fpm->doInitialization();
-    }
-
-    void llvm_import_module(vector<string> path, string mod, int line, int col) {
-        // import module can use absolute path or relative path
-        // resolve path to locate module
-        if (input_file_name_no_suffix == MODULE_INIT_NAME) {
-            std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
-            module_path.push_back(dir);
-        }
-
-        int path_size = module_path.size();
-        bool is_absolute_module_path = true;
-
-        if (path.size() < path_size) {
-            is_absolute_module_path = false;
-        } else {
-            for (int i = 0; i < path_size; i++) {
-                if (module_path[i] != path[i]) {
-                    is_absolute_module_path = false;
-                    break;
-                }
-            }
-        }
-
-        // get bc file path in file system
-        string module_file_system_path;
-        string module_source_file_system_path;
-        if (is_absolute_module_path) {
-            module_file_system_path =
-                    output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER;
-            module_source_file_system_path =
-                    compiler_exec_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER;
-
-            string unresolved_path = getpathListToUnresolved(path);
-            unresolved_path += (unresolved_path.empty() ? "" : "::") + mod;
-            module_name_alias[unresolved_path] = unresolved_path;
-
-            path.erase(path.begin(), path.begin() + path_size);
-            string unresolved_path_relative = getpathListToUnresolved(path);
-            unresolved_path_relative += (unresolved_path_relative.empty() ? "" : "::") + mod;
-            module_name_alias[unresolved_path_relative] = unresolved_path;
-        } else {
-            module_file_system_path =
-                    output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER;
-            module_source_file_system_path =
-                    compiler_exec_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER;
-
-            // create alias: relative -> absolute
-            string unresolved_path = getpathListToUnresolved(path);
-            unresolved_path += (unresolved_path.empty() ? "" : "::") + mod;
-            string unresolved_path_absolute = getpathListToUnresolved(module_path);
-            unresolved_path_absolute += "::" + unresolved_path;
-            module_name_alias[unresolved_path] = unresolved_path_absolute;
-            module_name_alias[unresolved_path_absolute] = unresolved_path_absolute;
-        }
-        for (int i = 0; i < path.size(); i++) {
-            module_file_system_path += SYSTEM_PATH_DIVIDER + path[i];
-            module_source_file_system_path += SYSTEM_PATH_DIVIDER + path[i];
-        }
-        module_file_system_path += SYSTEM_PATH_DIVIDER + mod;
-        module_source_file_system_path += SYSTEM_PATH_DIVIDER + mod;
-        string module_file_system_path_not_gen = module_file_system_path;
-        if (std::filesystem::is_directory(std::filesystem::path(module_file_system_path))) {
-            module_file_system_path += SYSTEM_PATH_DIVIDER + mod + ".bc";
-        } else {
-            module_file_system_path += ".bc";
-        }
-        if (std::filesystem::is_directory(std::filesystem::path(module_source_file_system_path))) {
-            module_source_file_system_path += SYSTEM_PATH_DIVIDER + string(MODULE_INIT_NAME) + ".sl";
-        } else {
-            module_source_file_system_path += ".sl";
-        }
-        std::filesystem::path bcfile = module_file_system_path;
-        std::filesystem::path sourcefile = module_source_file_system_path;
-        if (
-                !std::filesystem::exists(bcfile) ||
-                (
-                        std::filesystem::exists(sourcefile) &&
-                        last_write_time(sourcefile) > last_write_time(bcfile)
-                ) ||
-                sourcefile.filename().stem() == MODULE_INIT_NAME
-                ) {
-            pid_t pid = fork();
-            int status = 0;
-            if (pid == -1) {
-                throw ExceptionFactory(
-                        __SysErrException,
-                        "unable to fork program. paused",
-                        line, col);
-            } else if (pid > 1) {
-                wait(&status);
-
-                if (std::filesystem::is_directory(std::filesystem::path(module_file_system_path_not_gen))) {
-                    module_file_system_path = module_file_system_path_not_gen + SYSTEM_PATH_DIVIDER + mod + ".bc";
-                } else {
-                    module_file_system_path = module_file_system_path_not_gen + ".bc";
-                }
-                bcfile = module_file_system_path;
-            } else {
-                string program = compiler_command_line;
-                 char const *args[7] = {
-                        program.c_str(),
-                        module_source_file_system_path.c_str(),
-                        "-o",
-                        output_root_path.c_str(),
-                        "-m",
-                        (char *) 0,
-                        (char *) 0
-                };
-                if(opt_verbose) args[5] = "-v";
-
-                clog << "importing "
-                     << __COLOR_GREEN
-                     << getpathListToUnresolved(module_path)
-                     << "::"
-                     << (path.empty() ? "" : (getpathListToUnresolved(path) + "::"))
-                     << mod
-                     << __COLOR_RESET << " by " << __COLOR_GREEN
-                     << getpathListToUnresolved(module_path)
-                     << "::"
-                     << module_name
-                     << __COLOR_RESET << endl;
-                if (opt_verbose) {
-                    clog << args[0] << " "
-                         << filesystem::absolute(sourcefile) << " "
-                         << args[2] << " "
-                         << filesystem::absolute(filesystem::path(output_root_path)) << " "
-                         << args[4] << " "
-                         << args[5] << endl;
-                }
-
-                execve(compiler_command_line.c_str(), (char *const *) args, nullptr);
-                exit(-1);
-            }
-        }
-
-        if (!std::filesystem::exists(bcfile)) {
-            string unparsed_name;
-            for (string i: path) {
-                unparsed_name += i + "::";
-            }
-            unparsed_name += mod;
-
-            std::cerr << __COLOR_RED
-                      << input_file_name
-                      << ":" << line << ":" << col + 1 << ": "
-                      << __MissingException << ": "
-                      << "module "
-                      << unparsed_name
-                      << " is not found"
-                      << __COLOR_RESET << std::endl;
-
-            cout << bcfile << endl;
-            exit(-1);
-        }
-
-        // read bc file to memory buffer
-        auto mbuf = llvm::MemoryBuffer::getFile(bcfile.c_str());
-        if (!mbuf) {
-            if (!std::filesystem::exists(bcfile)) {
-                string unparsed_name;
-                for (string i: path) {
-                    unparsed_name += i + "::";
-                }
-                unparsed_name += mod;
-
-                throw ExceptionFactory(
-                        __MissingException,
-                        "error occurred when reading module " + unparsed_name,
-                        line, col);
-            }
-        }
-
-        // create and import module
-        llvm::SMDiagnostic smd = llvm::SMDiagnostic();
-        auto ir = llvm::parseIR(*mbuf.get(), smd, *the_context);
-        auto ptr = ir.release();
-
-        // import symbols
-        // import function
-        auto function_iter = ptr->getFunctionList().begin();
-        while (function_iter != ptr->getFunctionList().end()) {
-            auto fun = &(*function_iter);
-            the_module->getOrInsertFunction(fun->getName(), fun->getFunctionType());
-            function_iter++;
-        }
-
-        // import global
-        auto global_iter = ptr->getGlobalList().begin();
-        while (global_iter != ptr->getGlobalList().end()) {
-            auto glb = &(*global_iter);
-            the_module->getOrInsertFunction(glb->getName(), glb->getValueType());
-            global_iter++;
-        }
-
-        auto md_iter = ptr->getNamedMDList().begin();
-        while (md_iter != ptr->getNamedMDList().end()) {
-            auto md = &(*md_iter);
-            the_module->getOrInsertNamedMetadata(md->getName());
-            md_iter++;
-        }
-    }
-
-    void llvm_global_context_reset() {
-        // reset context and module
-        delete TheTargetMachine;
-        delete the_fpm;
-        delete builder;
-        delete the_module;
-        delete the_context;
-
-        the_context = new llvm::LLVMContext();
-        the_module = new llvm::Module("program", *the_context);
-        builder = new llvm::IRBuilder<>(*the_context);
-        the_fpm = new llvm::legacy::FunctionPassManager(the_module);
-        TheTargetMachine = nullptr;
-
-        // reset symbols
-        delete symbol_table;
-        REAL_TY = llvm::Type::getDoubleTy(*the_context);
-        CHAR_TY = llvm::Type::getInt8Ty(*the_context);
-        VOID_TY = llvm::Type::getVoidTy(*the_context);
-        BOOL_TY = llvm::Type::getInt1Ty(*the_context);
-
-        symbol_table = new SymbolTable();
-        struct_types.clear();
-        function_protos.clear();
-        simple_types.clear();
-        simple_types_map.clear();
-        type_name.clear();
-        type_size.clear();
-
-        simple_types = {REAL_TY,
-                        CHAR_TY,
-                        BOOL_TY};
-        simple_types_map = {
-                {REAL_TY, 0x04},
-                {CHAR_TY, 0x02},
-                {BOOL_TY, 0x01}};
-        type_name = {
-                {REAL_TY, "real"},
-                {CHAR_TY, "char"},
-                {VOID_TY, "void"},
-                {BOOL_TY, "bool"},
-        };
-        type_size = {
-                {REAL_TY, 8},
-                {CHAR_TY, 1},
-                {VOID_TY, 0},
-                {BOOL_TY, 1},
-        };
-
-        module_name = "";
-        the_module->setModuleIdentifier(input_file_name_no_suffix);
-        the_module->setSourceFileName(input_file_name);
-
-        global_insert_point = builder->GetInsertBlock();
-    }
-
-    void llvm_machine_init() {
-        // Initialize the target registry etc.
-        llvm::InitializeAllTargetInfos();
-        llvm::InitializeAllTargets();
-        llvm::InitializeAllTargetMCs();
-        llvm::InitializeAllAsmParsers();
-        llvm::InitializeAllAsmPrinters();
-
-        auto TargetTriple = llvm::sys::getDefaultTargetTriple();
-        the_module->setTargetTriple(TargetTriple);
-
-        std::string Error;
-        auto Target = llvm::TargetRegistry::lookupTarget(TargetTriple, Error);
-
-        // Print an error and exit if we couldn't find the requested target.
-        // This generally occurs if we've forgotten to initialise the
-        // TargetRegistry or we have a bogus target triple.
-        if (!Target) {
-            llvm::errs() << Error;
-            return;
-        }
-
-        auto CPU = "generic";
-        auto Features = "";
-
-        llvm::TargetOptions opt;
-        auto RM = llvm::Optional<llvm::Reloc::Model>();
-        TheTargetMachine =
-                Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
-
-        the_module->setDataLayout(TheTargetMachine->createDataLayout());
-    }
-
-    void llvm_obj_output() {
-        std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
-        string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
-
-        auto Filename =
-                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
-                string(file_basename) + ".o";
-        llvm_create_dir(filesystem::path(Filename).parent_path());
-        std::error_code EC;
-        llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
-
-        if (EC) {
-            llvm::errs() << "Could not open file: " << EC.message();
-            return;
-        }
-
-        llvm::legacy::PassManager pass;
-        auto FileType = llvm::CGFT_ObjectFile;
-
-        if (TheTargetMachine->addPassesToEmitFile(pass, dest, nullptr, FileType)) {
-            llvm::errs() << "TheTargetMachine can't emit a file of this type";
-            return;
-        }
-
-        pass.run(*the_module);
-        dest.flush();
-
-        if (opt_verbose) llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
-    }
-
-    void llvm_asm_output() {
-        std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
-        string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
-
-        auto Filename =
-                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
-                string(file_basename) + ".s";
-        llvm_create_dir(filesystem::path(Filename).parent_path());
-        std::error_code EC;
-        llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
-
-        if (EC) {
-            llvm::errs() << "Could not open file: " << EC.message();
-            return;
-        }
-
-        llvm::legacy::PassManager pass;
-        auto FileType = llvm::CGFT_AssemblyFile;
-
-        if (TheTargetMachine->addPassesToEmitFile(pass, dest, nullptr, FileType)) {
-            llvm::errs() << "TheTargetMachine can't emit a file of this type";
-            return;
-        }
-
-        pass.run(*the_module);
-        dest.flush();
-
-        if (opt_verbose) llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
-    }
-
-    void llvm_module_output() {
-        std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
-        string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
-
-        auto Filename =
-                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
-                string(file_basename) + ".bc";
-        llvm_create_dir(filesystem::path(Filename).parent_path());
-        std::error_code EC;
-        llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
-
-        llvm::WriteBitcodeToFile(*the_module, dest);
-
-        dest.flush();
-
-        FILE *file = fopen(Filename.c_str(), "r");
-        fflush(file);
-
-        if (opt_verbose) llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
-    }
-
-    void llvm_module_printIR() {
-        std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
-        string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
-
-        auto Filename =
-                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
-                string(file_basename) + ".ll";
-        llvm_create_dir(filesystem::path(Filename).parent_path());
-        std::error_code EC;
-        llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
-        the_module->print(dest, nullptr);
-        if (opt_verbose) llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
-    }
-
-    void debug_type(llvm::Value *v) {
-        if (!v)
-            return;
-        v->getType()->print(llvm::outs());
-        cout << endl;
-    }
-
-    void debug_type(llvm::Type *v) {
-        if (!v)
-            return;
-        v->print(llvm::outs());
-        cout << endl;
-    }
-
-    void llvm_create_dir(string dir) {
-        std::filesystem::path d = dir;
-        if (!filesystem::exists(d.parent_path())) {
-            llvm_create_dir(d.parent_path());
-        }
-        filesystem::create_directory(d);
-    }
 
     /*******************************************************
      *                    IR generator                     *
@@ -586,8 +179,7 @@ namespace AVSI {
                                     var->id);
                         }
                         catch (...) {
-                            throw ExceptionFactory(
-                                    __TypeException,
+                            throw ExceptionFactory<TypeException>(
                                     "index out of range or not an array",
                                     i.second->getToken().line, i.second->getToken().column);
                         }
@@ -620,8 +212,7 @@ namespace AVSI {
                                 offset_list,
                                 var->id);
                     } else {
-                        throw ExceptionFactory(
-                                __MissingException,
+                        throw ExceptionFactory<MissingException>(
                                 "unrecognized member '" + member_name + "'",
                                 i.second->getToken().line, i.second->getToken().column);
                     }
@@ -649,8 +240,7 @@ namespace AVSI {
         Assign *assigin_ast = (Assign *) ast;
 
         if (r_type == VOID_TY) {
-            throw ExceptionFactory(
-                    __LogicException,
+            throw ExceptionFactory<LogicException>(
                     "cannot assign void to variable",
                     ast->getToken().line, ast->getToken().column);
         }
@@ -772,7 +362,6 @@ namespace AVSI {
                             r_value = builder->CreatePointerCast(r_value, l_excepted_type);
                         } else {
                             Warning(
-                                    __Warning,
                                     "failed to cast type '" +
                                     type_name[cast_to_type] +
                                     "' to '" + type_name[l_excepted_type] +
@@ -797,7 +386,6 @@ namespace AVSI {
                     cast_to_type = r_type;
                     if (l_excepted_type != VOID_TY) {
                         Warning(
-                                __Warning,
                                 "failed to cast type '" +
                                 type_name[cast_to_type] +
                                 "' to '" + type_name[l_excepted_type] +
@@ -813,8 +401,7 @@ namespace AVSI {
             builder->CreateStore(r_value, new_var_alloca);
             symbol_table->insert(l_base_name, new_var_alloca);
         } else {
-            throw ExceptionFactory(
-                    __LogicException,
+            throw ExceptionFactory<LogicException>(
                     "not matched type, left: " +
                     type_name[l_alloca_addr->getType()->getPointerElementType()] +
                     ", right: " + type_name[r_type],
@@ -1170,14 +757,18 @@ namespace AVSI {
                 Tys,
                 false);
 
+        string func_name =
+                (this->id == ENTRY_NAME || !this->is_mangle)
+                ? this->id
+                : NAME_MANGLING(this->id);
+
         if (the_module->getFunction(this->id) == nullptr) {
             builder->ClearInsertionPoint();
             // check is re-definition
             auto funType = function_protos.find(this->id);
             if (funType != function_protos.end() &&
                 ((funType->second != FT) || (the_module->getFunction(this->id) != nullptr))) {
-                throw ExceptionFactory(
-                        __LogicException,
+                throw ExceptionFactory<LogicException>(
                         "function redefined there",
                         this->token.line, this->token.column);
             }
@@ -1188,11 +779,6 @@ namespace AVSI {
                     : llvm::Function::PrivateLinkage;
 
             // create function
-            string func_name =
-                    this->id == ENTRY_NAME
-                    ? this->id
-                    : NAME_MANGLING(this->id);
-
             llvm::Function *the_function = llvm::Function::Create(
                     FT,
                     link_type,
@@ -1213,11 +799,6 @@ namespace AVSI {
 
         if (this->compound != nullptr) {
             builder->ClearInsertionPoint();
-            string func_name =
-                    this->id == ENTRY_NAME
-                    ? this->id
-                    : NAME_MANGLING(this->id);
-
             llvm::Function *the_function = the_module->getFunction(func_name);
 
             // create body
@@ -1243,8 +824,7 @@ namespace AVSI {
                 }
                 symbol_table->pop();
                 if (llvm::verifyFunction(*the_function, &llvm::outs())) {
-                    throw ExceptionFactory(
-                            __IRErrException,
+                    throw ExceptionFactory<IRErrException>(
                             "some errors occurred when generating function",
                             this->token.line, this->token.column);
                 }
@@ -1266,20 +846,21 @@ namespace AVSI {
         if (module_name_alias.find(mod_path) != module_name_alias.end()) {
             mod_path = module_name_alias[mod_path];
         }
+
+        // get function with mangled name. if module get null function, try with non-mangled name again
         llvm::Function *fun = the_module->getFunction(
                 getFunctionNameMangling(getpathUnresolvedToList(mod_path), this->id));
+        if (!fun) fun = the_module->getFunction(this->id);
 
         if (!fun) {
-            throw ExceptionFactory(
-                    __MissingException,
+            throw ExceptionFactory<MissingException>(
                     "function '" + this->id + "' is not declared",
                     this->getToken().line, this->getToken().column);
         }
 
         if (fun->arg_size() != this->paramList.size()) {
             // if function has declared, check parameters' size
-            throw ExceptionFactory(
-                    __LogicException,
+            throw ExceptionFactory<LogicException>(
                     "candidate function not viable: requires " +
                     to_string(fun->arg_size()) +
                     " arguments, but " +
@@ -1314,8 +895,7 @@ namespace AVSI {
                 v = builder->CreatePointerCast(v, callee_type->getPointerTo());
                 v = builder->CreateLoad(callee_type, v);
             } else if (callee_type != caller_type) {
-                throw ExceptionFactory(
-                        __LogicException,
+                throw ExceptionFactory<LogicException>(
                         "unmatched type, provided: " +
                         type_name[caller_type] +
                         ", excepted: " + type_name[callee_arg_iter->getType()],
@@ -1342,8 +922,7 @@ namespace AVSI {
 
         // check number of parameters
         if (param_num > member_num) {
-            throw ExceptionFactory(
-                    __LogicException,
+            throw ExceptionFactory<LogicException>(
                     "candidate function not viable: requires " +
                     to_string(member_num) +
                     " or less arguments, but " +
@@ -1488,8 +1067,7 @@ namespace AVSI {
                         "ArrayInit.element." + to_string(i));
 
                 if (rv->getType() != eleTy) {
-                    throw ExceptionFactory(
-                            __LogicException,
+                    throw ExceptionFactory<LogicException>(
                             "not matched type, element type: " +
                             type_name[rv->getType()] +
                             ", array type: " + type_name[eleTy],
@@ -1507,8 +1085,7 @@ namespace AVSI {
         string name = v->id;
 
         if (v->Ty.first == VOID_TY) {
-            throw ExceptionFactory(
-                    __LogicException,
+            throw ExceptionFactory<LogicException>(
                     "missing type of global variable '" + name + "'",
                     this->getToken().column, this->getToken().column);
         }
@@ -1559,7 +1136,7 @@ namespace AVSI {
 
                 llvm::BasicBlock *loop_mergeBB = symbol_table->getLoopExit();
 
-                // bool have_merge = false;
+                bool have_merge = false;
 
                 llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(*the_context, "if.then", the_function,
                                                                     loop_mergeBB);
@@ -1572,6 +1149,7 @@ namespace AVSI {
                 if (elseBB != nullptr) {
                     builder->CreateCondBr(cond, thenBB, elseBB);
                 } else {
+                    have_merge = true;
                     builder->CreateCondBr(cond, thenBB, mergeBB);
                 }
 
@@ -1581,8 +1159,8 @@ namespace AVSI {
 
                 // I don't know why the instruction must be placed here.
                 // Removing it will result in segmentation fault
-                auto ph = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "placeholder");
-                UNUSED(ph);
+                // auto ph = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "placeholder");
+                // UNUSED(ph);
                 llvm::Value *thenv = this->compound->codeGen();
                 if (!thenv) {
                     return nullptr;
@@ -1590,7 +1168,7 @@ namespace AVSI {
                 symbol_table->pop();
                 auto t_then = builder->GetInsertBlock()->getTerminator();
                 if (!t_then) {
-                    // have_merge = true;
+                    have_merge = true;
                     builder->CreateBr(mergeBB);
                 }
                 thenBB = builder->GetInsertBlock();
@@ -1601,7 +1179,7 @@ namespace AVSI {
                     the_function->getBasicBlockList().push_back(elseBB);
                     builder->SetInsertPoint(elseBB);
                     symbol_table->push(elseBB);
-                    ph = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "placeholder");
+                    // ph = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "placeholder");
                     elsev = this->next->codeGen();
                     if (!elsev) {
                         return nullptr;
@@ -1609,18 +1187,21 @@ namespace AVSI {
                     symbol_table->pop();
                     t_else = builder->GetInsertBlock()->getTerminator();
                     if (!t_else) {
-                        // have_merge = true;
+                        have_merge = true;
                         builder->CreateBr(mergeBB);
                     }
                     elseBB = builder->GetInsertBlock();
                 }
 
-                auto pred = mergeBB->getSinglePredecessor();
-                if (pred) {
+//                auto pred = mergeBB->getSinglePredecessor();
+                if (have_merge) {
                     the_function->getBasicBlockList().push_back(mergeBB);
                     builder->SetInsertPoint(mergeBB);
                 } else {
-                    mergeBB->removeFromParent();
+                    auto symbols = mergeBB->eraseFromParent();
+                    for (auto &i: *symbols) {
+                        i.dropAllReferences();
+                    }
                 }
 
                 return llvm::Constant::getNullValue(REAL_TY);
@@ -1637,8 +1218,7 @@ namespace AVSI {
 //                builder->CreateBr(break_to);
                 builder->Insert(llvm::BranchInst::Create(break_to));
             } else {
-                throw ExceptionFactory(
-                        __LogicException,
+                throw ExceptionFactory<LogicException>(
                         "break must be used in a loop",
                         this->token.line, this->token.column);
             }
@@ -1647,8 +1227,7 @@ namespace AVSI {
             if (continue_to != nullptr) {
                 builder->CreateBr(continue_to);
             } else {
-                throw ExceptionFactory(
-                        __LogicException,
+                throw ExceptionFactory<LogicException>(
                         "continue must be used in a loop",
                         this->token.line, this->token.column);
             }
@@ -1673,8 +1252,7 @@ namespace AVSI {
     llvm::Value *UnaryOp::codeGen() {
         llvm::Value *rv = this->right->codeGen();
         if (!rv) {
-            throw ExceptionFactory(
-                    __LogicException,
+            throw ExceptionFactory<LogicException>(
                     "unknown right value of unary op",
                     this->token.line, this->token.column);
         }
@@ -1702,8 +1280,7 @@ namespace AVSI {
             llvm::Value *v = getAlloca((Variable *) this->id);
 
             if (!v) {
-                throw ExceptionFactory(
-                        __MissingException,
+                throw ExceptionFactory<MissingException>(
                         "variable '" + ((Variable *) (this->id))->id + "' is not defined",
                         this->token.line, this->token.column);
             }
@@ -1741,8 +1318,7 @@ namespace AVSI {
         llvm::Value *v = getAlloca(this);
 
         if (!v) {
-            throw ExceptionFactory(
-                    __MissingException,
+            throw ExceptionFactory<MissingException>(
                     "variable '" + this->id + "' is not defined",
                     this->token.line, this->token.column);
         }
@@ -1771,7 +1347,6 @@ namespace AVSI {
                         builder->GetInsertBlock() &&
                         builder->GetInsertBlock()->getTerminator()) {
                     Warning(
-                            __Warning,
                             "terminator detected, subsequent code will be ignored",
                             ast->getToken().line, ast->getToken().column);
                     break;
@@ -1792,8 +1367,7 @@ namespace AVSI {
         }
 
         if (err_count != 0 || is_err) {
-            throw ExceptionFactory(
-                    __ErrReport,
+            throw ExceptionFactory<ErrReport>(
                     "generated " + to_string(err_count) + " errors",
                     0, 0);
         }

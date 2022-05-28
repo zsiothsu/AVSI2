@@ -76,7 +76,9 @@ namespace AVSI {
         VEC,
         OBJ,
         BREAK,
-        CONTINUE
+        CONTINUE,
+        NOMANGLE,
+        AS
     } TokenType;
 
     class Token {
@@ -206,7 +208,9 @@ namespace AVSI {
             {VEC,      "VEC"},
             {OBJ,      "OBJ"},
             {BREAK,    "BREAK"},
-            {CONTINUE, "CONTINUE"}
+            {CONTINUE, "CONTINUE"},
+            {NOMANGLE, "NOMANGLE"},
+            {AS,       "AS"}
     };
 } // namespace AVSI
 

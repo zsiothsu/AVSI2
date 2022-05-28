@@ -333,8 +333,7 @@ namespace AVSI {
                 return c;
             } else {
                 advance();
-                throw ExceptionFactory(
-                        __SyntaxException,
+                throw ExceptionFactory<SyntaxException>(
                         "cannot read escape char",
                         this->linenum, this->cur
                 );
@@ -406,8 +405,7 @@ namespace AVSI {
         if (this->currentChar == '\\') {
             c = getEscapeChar();
             if(currentChar != '\'') {
-                throw ExceptionFactory(
-                        __SyntaxException,
+                throw ExceptionFactory<SyntaxException>(
                         "cannot read escape char",
                         this->linenum, this->cur
                 );

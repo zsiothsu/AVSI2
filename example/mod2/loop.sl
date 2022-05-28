@@ -8,9 +8,8 @@ export function while_test(x: real) -> real{
         if [ a  -lt 1024 ] then
             continue
         else
-            break
+            a = 0
         fi
-        a = 0
     done
 }
 

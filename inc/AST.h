@@ -194,13 +194,15 @@ namespace AVSI {
         AST *paramList;
         AST *compound;
         bool is_export;
+        bool is_mangle;
 
         FunctionDecl(void)
                 : AST(__FUNCTIONDECL_NAME),
                   retTy(Type()),
                   paramList(nullptr),
                   compound(nullptr),
-                  is_export(false) {};
+                  is_export(false),
+                  is_mangle(true) {};
 
         FunctionDecl(string id, Type retTy, AST *paramList, AST *compound, const Token &token)
                 : AST(__FUNCTIONDECL_NAME, token),
@@ -208,7 +210,8 @@ namespace AVSI {
                   retTy(std::move(retTy)),
                   paramList(paramList),
                   compound(compound),
-                  is_export(false) {};
+                  is_export(false),
+                  is_mangle(true) {};
 
         virtual ~FunctionDecl();
 
@@ -505,7 +508,7 @@ namespace AVSI {
     extern AST *ASTEmpty;
     extern AST *ASTEmptyNotEnd;
 
-    void llvm_import_module(vector<string> path, string mod, int line, int col);
+    void llvm_import_module(vector<string> path, string mod, int line, int col, string as = string());
 
     void llvm_global_context_reset();
 
