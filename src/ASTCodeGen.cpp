@@ -1,6 +1,8 @@
 /*
  * ASTCodeGen.cpp 2022
  *
+ * LLVM IR code generator
+ *
  * MIT License
  *
  * Copyright (c) 2022 Chipen Hsiao
@@ -71,21 +73,37 @@ namespace AVSI {
     AST *ASTEmpty = new NoneAST();
     AST *ASTEmptyNotEnd = new NoneAST();
 
+    // global stack based symbol table
     SymbolTable *symbol_table;
+    // store structure definitions. including members' name and type.
     map<string, StructDef *> struct_types;
+    // store function defined in the context.
     map<std::string, llvm::FunctionType *> function_protos;
 
+    // a read-only set including simple types (REAL, CHAR, etc.)
     set<llvm::Type *> simple_types;
+    // map simple types to an integer
     map<llvm::Type *, uint8_t> simple_types_map;
 
+    // type name to be displayed in debug message
     map<llvm::Type *, string> type_name;
+    // store size of specific type. for an array pointer, it will
+    // be the size of the space where the pointer point to
     map<llvm::Type *, uint32_t> type_size;
 
+    // map a relative or renamed module path to absolute
     map<string, string> module_name_alias;
 
     /*******************************************************
      *                    IR generator                     *
      *******************************************************/
+    /**
+    * @description:    get basic type of an array
+    * @param:          Ty: pointer type
+    * @return:         the pointer type point to basic type
+    * @example:        offer a pointer type like [[real x 3] x 3]* to the
+     *                 function will return real*
+    */
     llvm::PointerType *getArrayBasicTypePointer(llvm::PointerType *Ty) {
         llvm::Type *basic = Ty->getPointerElementType();
         while (basic->isArrayTy())
@@ -93,6 +111,14 @@ namespace AVSI {
         return basic->getPointerTo();
     }
 
+    /**
+     * @description:    compare the basic type between two arrays
+     * @param:          l: pointer type
+     * @param:          r: pointer type
+     * @return:         bool
+     * @example:        compare [[real x 3] x 3]* and  [real x 3]* will
+     *                  get true for they have the smae basic type "real"
+     */
     bool isTheSameBasicType(llvm::PointerType *l, llvm::PointerType *r) {
         llvm::Type *basicl = l->getPointerElementType();
         llvm::Type *basicr = r->getPointerElementType();
@@ -105,6 +131,13 @@ namespace AVSI {
         return basicl == basicr;
     }
 
+    /**
+     * @description:    insert an alloca instruction at the head of function
+     * @param:          fun: the function variable defined in
+     * @param:          name: name of variable
+     * @param:          type: variable type
+     * @return:         a pointer point to the space allocated
+     */
     llvm::AllocaInst *allocaBlockEntry(llvm::Function *fun, string name, llvm::Type *Ty) {
         llvm::IRBuilder<> blockEntry(
                 &fun->getEntryBlock(),
@@ -116,6 +149,11 @@ namespace AVSI {
                 name.c_str());
     }
 
+    /**
+     * @description:    get address of variable
+     * @param:          var: variable AST
+     * @return:         a pointer to target address
+     */
     llvm::Value *getAlloca(Variable *var) {
         /* get address of variable
          * -------------------------------------------------------------------
@@ -217,6 +255,11 @@ namespace AVSI {
                                 i.second->getToken().line, i.second->getToken().column);
                     }
                 }
+
+                /**
+                 * for nest array, the result of GEP instruction is just the raw space
+                 * of array. we need to create a pointer point to the space.
+                 */
                 if (v->getType()->getPointerElementType()->isArrayTy()) {
                     llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
                     auto alloca = allocaBlockEntry(the_scope, "array.ptr.addr", v->getType());
@@ -230,12 +273,21 @@ namespace AVSI {
         return v;
     }
 
-    llvm::Value *AST::codeGen() {
-        return llvm::Constant::getNullValue(REAL_TY);
-    }
-
-    llvm::Value *store(AST *ast, llvm::Value *l_alloca_addr, llvm::Value *r_value, bool assignment = true,
-                       string l_base_name = "member") {
+    /**
+     * @description:    perform a stored action, including automatic type conversion
+     * @param:          ast: AST of assignment, just for debug message
+     * @param:          l_alloca_addr: space to be assigned. new space will be created if
+     *                                 l_alloca_addr is nullptr
+     * @param:          r_value: value
+     * @param:          assignment: a label used to distinguish assignment(true)
+     *                              statements and struct initialization(false)
+     * @param:          l_base_name: space name. if l_alloca_addr is nullptr, new space
+     *                               will be named by l_base_name
+     * @return:         none
+     */
+    llvm::Value *
+    store(AST *ast, llvm::Value *l_alloca_addr, llvm::Value *r_value, bool assignment = true,
+          string l_base_name = "member") {
         llvm::Type *r_type = r_value->getType();
         Assign *assigin_ast = (Assign *) ast;
 
@@ -411,6 +463,10 @@ namespace AVSI {
         return llvm::Constant::getNullValue(REAL_TY);
     }
 
+    llvm::Value *AST::codeGen() {
+        return llvm::Constant::getNullValue(REAL_TY);
+    }
+
     llvm::Value *Assign::codeGen() {
         llvm::Value *r_value = this->right->codeGen();
 
@@ -424,6 +480,7 @@ namespace AVSI {
         auto token_type = this->getToken().getType();
 
         if (token_type != AND && token_type != OR) {
+            // normal binop
             llvm::Value *lv = this->left->codeGen();
             llvm::Value *rv = this->right->codeGen();
 
@@ -440,14 +497,13 @@ namespace AVSI {
                 return nullptr;
             }
 
+            // get the "maximum" type
             int result_type_bitmap = simple_types_map[l_type] | simple_types_map[r_type];
             bool float_point = false;
             if (result_type_bitmap >= 0x04)
                 float_point = true;
 
             llvm::Value *cmp_value_boolean;
-            // llvm::Value *lv_bool = nullptr;
-            // llvm::Value *rv_bool = nullptr;
 
             llvm::Value *lv_real = nullptr;
             llvm::Value *rv_real = nullptr;
@@ -519,28 +575,15 @@ namespace AVSI {
                         cmp_value_boolean = builder->CreateICmpSLE(lv, rv, "cmpLETmp");
                     }
                     return cmp_value_boolean;
-                    //                case OR:
-                    //                    if (float_point) {
-                    //                        lv_bool = builder->CreateFCmpUNE(lv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
-                    //                        rv_bool = builder->CreateFCmpUNE(rv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
-                    //                    } else {
-                    //                        lv_bool = builder->CreateICmpNE(lv, llvm::ConstantInt::get(lv->getType(), 0), "toBool");
-                    //                        rv_bool = builder->CreateICmpNE(rv, llvm::ConstantInt::get(lv->getType(), 0), "toBool");
-                    //                    }
-                    //                    return builder->CreateOr(lv_bool, rv_bool, "boolOrTmp");
-                    //                case AND:
-                    //                    if (float_point) {
-                    //                        lv_bool = builder->CreateFCmpUNE(lv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
-                    //                        rv_bool = builder->CreateFCmpUNE(rv_real, llvm::ConstantFP::get(REAL_TY, 0.0), "toBool");
-                    //                    } else {
-                    //                        lv_bool = builder->CreateICmpNE(lv, llvm::ConstantInt::get(lv->getType(), 0), "toBool");
-                    //                        rv_bool = builder->CreateICmpNE(rv, llvm::ConstantInt::get(lv->getType(), 0), "toBool");
-                    //                    }
-                    //                    return builder->CreateAnd(lv_bool, rv_bool, "boolAndTmp");
                 default:
                     return nullptr;
             }
         } else {
+            /**
+             * short-circuit operator
+             * it will generate if-like IR codes
+             */
+
             if (token_type == AND) {
                 auto l = this->left->codeGen();
                 if (!l) {
@@ -956,6 +999,10 @@ namespace AVSI {
         llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
         uint32_t element_num = this->num;
 
+        /**
+         * a pointer will be returned if element_num equals to 0.
+         * to secure safety, the pointer will point to a newly created space
+         */
         if (element_num == 0) {
             llvm::Type *contain_type = this->Ty.first;
             if (this->Ty.first == VOID_TY) {
@@ -968,6 +1015,9 @@ namespace AVSI {
             return ptr_alloca;
         }
 
+        /**
+         * create array by type, return a array initialized by 0.
+         */
         if (this->Ty.first != VOID_TY) {
             auto arr_type = llvm::ArrayType::get(this->Ty.first, element_num);
             type_name[arr_type] = "vec[" + type_name[this->Ty.first] + ";" + to_string(element_num) + "]";
@@ -990,7 +1040,7 @@ namespace AVSI {
         bool is_const_array = true;
         bool is_char_array = true;
 
-        string ele_ast_type = this->paramList[0]->__AST_name;
+        // check type of array initializer
         for (auto i: this->paramList) {
             if (i->__AST_name != __NUM_NAME) {
                 is_const_array = false;
@@ -1000,7 +1050,9 @@ namespace AVSI {
                 is_char_array = false;
             }
         }
+
         if (is_const_array) {
+            // create a constant data array for constant array
             llvm::Constant *arr = nullptr;
             llvm::Type *tname;
             int tsize;
@@ -1032,6 +1084,8 @@ namespace AVSI {
 
             return addr_alloca;
         } else {
+            // else initialize an array by store action
+
             llvm::Value *head_rv = this->paramList[0]->codeGen();
             auto eleTy = head_rv->getType();
             auto arr_type = llvm::ArrayType::get(eleTy, element_num);
@@ -1289,11 +1343,14 @@ namespace AVSI {
 
             if (type->isPtrOrPtrVectorTy()) {
                 if (type->getPointerElementType()->isArrayTy()) {
+                    // array type
                     return llvm::ConstantFP::get(REAL_TY, type_size[type->getPointerElementType()]);
                 } else {
+                    // raw pointer
                     return llvm::ConstantFP::get(REAL_TY, PTR_SIZE);
                 }
             } else {
+                // non-pointer type
                 return llvm::ConstantFP::get(REAL_TY, type_size[type]);
             }
         }
@@ -1453,5 +1510,4 @@ namespace AVSI {
     llvm::Value *NoneAST::codeGen() {
         return llvm::Constant::getNullValue(REAL_TY);
     }
-
 }

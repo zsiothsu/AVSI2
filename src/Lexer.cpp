@@ -1,9 +1,33 @@
 /*
- * @Author: Chipen Hsiao
- * @Date: 2020-05-01
- * @LastEditTime: 2020-06-02 15:56:33
- * @Description: include Lexer class
+ * Lexer.cpp 2022
+ *
+ * include file name and path definition
+ *
+ * include Lexer class
+ *
+ * MIT License
+ *
+ * Copyright (c) 2022 Chipen Hsiao
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
+
 #include "../inc/Lexer.h"
 #include "Exception.h"
 #include <cstring>
@@ -223,7 +247,7 @@ namespace AVSI {
 
     /**
      * @description:    extract a (multidigit) number from the sentence, refered
-     * from cJson
+     *                  from cJson
      * @param:          None
      * @return:         a number Token
      */
@@ -263,6 +287,11 @@ namespace AVSI {
             return Token(FLOAT, num, line, column);
     }
 
+    /**
+     * @description:    get a character early
+     * @param:          None
+     * @return:         char peeked
+     */
     char Lexer::peek() {
         if (this->cur + 1 < this->line.length()) {
             return this->line[this->cur + 1];
@@ -271,6 +300,11 @@ namespace AVSI {
         }
     }
 
+    /**
+     * @description:    get two characters early
+     * @param:          None
+     * @return:         two chars peeked
+     */
     string Lexer::peek2() {
         char first = peek();
         char second;
@@ -295,6 +329,11 @@ namespace AVSI {
         }
     }
 
+    /**
+     * @description:    get a constant string
+     * @param:          None
+     * @return:         string
+     */
     Token Lexer::str() {
         int line = this->linenum, column = this->cur;
         std::string str;
@@ -311,6 +350,11 @@ namespace AVSI {
         return Token(STRING, str, line, column);
     }
 
+    /**
+     * @description:    get a escape character
+     * @param:          None
+     * @return:         a character
+     */
     char Lexer::getEscapeChar() {
         advance();
         char c;
@@ -398,6 +442,11 @@ namespace AVSI {
         }
     }
 
+    /**
+     * @description:    get a character
+     * @param:          None
+     * @return:         a character
+     */
     Token Lexer::character() {
         int line = this->linenum, column = this->cur;
         char c;
@@ -420,6 +469,13 @@ namespace AVSI {
         return Token(CHAR, c, line, column);
     }
 
+    /**
+     * @description:    get ID or reserved keyword
+     * @param:          None
+     * @return:         ID with module path
+     * @example:
+     *      eat a::b::c will return ID named by c with module path a::b
+     */
     Token Lexer::Id() {
         int line = this->linenum, column = this->cur;
         std::string str;

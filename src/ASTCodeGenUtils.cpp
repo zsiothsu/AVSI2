@@ -1,6 +1,8 @@
 /*
  * ASTCodeGenUtils.cpp 2022
  *
+ * utils for code generator
+ *
  * MIT License
  *
  * Copyright (c) 2022 Chipen Hsiaoman
@@ -62,7 +64,7 @@ namespace AVSI {
     extern llvm::IRBuilder<> *builder;
     extern llvm::legacy::FunctionPassManager *the_fpm;
     extern llvm::TargetMachine *TheTargetMachine;
-    
+
     extern llvm::BasicBlock *global_insert_point;
 
     /*******************************************************
@@ -103,20 +105,27 @@ namespace AVSI {
         the_fpm->doFinalization();
     }
 
+    /**
+     * @description:    import specific module
+     * @param:          path: path to module, both absolute and relative
+     *                        are available
+     * @param:          mod: module name
+     * @param:          line: line of "import" keyword
+     * @param:          col: column of "import" keyword
+     * @param:          as: rename the module
+     * @return:         none
+     */
     void llvm_import_module(vector<string> path, string mod, int line, int col, string as) {
-        // import module can use absolute path or relative path
-        // resolve path to locate module
-        if (input_file_name_no_suffix == MODULE_INIT_NAME) {
-            std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
-            module_path.push_back(dir);
-        }
-
-        int path_size = module_path.size();
+        // to check absolute or relative path
+        auto path_size = module_path.size();
         bool is_absolute_module_path = true;
-
         if (path.size() < path_size) {
             is_absolute_module_path = false;
         } else {
+            /**
+             * if module_path is the prefix of import module path,
+             * the provided path will be considered an absolute path
+             */
             for (int i = 0; i < path_size; i++) {
                 if (module_path[i] != path[i]) {
                     is_absolute_module_path = false;
@@ -125,46 +134,53 @@ namespace AVSI {
             }
         }
 
-        // get bc file path in file system
-        string module_file_system_path;
-        string module_source_file_system_path;
+        // create alias
         if (is_absolute_module_path) {
-            module_file_system_path =
-                    output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER;
-            module_source_file_system_path =
-                    compiler_exec_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER;
+            string unresolved_path_absulote = getpathListToUnresolved(path);
+            unresolved_path_absulote += (unresolved_path_absulote.empty() ? "" : "::") + mod;
 
-            string unresolved_path = getpathListToUnresolved(path);
-            unresolved_path += (unresolved_path.empty() ? "" : "::") + mod;
-            module_name_alias[unresolved_path] = unresolved_path;
-
+            // remove the module_path prefix so it can be treated as a relative path
             path.erase(path.begin(), path.begin() + path_size);
+
             string unresolved_path_relative = getpathListToUnresolved(path);
             unresolved_path_relative += (unresolved_path_relative.empty() ? "" : "::") + mod;
-            module_name_alias[unresolved_path_relative] = unresolved_path;
-            if(!as.empty()) module_name_alias[as] = unresolved_path;
-        } else {
-            module_file_system_path =
-                    output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER;
-            module_source_file_system_path =
-                    compiler_exec_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER;
 
             // create alias: relative -> absolute
-            string unresolved_path = getpathListToUnresolved(path);
-            unresolved_path += (unresolved_path.empty() ? "" : "::") + mod;
+            //               renamed -> absolute
+            module_name_alias[unresolved_path_relative] = unresolved_path_absulote;
+            module_name_alias[unresolved_path_absulote] = unresolved_path_absulote;
+            if (!as.empty()) module_name_alias[as] = unresolved_path_absulote;
+        } else {
+            string unresolved_path_relative = getpathListToUnresolved(path);
+            unresolved_path_relative += (unresolved_path_relative.empty() ? "" : "::") + mod;
             string unresolved_path_absolute = getpathListToUnresolved(module_path);
-            unresolved_path_absolute += "::" + unresolved_path;
-            module_name_alias[unresolved_path] = unresolved_path_absolute;
+            unresolved_path_absolute += (unresolved_path_absolute.empty() ? "" : "::") + unresolved_path_relative;
+
+            module_name_alias[unresolved_path_relative] = unresolved_path_absolute;
             module_name_alias[unresolved_path_absolute] = unresolved_path_absolute;
-            if(!as.empty()) module_name_alias[as] = unresolved_path_absolute;
+            if (!as.empty()) module_name_alias[as] = unresolved_path_absolute;
         }
+
+        // get bc file and source file in file system
+        string module_file_system_path;
+        string module_source_file_system_path;
+        module_file_system_path =
+                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER;
+        module_source_file_system_path =
+                compiler_exec_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER;
+
+        // create file path
         for (int i = 0; i < path.size(); i++) {
             module_file_system_path += SYSTEM_PATH_DIVIDER + path[i];
             module_source_file_system_path += SYSTEM_PATH_DIVIDER + path[i];
         }
         module_file_system_path += SYSTEM_PATH_DIVIDER + mod;
         module_source_file_system_path += SYSTEM_PATH_DIVIDER + mod;
-        string module_file_system_path_not_gen = module_file_system_path;
+
+        // add file extension.
+        // if file is not exist, the name generated will be wrong
+        // so create a backup
+        string module_file_system_path_backup = module_file_system_path;
         if (std::filesystem::is_directory(std::filesystem::path(module_file_system_path))) {
             module_file_system_path += SYSTEM_PATH_DIVIDER + mod + ".bc";
         } else {
@@ -177,6 +193,9 @@ namespace AVSI {
         }
         std::filesystem::path bcfile = module_file_system_path;
         std::filesystem::path sourcefile = module_source_file_system_path;
+
+        // if bc file is not exist or source file changed,
+        // compile files recursively
         if (
                 !std::filesystem::exists(bcfile) ||
                 (
@@ -194,10 +213,10 @@ namespace AVSI {
             } else if (pid > 1) {
                 wait(&status);
 
-                if (std::filesystem::is_directory(std::filesystem::path(module_file_system_path_not_gen))) {
-                    module_file_system_path = module_file_system_path_not_gen + SYSTEM_PATH_DIVIDER + mod + ".bc";
+                if (std::filesystem::is_directory(std::filesystem::path(module_file_system_path_backup))) {
+                    module_file_system_path = module_file_system_path_backup + SYSTEM_PATH_DIVIDER + mod + ".bc";
                 } else {
-                    module_file_system_path = module_file_system_path_not_gen + ".bc";
+                    module_file_system_path = module_file_system_path_backup + ".bc";
                 }
                 bcfile = module_file_system_path;
             } else {
@@ -304,6 +323,10 @@ namespace AVSI {
         }
     }
 
+    /**
+     * @description:    reset compiler
+     * @return:         none
+     */
     void llvm_global_context_reset() {
         // reset context and module
         delete TheTargetMachine;
@@ -360,6 +383,10 @@ namespace AVSI {
         global_insert_point = builder->GetInsertBlock();
     }
 
+    /**
+     * @description:    initializer for compiler, get information of target
+     * @return:         none
+     */
     void llvm_machine_init() {
         // Initialize the target registry etc.
         llvm::InitializeAllTargetInfos();
@@ -502,6 +529,11 @@ namespace AVSI {
         cout << endl;
     }
 
+    /**
+     * @description:    create folders recursively
+     * @param:          dir: folder's name
+     * @return:         none
+     */
     void llvm_create_dir(string dir) {
         std::filesystem::path d = dir;
         if (!filesystem::exists(d.parent_path())) {

@@ -1,10 +1,31 @@
 /*
- * @Author: Chipen Hsiao
- * @Date: 2020-05-01
- * @LastEditTime: 2020-06-02 15:52:24
- * @Description: "AVSI::any" is a data type which can store variable of basic
- * type
+ * any.cpp 2022
+ *
+ * "AVSI::any" is a data type which can store variable of basic types
+ *
+ * MIT License
+ *
+ * Copyright (c) 2022 Chipen Hsiao
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
+
 #include <cmath>
 
 #include "../inc/any.h"
@@ -260,6 +281,12 @@ namespace AVSI {
         return output;
     }
 
+    /**
+     * This was for the first generation of AVSI, but since there is no direct
+     * input to variables now, this function is deprecated. If there are other
+     * projects that need to use this function, you can try not to complete
+     * this code, I left a todo there.
+     */
     istream &operator>>(istream &input, AVSI::any &d) {
         string str;
         input >> str;
@@ -306,6 +333,9 @@ namespace AVSI {
         return input;
     }
 
+    /**
+     * deprecated by AVSI2
+     */
     bool checkOperand(DataType left, DataType right, string op) {
         if (left == Empty || right == Empty) {
             string msg = "unsupported operand type(s) for " +

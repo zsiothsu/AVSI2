@@ -1,12 +1,36 @@
 /*
- * @Author: Chipen Hsiao
- * @Date: 2020-05-01
- * @LastEditTime: 2020-05-28 17:18:57
- * @Description: include Parser class
+ * Parser.cpp 2022
+ *
+ * include Parser class
+ *
+ * LLVM IR code generator
+ *
+ * MIT License
+ *
+ * Copyright (c) 2022 Chipen Hsiao
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
+
 #include "../inc/Parser.h"
-#include "../inc/FileName.h"
 #include "SymbolTable.h"
+#include <filesystem>
 
 uint16_t err_count = 0;
 uint16_t warn_count = 0;
@@ -155,7 +179,7 @@ namespace AVSI {
         return root;
 
         err:
-        throw ExceptionFactory<ErrReport>("",0, 0);
+        throw ExceptionFactory<ErrReport>("", 0, 0);
     }
 
     AST *Parser::statement() {
@@ -391,6 +415,28 @@ namespace AVSI {
         if (this->currentToken.getType() == ID) {
             vector<string> path = this->currentToken.getModInfo();
             module_path = path;
+
+            /**
+             * if current file is __init__.sl， the parent folder should be added to searh path
+             * for example:
+             *
+             * this is a normal file:
+             * root/normal.sl:
+             *      mod com::avsi::normal
+             * search root path will be com::avsi
+             *
+             * but for __init__.sl:
+             * root/foo/__init__.sl:
+             *      mod com::avsi::foo
+             * search root path will be com::avsi instead of com::avsi::foo.
+             *
+             * to fix the problem, mod name should be append to search path
+             */
+            if (input_file_name_no_suffix == MODULE_INIT_NAME) {
+                std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
+                module_path.push_back(dir);
+            }
+
             path.push_back(this->currentToken.getValue().any_cast<string>());
             module_name = __getModuleNameByPath(path);
             mod_named = true;
@@ -413,7 +459,7 @@ namespace AVSI {
             vector<string> path = id.getModInfo();
             eat(ID);
             string as;
-            if(this->currentToken.getType() == AS) {
+            if (this->currentToken.getType() == AS) {
                 eat(AS);
                 as = this->currentToken.getValue().any_cast<string>();
                 eat(ID);
@@ -487,7 +533,6 @@ namespace AVSI {
 
         // register a struct type
         llvm::StructType *Ty = llvm::StructType::create(*the_context, member_types, id);
-//        llvm::StructType *Ty = llvm::StructType::create(*the_context, member_types);
 
         StructDef *sd = new StructDef(Ty);
         sd->members = member_index;
@@ -806,7 +851,7 @@ namespace AVSI {
         eat(RETURN);
 
         AST *ret = nullptr;
-        if (this->currentToken.isExpr()) ret = expr();
+        if (this->currentToken.isExpr()) ret = checkedExpr();
 
         return new Return(token, ret);
     }
@@ -927,7 +972,7 @@ namespace AVSI {
         }
 
         condition = expr();
-        if(have_SQB) eat(RSQB);
+        if (have_SQB) eat(RSQB);
         eat(DO);
         compound = statementList();
         eat(DONE);
