@@ -55,6 +55,7 @@ static struct option long_options[] = {
         {"output",   required_argument, NULL, 'o'},
         {"help",     no_argument,       NULL, 'h'},
         {"verbose",  no_argument,       NULL, 'v'},
+        {"include", required_argument,  NULL, 'I'},
         {0, 0, 0,                             0}
 };
 
@@ -76,17 +77,19 @@ void printHelp(void) {
     "    -r             --reliance  Generate .r reliance file for Makefile.\n"
     "    -o <dir>       --output    output to <dir>.\n"
     "    -h             --help      Display available options.\n"
-    "    -v             --verbose   Display more details during building.\n";
+    "    -v             --verbose   Display more details during building.\n"
+    "    -I             --include   Add include path\n";
 
     printf("%s", msg.c_str());
 }
 
 void getOption(int argc, char **argv) {
-    while ((opt = getopt_long(argc, argv, "lSmro:hv", long_options, &loidx)) != -1) {
+    while ((opt = getopt_long(argc, argv, "lSmro:hvI:", long_options, &loidx)) != -1) {
         if (opt == 0) {
             opt = lopt;
         }
         filesystem::path path = output_root_path;
+        filesystem::path t;
         switch (opt) {
             case 'l':
                 opt_ir = true;
@@ -110,6 +113,10 @@ void getOption(int argc, char **argv) {
                 break;
             case 'v':
                 opt_verbose = true;
+                break;
+            case 'I':
+                t = filesystem::path(optarg);
+                include_path.push_back(filesystem::absolute(t).string());
                 break;
             default:
                 printf("error: unsupported option");
@@ -148,8 +155,8 @@ int main(int argc, char **argv) {
     }
 
     filesystem::path p = fileName;
-    input_file_path_relative = filesystem::absolute(p.parent_path()).string();
     p = filesystem::absolute(p);
+    input_file_path_relative = filesystem::absolute(p.parent_path()).string();
     input_file_path_absolut = p.parent_path().string();
     compiler_exec_path = filesystem::absolute(filesystem::current_path()).string();
 

@@ -197,12 +197,11 @@ namespace AVSI {
         // if bc file is not exist or source file changed,
         // compile files recursively
         if (
-                !std::filesystem::exists(bcfile) ||
-                (
-                        std::filesystem::exists(sourcefile) &&
-                        last_write_time(sourcefile) > last_write_time(bcfile)
-                ) ||
-                sourcefile.filename().stem() == MODULE_INIT_NAME
+                std::filesystem::exists(sourcefile) && (
+                        !std::filesystem::exists(bcfile) ||
+                        last_write_time(sourcefile) > last_write_time(bcfile) ||
+                        sourcefile.filename().stem() == MODULE_INIT_NAME
+                )
                 ) {
             pid_t pid = fork();
             int status = 0;
@@ -254,6 +253,23 @@ namespace AVSI {
 
                 execve(compiler_command_line.c_str(), (char *const *) args, nullptr);
                 exit(-1);
+            }
+        } else if (!std::filesystem::exists(bcfile)) {
+            // try to search include path
+            for (string p: include_path) {
+                module_file_system_path = p;
+                for (int i = 0; i < path.size(); i++) {
+                    module_file_system_path += SYSTEM_PATH_DIVIDER + path[i];
+                }
+                module_file_system_path += SYSTEM_PATH_DIVIDER + mod;
+                if (std::filesystem::is_directory(std::filesystem::path(module_file_system_path))) {
+                    module_file_system_path += SYSTEM_PATH_DIVIDER + mod + ".bc";
+                } else {
+                    module_file_system_path += ".bc";
+                }
+                bcfile = module_file_system_path;
+
+                if (std::filesystem::exists(bcfile)) break;
             }
         }
 

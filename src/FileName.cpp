@@ -34,6 +34,7 @@ std::string compiler_command_line;
 
 std::string compiler_exec_path;
 std::string output_root_path;
+std::vector<std::string> include_path({"/usr/include/avsi"});
 
 std::string input_file_name;
 std::string input_file_path;

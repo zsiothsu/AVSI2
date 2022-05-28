@@ -24,7 +24,7 @@ TARGET         := $(PROJECT_NAME).a
 SRCS           := $(wildcard $(SRCDIR)/*.c)
 OBJS           := $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SRCS))
 
-all: $(TARGET)
+C: $(TARGET)
 	@$(EECHO) =============================
 	@$(EECHO) target: $(TARGET) generated
 	@$(EECHO) done!
@@ -56,7 +56,7 @@ $(OBJDIR)/%.d: $(SRCDIR)/%.c
 
 -include $(OBJS:.o=.d)
 
-.PHONY: clean
-clean:
+.PHONY: cclean
+cclean:
 	@$(RM) -r $(OBJDIR)
 	@$(RM) $(TARGET)
