@@ -1,62 +1,22 @@
 #!/usr/bin/make
 
-# Package Bash shell command
-export ECHO        := echo
-export EECHO       := $(ECHO) -e
-export RM          := rm -f
-export UNAME       := uname -o -m
-export MKDIR       := mkdir
+ROOT			:= $(CURDIR)
+CDIR			:= $(ROOT)/C
+STDDIR			:= $(ROOT)/std
 
-# Project
-PROJECT_NAME   := libavsi
+CDIR_OUT		:= $(CDIR)/obj
+STDDIR_OUT		:= $(STDDIR)/build
 
-# Definition of toolchain
-AR                 := ar
-CC                 := clang
+LIBAVSI			:= libavsi.a
+STDBC			:= std.bc
 
-# Path
-ROOT           := $(CURDIR)
-SRCDIR         := $(ROOT)
-OBJDIR         := $(ROOT)/obj
 
-# Important file
-TARGET         := $(PROJECT_NAME).a
-SRCS           := $(wildcard $(SRCDIR)/*.c)
-OBJS           := $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SRCS))
+all: $(CDIR_OUT)/$(LIBAVSI) $(STDDIR_OUT)/$(STDBC)
 
-all: $(TARGET)
-	@$(EECHO) =============================
-	@$(EECHO) target: $(TARGET) generated
-	@$(EECHO) done!
-	@$(EECHO) =============================
+$(CDIR_OUT)/$(LIBAVSI): $(CDIR)/avsi.c
+	@echo "building libavsi"
+	@cd $(CDIR) && make
 
-startup: 
-	@$(EECHO) =============================
-	@$(EECHO) AVSI2 basic library
-	@$(EECHO) target: $(TARGET)
-	@$(EECHO) at `$(UNAME)`
-	@$(EECHO) =============================
-	@$(EECHO) start building ...
-
-$(SRCS): startup
-
-$(TARGET): $(OBJS)
-	@@$(AR) -c -r $@ $^
-	@$(EECHO) AR $(@F)
-
-$(OBJS): $(OBJDIR)/%.o: $(SRCDIR)/%.c
-	@if [ ! -d $(OBJDIR) ]; then $(MKDIR) $(OBJDIR); fi
-	@$(CC) -c $< -o $@
-	@$(EECHO) CC $(<F)
-
-$(OBJDIR)/%.d: $(SRCDIR)/%.c
-	@set -e; rm -f $@; $(CC) -MM $< $(CFLAGS) > $@.$$$$; \
-	sed 's,\($*\)\.o[ :]*,$(DIR_BUILD)/\1.o $@ : ,g' < $@.$$$$ > $@; \
-	rm -f $@.$$$$
-
--include $(OBJS:.o=.d)
-
-.PHONY: clean
-clean:
-	@$(RM) -r $(OBJDIR)
-	@$(RM) $(TARGET)
+$(STDDIR_OUT)/$(STDBC): $(STDDIR)/__init__.sl
+	@echo "building .bc file"
+	@$(ROOT)/../build/avsi $(STDDIR)/__init__.sl -m
