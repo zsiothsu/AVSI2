@@ -1,4 +1,6 @@
-extern void entry();
+__attribute__((weak)) int entry() {
+    return 0;
+}
 
 int main() {
     entry();

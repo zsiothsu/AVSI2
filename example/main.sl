@@ -1,6 +1,6 @@
 # package name: com::avsi
 # import_mod is the name of this module
-mod com::avsi::import_mod
+mod com::avsi::main
 
 import com::avsi::export_mod as ef
 import com::avsi::mod1

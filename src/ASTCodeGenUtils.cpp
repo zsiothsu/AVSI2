@@ -251,7 +251,7 @@ namespace AVSI {
                          << args[5] << endl;
                 }
 
-                execve(compiler_command_line.c_str(), (char *const *) args, nullptr);
+                execvp(compiler_command_line.c_str(), (char *const *) args);
                 exit(-1);
             }
         } else if (!std::filesystem::exists(bcfile)) {
@@ -289,7 +289,7 @@ namespace AVSI {
                       << " is not found"
                       << __COLOR_RESET << std::endl;
 
-            cout << bcfile << endl;
+            cout << "missing: " << bcfile << endl;
             exit(-1);
         }
 

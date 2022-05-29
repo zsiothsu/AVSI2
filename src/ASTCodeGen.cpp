@@ -793,10 +793,16 @@ namespace AVSI {
             }
         }
 
-        llvm::FunctionType *FT = llvm::FunctionType::get(
-                this->retTy.first->isArrayTy()
+        llvm::Type *retTy = this->retTy.first->isArrayTy()
                 ? getArrayBasicTypePointer(this->retTy.first->getPointerTo())
-                : this->retTy.first,
+                : this->retTy.first;
+
+        if (this->id == ENTRY_NAME || this->id == "_start") {
+            retTy = llvm::Type::getInt32Ty(*the_context);
+        }
+
+        llvm::FunctionType *FT = llvm::FunctionType::get(
+                retTy,
                 Tys,
                 false);
 
@@ -860,10 +866,14 @@ namespace AVSI {
 
             if (this->compound->codeGen()) {
                 auto t = builder->GetInsertBlock()->getTerminator();
-                if (!t && this->retTy.first == VOID_TY) {
-                    builder->CreateRetVoid();
-                } else if (!t) {
-                    builder->CreateRet(llvm::ConstantFP::get(REAL_TY, 0.0));
+                if(!t) {
+                    if(the_function->getReturnType() == VOID_TY) {
+                        builder->CreateRetVoid();
+                    } else if(the_function->getReturnType()->isFloatingPointTy()) {
+                        builder->CreateRet(llvm::ConstantFP::get(the_function->getReturnType(), 0.0));
+                    } else {
+                        builder->CreateRet(llvm::ConstantInt::get(the_function->getReturnType(), 0));
+                    }
                 }
                 symbol_table->pop();
                 if (llvm::verifyFunction(*the_function, &llvm::outs())) {
@@ -877,6 +887,7 @@ namespace AVSI {
                 }
                 return the_function;
             }
+            symbol_table->pop();
         }
         if (last_BB != nullptr) {
             builder->SetInsertPoint(last_BB, last_pt);

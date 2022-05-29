@@ -184,6 +184,27 @@ int main(int argc, char **argv) {
     extern uint16_t err_count;
     extern uint16_t warn_count;
 
+    // create lock file
+    std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
+    string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
+    std::filesystem::path tmp_file =
+            output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
+            string(file_basename) + ".lock";
+    if(std::filesystem::exists(tmp_file)) {
+        std::cerr << __COLOR_RED
+                  << input_file_name
+                  << ": File lock detected\n"
+                  << "please check dependencies between modules, circular dependencies are prohibited."
+                  << __COLOR_RESET
+                  << endl;
+        std::filesystem::remove(tmp_file);
+        return -1;
+    } else {
+        ofstream os(tmp_file, ios::app);
+        os << " ";
+        os.close();
+    }
+
     try {
         llvm_global_context_reset();
         llvm_machine_init();
@@ -219,7 +240,11 @@ int main(int argc, char **argv) {
                       << warn_count << " warnings"
                       << __COLOR_RESET << std::endl;
         }
+        std::filesystem::remove(tmp_file);
         return 1;
     }
+
+    // remove lock
+    std::filesystem::remove(tmp_file);
     return 0;
 }

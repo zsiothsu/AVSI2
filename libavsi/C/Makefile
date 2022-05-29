@@ -1,30 +1,34 @@
 #!/usr/bin/make
 
 # Package Bash shell command
-export ECHO        := echo
-export EECHO       := $(ECHO) -e
-export RM          := rm -f
-export UNAME       := uname -o -m
-export MKDIR       := mkdir
+export ECHO			:= echo
+export EECHO		:= $(ECHO) -e
+export RM			:= rm -f
+export UNAME		:= uname -o -m
+export MKDIR		:= mkdir
+export CD			:= cd
+export LS			:= ls
+export GREP			:= grep
+export XARGS		:= xargs
 
 # Project
 PROJECT_NAME   := libavsi
 
 # Definition of toolchain
-AR                 := ar
-CC                 := clang
+AR					:= ar
+CC					:= clang
 
 # Path
-ROOT           := $(CURDIR)
-SRCDIR         := $(ROOT)
-OBJDIR         := $(ROOT)/obj
+ROOT				:= $(CURDIR)
+SRCDIR				:= $(ROOT)
+OBJDIR				:= $(ROOT)/obj
 
 # Important file
-TARGET         := $(PROJECT_NAME).a
-SRCS           := $(wildcard $(SRCDIR)/*.c)
-OBJS           := $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SRCS))
+TARGET				:= $(PROJECT_NAME).a
+SRCS				:= $(wildcard $(SRCDIR)/*.c)
+OBJS				:= $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SRCS))
 
-C: $(TARGET)
+all: $(TARGET)
 	@$(EECHO) =============================
 	@$(EECHO) target: $(TARGET) generated
 	@$(EECHO) done!
@@ -56,7 +60,7 @@ $(OBJDIR)/%.d: $(SRCDIR)/%.c
 
 -include $(OBJS:.o=.d)
 
-.PHONY: cclean
-cclean:
-	@$(RM) -r $(OBJDIR)
+.PHONY: clean
+clean:
+	@$(CD) $(OBJDIR) && $(LS) | $(GREP) -v ".gitkeep" | $(XARGS) $(RM)
 	@$(RM) $(TARGET)
