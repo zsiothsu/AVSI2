@@ -1,5 +1,6 @@
-# package name: com::avsi
-# import_mod is the name of this module
+# package name is "com::avsi"
+# "main" is the name of this module
+# the module name must be the same as the file name
 mod com::avsi::main
 
 import com::avsi::export_mod as ef

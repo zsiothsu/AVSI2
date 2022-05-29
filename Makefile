@@ -48,7 +48,6 @@ debug: $(DIR_OUTPUT)/$(BIN)
 library: $(LIBAVSI)
 
 $(LIBAVSI): $(DIR_LIBAVSI)/C/avsi.c $(DIR_LIBAVSI)/std/__init__.sl $(DIR_OUTPUT)/$(BIN)
-	@$(ECHO) "building libavsi"
 	@$(CD) $(DIR_LIBAVSI) && make all
 
 $(DIR_OUTPUT)/$(BIN): $(DIR_OUTPUT)/main.o $(OBJS)
