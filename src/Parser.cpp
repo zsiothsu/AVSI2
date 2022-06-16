@@ -54,6 +54,7 @@ do { \
          << endl; \
 } while(0)
 
+extern bool opt_warning;
 
 namespace AVSI {
     /*******************************************************

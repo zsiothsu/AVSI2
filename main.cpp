@@ -37,6 +37,14 @@
 #include "./inc/Parser.h"
 #include "./inc/FileName.h"
 
+#define AVSI_VERSION_MAJOR      0
+#define AVSI_VERSION_MINOR      1
+#define AVSI_VERSION_PATCH      1
+#define AVSI_VERSION_STRING     AVSI_VERSION_MAJOR.AVSI_VERSION_MINOR.AVSI_VERSION_PATCH
+
+#define _MACRO_TO_STR(m)        #m
+#define MACRO_TO_STR(m)         _MACRO_TO_STR(m)
+
 using namespace std;
 using namespace AVSI;
 
@@ -44,29 +52,33 @@ using namespace AVSI;
  *                 options handler                     *
  *******************************************************/
 extern int optind, opterr, optopt;
-//extern char *optarg;
 static int opt = 0, lopt = 0, loidx = 0;
 
 static struct option long_options[] = {
-        {"ir",       no_argument,       NULL, 'l'},
-        {"asm",      no_argument,       NULL, 'S'},
-        {"module",   no_argument,       NULL, 'm'},
-        {"reliance", no_argument,       NULL, 'r'},
-        {"output",   required_argument, NULL, 'o'},
-        {"help",     no_argument,       NULL, 'h'},
-        {"verbose",  no_argument,       NULL, 'v'},
-        {"include", required_argument,  NULL, 'I'},
-        {0, 0, 0,                             0}
+        {"ir", no_argument, NULL, 'l'},
+        {"asm", no_argument, NULL, 'S'},
+        {"module", no_argument, NULL, 'm'},
+        {"reliance", no_argument, NULL, 'r'},
+        {"output", required_argument, NULL, 'o'},
+        {"help", no_argument, NULL, 'h'},
+        {"verbose", no_argument, NULL, 'v'},
+        {"include", required_argument, NULL, 'I'},
+        {"warning", no_argument, NULL, 'W'},
+        {0, 0, 0, 0}
 };
 
 static bool opt_ir = false;
 static bool opt_asm = false;
-static bool opt_module = false;
-bool opt_reliance = false;
+bool opt_module = false;
 static bool opt_help = false;
+bool opt_reliance = false;
 bool opt_verbose = false;
+bool opt_warning = false;
 
 void printHelp(void) {
+    string version = \
+    "avsi "  MACRO_TO_STR(AVSI_VERSION_STRING) " based on llvm " LLVM_VERSION_STRING;
+
     string msg = \
     "usage:\n"
     "    avsi [options] file\n"
@@ -75,16 +87,17 @@ void printHelp(void) {
     "    -S             --asm       Generate .s assembly file.\n"
     "    -m             --module    Generate .bc module file. \n"
     "    -r             --reliance  Generate .r reliance file for Makefile.\n"
-    "    -o <dir>       --output    output to <dir>.\n"
+    "    -o <dir>       --output    Output to <dir>.\n"
     "    -h             --help      Display available options.\n"
     "    -v             --verbose   Display more details during building.\n"
-    "    -I             --include   Add include path\n";
+    "    -I             --include   Add include path.\n"
+    "    -W             --warning   Show all warnings.\n";
 
-    printf("%s", msg.c_str());
+    printf("%s\n\n%s", version.c_str(), msg.c_str());
 }
 
 void getOption(int argc, char **argv) {
-    while ((opt = getopt_long(argc, argv, "lSmro:hvI:", long_options, &loidx)) != -1) {
+    while ((opt = getopt_long(argc, argv, "lSmro:hvI:W", long_options, &loidx)) != -1) {
         if (opt == 0) {
             opt = lopt;
         }
@@ -117,6 +130,9 @@ void getOption(int argc, char **argv) {
             case 'I':
                 t = filesystem::path(optarg);
                 include_path.push_back(filesystem::absolute(t).string());
+                break;
+            case 'W':
+                opt_warning = true;
                 break;
             default:
                 printf("error: unsupported option");
@@ -187,20 +203,20 @@ int main(int argc, char **argv) {
     // create lock file
     std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
     string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
-    std::filesystem::path tmp_file =
+    std::filesystem::path lock_file =
             output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
             string(file_basename) + ".lock";
-    if(std::filesystem::exists(tmp_file)) {
+    if (std::filesystem::exists(lock_file)) {
         std::cerr << __COLOR_RED
                   << input_file_name
                   << ": File lock detected\n"
                   << "please check dependencies between modules, circular dependencies are prohibited."
                   << __COLOR_RESET
                   << endl;
-        std::filesystem::remove(tmp_file);
+        std::filesystem::remove(lock_file);
         return -1;
     } else {
-        ofstream os(tmp_file, ios::app);
+        ofstream os(lock_file, ios::app);
         os << " ";
         os.close();
     }
@@ -216,14 +232,14 @@ int main(int argc, char **argv) {
         if (opt_reliance) return 0;
         tree->codeGen();
 
-        if(err_count + warn_count != 0) {
+        if (err_count + warn_count != 0) {
             std::cerr << __COLOR_RESET
-                  << std::endl
-                  << input_file_name
-                  << ":"
-                  << "generate " << err_count << " errors,"
-                  << warn_count << " warnings"
-                  << __COLOR_RESET << std::endl;
+                      << std::endl
+                      << input_file_name
+                      << ":"
+                      << "generate " << err_count << " errors,"
+                      << warn_count << " warnings"
+                      << __COLOR_RESET << std::endl;
         }
 
         if (opt_ir) llvm_module_printIR();
@@ -240,11 +256,11 @@ int main(int argc, char **argv) {
                       << warn_count << " warnings"
                       << __COLOR_RESET << std::endl;
         }
-        std::filesystem::remove(tmp_file);
+        std::filesystem::remove(lock_file);
         return 1;
     }
 
     // remove lock
-    std::filesystem::remove(tmp_file);
+    std::filesystem::remove(lock_file);
     return 0;
 }

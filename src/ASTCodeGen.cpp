@@ -46,6 +46,7 @@
 
 extern bool opt_reliance;
 extern bool opt_verbose;
+extern bool opt_warning;
 
 namespace AVSI {
     /*******************************************************
@@ -463,6 +464,13 @@ namespace AVSI {
         return llvm::Constant::getNullValue(REAL_TY);
     }
 
+    llvm::Value *BinOpOpt(BinOp *ast) {
+        any l = ((Num *) ast->left)->getValue();
+        any r = ((Num *) ast->right)->getValue();
+
+        // TODO
+    }
+
     llvm::Value *AST::codeGen() {
         return llvm::Constant::getNullValue(REAL_TY);
     }
@@ -756,13 +764,8 @@ namespace AVSI {
         }
         loopBB = builder->GetInsertBlock();
 
-        auto pred = mergeBB->getSinglePredecessor();
-        if (pred) {
-            the_function->getBasicBlockList().push_back(mergeBB);
-            builder->SetInsertPoint(mergeBB);
-        } else {
-            mergeBB->eraseFromParent();
-        }
+        the_function->getBasicBlockList().push_back(mergeBB);
+        builder->SetInsertPoint(mergeBB);
 
         return llvm::Constant::getNullValue(REAL_TY);
     }
@@ -794,8 +797,8 @@ namespace AVSI {
         }
 
         llvm::Type *retTy = this->retTy.first->isArrayTy()
-                ? getArrayBasicTypePointer(this->retTy.first->getPointerTo())
-                : this->retTy.first;
+                            ? getArrayBasicTypePointer(this->retTy.first->getPointerTo())
+                            : this->retTy.first;
 
         if (this->id == ENTRY_NAME || this->id == "_start") {
             retTy = llvm::Type::getInt32Ty(*the_context);
@@ -866,16 +869,17 @@ namespace AVSI {
 
             if (this->compound->codeGen()) {
                 auto t = builder->GetInsertBlock()->getTerminator();
-                if(!t) {
-                    if(the_function->getReturnType() == VOID_TY) {
+                if (!t) {
+                    if (the_function->getReturnType() == VOID_TY) {
                         builder->CreateRetVoid();
-                    } else if(the_function->getReturnType()->isFloatingPointTy()) {
+                    } else if (the_function->getReturnType()->isFloatingPointTy()) {
                         builder->CreateRet(llvm::ConstantFP::get(the_function->getReturnType(), 0.0));
                     } else {
                         builder->CreateRet(llvm::ConstantInt::get(the_function->getReturnType(), 0));
                     }
                 }
                 symbol_table->pop();
+
                 if (llvm::verifyFunction(*the_function, &llvm::outs())) {
                     throw ExceptionFactory<IRErrException>(
                             "some errors occurred when generating function",
@@ -1191,9 +1195,22 @@ namespace AVSI {
 
             if (auto *LC = llvm::dyn_cast<llvm::ConstantInt>(cond)) {
                 if (LC->isOne()) {
-                    this->compound->codeGen();
-                    return llvm::Constant::getNullValue(REAL_TY);
+                    if (opt_warning) {
+                        Warning(
+                                "the condition is always true",
+                                this->condition->getToken().line,
+                                this->condition->getToken().column
+                        );
+                    }
+                    return this->compound->codeGen();
                 } else {
+                    if (opt_warning) {
+                        Warning(
+                                "the condition is always false",
+                                this->condition->getToken().line,
+                                this->condition->getToken().column
+                        );
+                    }
                     return this->next->codeGen();
                 }
             } else {
@@ -1222,10 +1239,10 @@ namespace AVSI {
                 builder->SetInsertPoint(thenBB);
                 symbol_table->push(thenBB);
 
-                // I don't know why the instruction must be placed here.
-                // Removing it will result in segmentation fault
-                // auto ph = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "placeholder");
-                // UNUSED(ph);
+                // // I don't know why the instruction must be placed here.
+                // // Removing it will result in segmentation fault
+                //  auto ph = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "placeholder");
+                //  UNUSED(ph);
                 llvm::Value *thenv = this->compound->codeGen();
                 if (!thenv) {
                     return nullptr;
@@ -1244,7 +1261,7 @@ namespace AVSI {
                     the_function->getBasicBlockList().push_back(elseBB);
                     builder->SetInsertPoint(elseBB);
                     symbol_table->push(elseBB);
-                    // ph = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "placeholder");
+                    //  ph = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "placeholder");
                     elsev = this->next->codeGen();
                     if (!elsev) {
                         return nullptr;
@@ -1258,16 +1275,8 @@ namespace AVSI {
                     elseBB = builder->GetInsertBlock();
                 }
 
-//                auto pred = mergeBB->getSinglePredecessor();
-                if (have_merge) {
-                    the_function->getBasicBlockList().push_back(mergeBB);
-                    builder->SetInsertPoint(mergeBB);
-                } else {
-                    auto symbols = mergeBB->eraseFromParent();
-                    for (auto &i: *symbols) {
-                        i.dropAllReferences();
-                    }
-                }
+                the_function->getBasicBlockList().push_back(mergeBB);
+                builder->SetInsertPoint(mergeBB);
 
                 return llvm::Constant::getNullValue(REAL_TY);
             }
@@ -1414,9 +1423,11 @@ namespace AVSI {
                         ast->__AST_name != __FUNCTIONDECL_NAME &&
                         builder->GetInsertBlock() &&
                         builder->GetInsertBlock()->getTerminator()) {
-                    Warning(
-                            "terminator detected, subsequent code will be ignored",
-                            ast->getToken().line, ast->getToken().column);
+                    if (opt_warning) {
+                        Warning(
+                                "terminator detected, subsequent code will be ignored",
+                                ast->getToken().line, ast->getToken().column);
+                    }
                     break;
                 }
             }
@@ -1514,6 +1525,16 @@ namespace AVSI {
 
         the_function->getBasicBlockList().push_back(mergeBB);
         builder->SetInsertPoint(mergeBB);
+
+        if (!mergeBB->getUniquePredecessor()) {
+            if (opt_warning) {
+                Warning(
+                        "endless loop",
+                        this->getToken().line,
+                        this->getToken().column
+                );
+            }
+        }
 
         return llvm::Constant::getNullValue(REAL_TY);
     }

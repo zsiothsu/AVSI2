@@ -46,7 +46,9 @@
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
+#include <llvm/IR/PassManager.h>
 
+extern bool opt_module;
 extern bool opt_reliance;
 extern bool opt_verbose;
 
@@ -313,6 +315,20 @@ namespace AVSI {
         llvm::SMDiagnostic smd = llvm::SMDiagnostic();
         auto ir = llvm::parseIR(*mbuf.get(), smd, *the_context);
         auto ptr = ir.release();
+
+        if (ptr == nullptr) {
+            string unparsed_name;
+            for (string i: path) {
+                unparsed_name += i + "::";
+            }
+            unparsed_name += mod;
+
+            smd.print(unparsed_name.c_str(), llvm::errs());
+
+            throw ExceptionFactory<IRErrException>(
+                    "failed to import module " + unparsed_name,
+                    line, col);
+        }
 
         // import symbols
         // import function

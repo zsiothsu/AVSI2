@@ -14,12 +14,12 @@ export function while_test(x: real) -> real{
 }
 
 export function for_test() {
-    # for (i = 0; i -lt 10; i = i + 1) do
-    #     a = i
-    #     if [ a -eq 5 ] then
-    #         # break
-    #     else
-    #         # continue
-    #     fi
-    # done
+    for (i = 0; i -lt 10; i = i + 1) do
+        a = i
+        if [ a -eq 5 ] then
+            break
+        else
+            continue
+        fi
+    done
 }
