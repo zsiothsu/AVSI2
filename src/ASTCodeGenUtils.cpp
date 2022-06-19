@@ -99,11 +99,11 @@ namespace AVSI {
      *******************************************************/
     void llvm_module_fpm_init() {
         the_fpm->add(llvm::createReassociatePass());
-//        the_fpm->add(llvm::createGVNPass());
+        the_fpm->add(llvm::createGVNPass());
         the_fpm->add(llvm::createInstructionCombiningPass());
-//        the_fpm->add(llvm::createCFGSimplificationPass());
+        the_fpm->add(llvm::createCFGSimplificationPass());
         the_fpm->add(llvm::createDeadCodeEliminationPass());
-//        the_fpm->add(llvm::createFlattenCFGPass());
+        the_fpm->add(llvm::createFlattenCFGPass());
 
         the_fpm->doInitialization();
     }
@@ -538,7 +538,7 @@ namespace AVSI {
 //         std::error_code EC;
 //         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
 //
-//         llvm::WriteBitcodeToFile(*the_module, dest, true, nullptr, true);
+//         llvm::WriteBitcodeToFile(*the_module, dest);
 //
 //         dest.flush();
 //

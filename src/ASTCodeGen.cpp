@@ -693,12 +693,13 @@ namespace AVSI {
 
         llvm::BasicBlock *headBB = llvm::BasicBlock::Create(*the_context, "loop.head", the_function);
         llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(*the_context, "loop.body", the_function);
+        llvm::BasicBlock *adjBB = llvm::BasicBlock::Create(*the_context, "loop.adjust", the_function);
         llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*the_context, "loop.end", the_function);
 
         // not region of headBB, but symbol table should be pushed before initial list
         symbol_table->push(headBB);
         symbol_table->setLoopExit(mergeBB);
-        symbol_table->setLoopEntry(loopBB);
+        symbol_table->setLoopEntry(adjBB);
 
         llvm::Value *start = this->initList->codeGen();
         if (!(((Compound *) (this->initList))->child.empty()) && (!start)) {
@@ -750,22 +751,30 @@ namespace AVSI {
         }
         symbol_table->pop();
 
-        if (!builder->GetInsertBlock()->getTerminator()) {
-            llvm::Value *adjust = this->adjustment->codeGen();
-            if (!(((Compound *) (this->adjustment))->child.empty()) && (!adjust)) {
-                return nullptr;
-            }
-            symbol_table->pop();
-
-            auto t = builder->GetInsertBlock()->getTerminator();
-            if (!t) {
-                builder->CreateBr(headBB);
-            }
+        if(!builder->GetInsertBlock()->getTerminator()) {
+            builder->CreateBr(adjBB);
         }
-        loopBB = builder->GetInsertBlock();
+
+        the_function->getBasicBlockList().push_back(adjBB);
+        builder->SetInsertPoint(adjBB);
+
+        llvm::Value *adjust = this->adjustment->codeGen();
+        if (!(((Compound *) (this->adjustment))->child.empty()) && (!adjust)) {
+            return nullptr;
+        }
+        symbol_table->pop();
+
+        auto t = builder->GetInsertBlock()->getTerminator();
+        if (!t) {
+            builder->CreateBr(headBB);
+        }
 
         the_function->getBasicBlockList().push_back(mergeBB);
         builder->SetInsertPoint(mergeBB);
+
+        if(!adjBB->hasNPredecessorsOrMore(1)) {
+            adjBB->eraseFromParent();
+        }
 
         return llvm::Constant::getNullValue(REAL_TY);
     }
@@ -870,7 +879,7 @@ namespace AVSI {
             if (this->compound->codeGen()) {
                 auto endbb = builder->GetInsertBlock();
                 auto t = endbb->getTerminator();
-                if(!endbb->isEntryBlock() && !endbb->hasNPredecessorsOrMore(1)) {
+                if (!endbb->isEntryBlock() && !endbb->hasNPredecessorsOrMore(1)) {
                     endbb->eraseFromParent();
                 } else if (!t) {
                     if (the_function->getReturnType() == VOID_TY) {
@@ -1492,7 +1501,7 @@ namespace AVSI {
 
         symbol_table->push(headBB);
         symbol_table->setLoopExit(mergeBB);
-        symbol_table->setLoopEntry(loopBB);
+        symbol_table->setLoopEntry(headBB);
 
         llvm::Value *cond = this->condition->codeGen();
         if (!cond) {
