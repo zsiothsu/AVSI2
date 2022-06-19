@@ -868,8 +868,11 @@ namespace AVSI {
             }
 
             if (this->compound->codeGen()) {
-                auto t = builder->GetInsertBlock()->getTerminator();
-                if (!t) {
+                auto endbb = builder->GetInsertBlock();
+                auto t = endbb->getTerminator();
+                if(!endbb->isEntryBlock() && !endbb->hasNPredecessorsOrMore(1)) {
+                    endbb->eraseFromParent();
+                } else if (!t) {
                     if (the_function->getReturnType() == VOID_TY) {
                         builder->CreateRetVoid();
                     } else if (the_function->getReturnType()->isFloatingPointTy()) {
@@ -1275,8 +1278,12 @@ namespace AVSI {
                     elseBB = builder->GetInsertBlock();
                 }
 
-                the_function->getBasicBlockList().push_back(mergeBB);
-                builder->SetInsertPoint(mergeBB);
+                if (have_merge) {
+                    the_function->getBasicBlockList().push_back(mergeBB);
+                    builder->SetInsertPoint(mergeBB);
+                } else {
+                    mergeBB->eraseFromParent();
+                }
 
                 return llvm::Constant::getNullValue(REAL_TY);
             }

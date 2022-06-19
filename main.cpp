@@ -67,7 +67,7 @@ static struct option long_options[] = {
         {0, 0, 0, 0}
 };
 
-static bool opt_ir = false;
+bool opt_ir = false;
 static bool opt_asm = false;
 bool opt_module = false;
 static bool opt_help = false;

@@ -48,9 +48,11 @@
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/IR/PassManager.h>
 
+extern bool opt_ir;
 extern bool opt_module;
 extern bool opt_reliance;
 extern bool opt_verbose;
+extern bool opt_warning;
 
 namespace AVSI {
     using namespace std;
@@ -96,15 +98,14 @@ namespace AVSI {
      *                     function                        *
      *******************************************************/
     void llvm_module_fpm_init() {
-//        the_fpm->add(llvm::createReassociatePass());
+        the_fpm->add(llvm::createReassociatePass());
 //        the_fpm->add(llvm::createGVNPass());
-//        the_fpm->add(llvm::createInstructionCombiningPass());
+        the_fpm->add(llvm::createInstructionCombiningPass());
 //        the_fpm->add(llvm::createCFGSimplificationPass());
-//        the_fpm->add(llvm::createDeadCodeEliminationPass());
+        the_fpm->add(llvm::createDeadCodeEliminationPass());
 //        the_fpm->add(llvm::createFlattenCFGPass());
 
         the_fpm->doInitialization();
-        the_fpm->doFinalization();
     }
 
     /**
@@ -151,7 +152,8 @@ namespace AVSI {
             //               renamed -> absolute
             module_name_alias[unresolved_path_relative] = unresolved_path_absulote;
             module_name_alias[unresolved_path_absulote] = unresolved_path_absulote;
-            if (!as.empty()) module_name_alias[as] = unresolved_path_absulote;
+            if (!as.empty())
+                module_name_alias[as] = unresolved_path_absulote;
         } else {
             string unresolved_path_relative = getpathListToUnresolved(path);
             unresolved_path_relative += (unresolved_path_relative.empty() ? "" : "::") + mod;
@@ -160,7 +162,8 @@ namespace AVSI {
 
             module_name_alias[unresolved_path_relative] = unresolved_path_absolute;
             module_name_alias[unresolved_path_absolute] = unresolved_path_absolute;
-            if (!as.empty()) module_name_alias[as] = unresolved_path_absolute;
+            if (!as.empty())
+                module_name_alias[as] = unresolved_path_absolute;
         }
 
         // get bc file and source file in file system
@@ -199,12 +202,9 @@ namespace AVSI {
         // if bc file is not exist or source file changed,
         // compile files recursively
         if (
-                std::filesystem::exists(sourcefile) && (
-                        !std::filesystem::exists(bcfile) ||
-                        last_write_time(sourcefile) > last_write_time(bcfile) ||
-                        sourcefile.filename().stem() == MODULE_INIT_NAME
-                )
-                ) {
+                std::filesystem::exists(sourcefile) && (!std::filesystem::exists(bcfile) ||
+                                                        last_write_time(sourcefile) > last_write_time(bcfile) ||
+                                                        sourcefile.filename().stem() == MODULE_INIT_NAME)) {
             pid_t pid = fork();
             int status = 0;
             if (pid == -1) {
@@ -222,16 +222,20 @@ namespace AVSI {
                 bcfile = module_file_system_path;
             } else {
                 string program = compiler_command_line;
-                char const *args[7] = {
+                char const *args[8] = {
                         program.c_str(),
                         module_source_file_system_path.c_str(),
                         "-o",
                         output_root_path.c_str(),
                         "-m",
                         (char *) 0,
-                        (char *) 0
-                };
-                if (opt_verbose) args[5] = "-v";
+                        (char *) 0,
+                        (char *) 0};
+                int index = 5;
+                if (opt_verbose)
+                    args[index++] = "-v";
+                if (opt_warning)
+                    args[index++] = "-W";
 
                 clog << "importing "
                      << __COLOR_GREEN
@@ -248,9 +252,13 @@ namespace AVSI {
                     clog << args[0] << " "
                          << filesystem::absolute(sourcefile) << " "
                          << args[2] << " "
-                         << filesystem::absolute(filesystem::path(output_root_path)) << " "
-                         << args[4] << " "
-                         << args[5] << endl;
+                         << filesystem::absolute(filesystem::path(output_root_path)) << " ";
+                    for (int i = 4; i < 7; i++) {
+                        if (args[i] != 0) {
+                            clog << args[i] << " ";
+                        }
+                    }
+                    clog << endl;
                 }
 
                 execvp(compiler_command_line.c_str(), (char *const *) args);
@@ -271,7 +279,8 @@ namespace AVSI {
                 }
                 bcfile = module_file_system_path;
 
-                if (std::filesystem::exists(bcfile)) break;
+                if (std::filesystem::exists(bcfile))
+                    break;
             }
         }
 
@@ -324,7 +333,7 @@ namespace AVSI {
             unparsed_name += mod;
 
             smd.print(unparsed_name.c_str(), llvm::errs());
-
+            cout << smd.getLineContents().str() << " " << smd.getMessage().str() << endl;
             throw ExceptionFactory<IRErrException>(
                     "failed to import module " + unparsed_name,
                     line, col);
@@ -479,7 +488,8 @@ namespace AVSI {
         pass.run(*the_module);
         dest.flush();
 
-        if (opt_verbose) llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
+        if (opt_verbose)
+            llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
     }
 
     void llvm_asm_output() {
@@ -509,28 +519,58 @@ namespace AVSI {
         pass.run(*the_module);
         dest.flush();
 
-        if (opt_verbose) llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
+        if (opt_verbose)
+            llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
     }
 
     void llvm_module_output() {
         std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
         string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
 
+        auto llFile =
+                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
+                string(file_basename) + ".ll";
+
         auto Filename =
                 output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
                 string(file_basename) + ".bc";
         llvm_create_dir(filesystem::path(Filename).parent_path());
-        std::error_code EC;
-        llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
+//         std::error_code EC;
+//         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
+//
+//         llvm::WriteBitcodeToFile(*the_module, dest, true, nullptr, true);
+//
+//         dest.flush();
+//
+//         FILE *file = fopen(Filename.c_str(), "r");
+//         fflush(file);
+//
+//         if (opt_verbose) llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
 
-        llvm::WriteBitcodeToFile(*the_module, dest);
+        llvm_module_printIR();
 
-        dest.flush();
+        pid_t pid = fork();
+        int status = 0;
+        if (pid == -1) {
+            throw ExceptionFactory<SysErrException>(
+                    "unable to fork program. paused",
+                    -1, -1);
+        } else if (pid > 1) {
+            wait(&status);
+        } else {
+            char const *args[3] = {
+                    "llvm-as",
+                    llFile.c_str(),
+                    (char *) 0
+            };
 
-        FILE *file = fopen(Filename.c_str(), "r");
-        fflush(file);
-
-        if (opt_verbose) llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
+            execvp("llvm-as", (char *const *) args);
+            exit(-1);
+        }
+        if (opt_verbose)
+            llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
+        if (!opt_ir)
+            filesystem::remove(filesystem::path(llFile));
     }
 
     void llvm_module_printIR() {
@@ -544,7 +584,8 @@ namespace AVSI {
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
         the_module->print(dest, nullptr);
-        if (opt_verbose) llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
+        if (opt_verbose)
+            llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
     }
 
     void debug_type(llvm::Value *v) {
