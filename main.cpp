@@ -64,6 +64,7 @@ static struct option long_options[] = {
         {"verbose", no_argument, NULL, 'v'},
         {"include", required_argument, NULL, 'I'},
         {"warning", no_argument, NULL, 'W'},
+        {"optimize", no_argument, NULL, 'O'},
         {0, 0, 0, 0}
 };
 
@@ -74,6 +75,7 @@ static bool opt_help = false;
 bool opt_reliance = false;
 bool opt_verbose = false;
 bool opt_warning = false;
+bool opt_optimize = false;
 
 void printHelp(void) {
     string version = \
@@ -91,13 +93,14 @@ void printHelp(void) {
     "    -h             --help      Display available options.\n"
     "    -v             --verbose   Display more details during building.\n"
     "    -I             --include   Add include path.\n"
-    "    -W             --warning   Show all warnings.\n";
+    "    -W             --warning   Show all warnings.\n"
+    "    -O             --optimize  optimize code\n";
 
     printf("%s\n\n%s", version.c_str(), msg.c_str());
 }
 
 void getOption(int argc, char **argv) {
-    while ((opt = getopt_long(argc, argv, "lSmro:hvI:W", long_options, &loidx)) != -1) {
+    while ((opt = getopt_long(argc, argv, "lSmro:hvI:WO", long_options, &loidx)) != -1) {
         if (opt == 0) {
             opt = lopt;
         }
@@ -133,6 +136,9 @@ void getOption(int argc, char **argv) {
                 break;
             case 'W':
                 opt_warning = true;
+                break;
+            case 'O':
+                opt_optimize = true;
                 break;
             default:
                 printf("error: unsupported option");
@@ -242,10 +248,10 @@ int main(int argc, char **argv) {
                       << __COLOR_RESET << std::endl;
         }
 
-        if (opt_ir) llvm_module_printIR();
-        if (opt_asm) llvm_asm_output();
-        if (opt_module) llvm_module_output();
-        if (!(opt_ir || opt_asm))llvm_obj_output();
+        if (opt_ir) llvm_emit_ir();
+        if (opt_asm) llvm_emit_asm();
+        if (opt_module) llvm_emit_bitcode();
+        if (!(opt_ir || opt_asm))llvm_emit_obj();
     } catch (Exception &e) {
         if (e.type() == __ErrReport) {
             std::cerr << __COLOR_RED

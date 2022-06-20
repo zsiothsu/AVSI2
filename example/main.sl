@@ -8,7 +8,7 @@ import com::avsi::mod1
 import com::avsi::mod3::object
 import com::avsi::mod2::loop
 
-import std::io
+import std::io as io
 
 export no_mangle function entry() {
     a = com::avsi::export_mod::foo(1)       # absolute path
@@ -22,10 +22,10 @@ export no_mangle function entry() {
 
 
     str = {:char:100}
-    std::io::printStr("Hello World!\n")
-    std::io::printStr("input: ")
-    std::io::readStr(str, 50)
-    std::io::printStr("your input: ")
-    std::io::printStr(str)
-    std::io::printStr("\n")
+    io::printStr("Hello World!\n")
+    io::printStr("input: ")
+    io::readStr(str, 50)
+    io::printStr("your input: ")
+    io::printStr(str)
+    io::printStr("\n")
 }

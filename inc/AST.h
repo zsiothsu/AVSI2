@@ -540,13 +540,13 @@ namespace AVSI {
 
     void llvm_machine_init();
 
-    void llvm_obj_output();
+    void llvm_emit_obj();
 
-    void llvm_asm_output();
+    void llvm_emit_asm();
 
-    void llvm_module_output();
+    void llvm_emit_bitcode();
 
-    void llvm_module_printIR();
+    void llvm_emit_ir();
 
     void llvm_create_dir(string dir);
 } // namespace AVSI

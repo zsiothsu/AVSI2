@@ -46,13 +46,15 @@
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
-#include <llvm/IR/PassManager.h>
+#include <llvm/Transforms/Utils/Cloning.h>
+#include <llvm/Transforms/Utils/ValueMapper.h>
 
 extern bool opt_ir;
 extern bool opt_module;
 extern bool opt_reliance;
 extern bool opt_verbose;
 extern bool opt_warning;
+extern bool opt_optimize;
 
 namespace AVSI {
     using namespace std;
@@ -98,12 +100,14 @@ namespace AVSI {
      *                     function                        *
      *******************************************************/
     void llvm_module_fpm_init() {
-        the_fpm->add(llvm::createReassociatePass());
-        the_fpm->add(llvm::createGVNPass());
-        the_fpm->add(llvm::createInstructionCombiningPass());
-        the_fpm->add(llvm::createCFGSimplificationPass());
-        the_fpm->add(llvm::createDeadCodeEliminationPass());
-        the_fpm->add(llvm::createFlattenCFGPass());
+        if (opt_optimize) {
+            the_fpm->add(llvm::createReassociatePass());
+            the_fpm->add(llvm::createGVNPass());
+            the_fpm->add(llvm::createInstructionCombiningPass());
+            the_fpm->add(llvm::createCFGSimplificationPass());
+            the_fpm->add(llvm::createDeadCodeEliminationPass());
+            the_fpm->add(llvm::createFlattenCFGPass());
+        }
 
         the_fpm->doInitialization();
     }
@@ -222,12 +226,14 @@ namespace AVSI {
                 bcfile = module_file_system_path;
             } else {
                 string program = compiler_command_line;
-                char const *args[8] = {
+                const uint16_t arg_size = 9;
+                char const *args[arg_size] = {
                         program.c_str(),
                         module_source_file_system_path.c_str(),
                         "-o",
                         output_root_path.c_str(),
                         "-m",
+                        (char *) 0,
                         (char *) 0,
                         (char *) 0,
                         (char *) 0};
@@ -236,6 +242,8 @@ namespace AVSI {
                     args[index++] = "-v";
                 if (opt_warning)
                     args[index++] = "-W";
+                if (opt_optimize)
+                    args[index++] = "-O";
 
                 clog << "importing "
                      << __COLOR_GREEN
@@ -253,7 +261,7 @@ namespace AVSI {
                          << filesystem::absolute(sourcefile) << " "
                          << args[2] << " "
                          << filesystem::absolute(filesystem::path(output_root_path)) << " ";
-                    for (int i = 4; i < 7; i++) {
+                    for (int i = 4; i < arg_size - 1; i++) {
                         if (args[i] != 0) {
                             clog << args[i] << " ";
                         }
@@ -461,7 +469,7 @@ namespace AVSI {
         the_module->setDataLayout(TheTargetMachine->createDataLayout());
     }
 
-    void llvm_obj_output() {
+    void llvm_emit_obj() {
         std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
         string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
 
@@ -490,9 +498,11 @@ namespace AVSI {
 
         if (opt_verbose)
             llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
+
+        dest.close();
     }
 
-    void llvm_asm_output() {
+    void llvm_emit_asm() {
         std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
         string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
 
@@ -523,57 +533,38 @@ namespace AVSI {
             llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
     }
 
-    void llvm_module_output() {
+    void llvm_emit_bitcode() {
         std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
         string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
-
-        auto llFile =
-                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
-                string(file_basename) + ".ll";
 
         auto Filename =
                 output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
                 string(file_basename) + ".bc";
         llvm_create_dir(filesystem::path(Filename).parent_path());
-//         std::error_code EC;
-//         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
-//
-//         llvm::WriteBitcodeToFile(*the_module, dest);
-//
-//         dest.flush();
-//
-//         FILE *file = fopen(Filename.c_str(), "r");
-//         fflush(file);
-//
-//         if (opt_verbose) llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
 
-        llvm_module_printIR();
+        /*
+         * It is important to CLONE the module.
+         * Since the optimization may change the module.
+         * And generating bitcode directly may cause segmentation fault.
+         */
+        llvm::ValueToValueMapTy vmt;
+        auto clone = llvm::CloneModule(*the_module, vmt).release();
 
-        pid_t pid = fork();
-        int status = 0;
-        if (pid == -1) {
-            throw ExceptionFactory<SysErrException>(
-                    "unable to fork program. paused",
-                    -1, -1);
-        } else if (pid > 1) {
-            wait(&status);
-        } else {
-            char const *args[3] = {
-                    "llvm-as",
-                    llFile.c_str(),
-                    (char *) 0
-            };
+        llvm::legacy::PassManager pass;
+        pass.run(*clone);
 
-            execvp("llvm-as", (char *const *) args);
-            exit(-1);
-        }
-        if (opt_verbose)
-            llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
-        if (!opt_ir)
-            filesystem::remove(filesystem::path(llFile));
+        std::error_code EC;
+        llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
+        llvm::WriteBitcodeToFile(*clone, dest);
+
+        dest.flush();
+
+        if (opt_verbose) llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
+
+        dest.close();
     }
 
-    void llvm_module_printIR() {
+    void llvm_emit_ir() {
         std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
         string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
 
@@ -586,6 +577,7 @@ namespace AVSI {
         the_module->print(dest, nullptr);
         if (opt_verbose)
             llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
+        dest.close();
     }
 
     void debug_type(llvm::Value *v) {

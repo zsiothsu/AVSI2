@@ -464,13 +464,6 @@ namespace AVSI {
         return llvm::Constant::getNullValue(REAL_TY);
     }
 
-    llvm::Value *BinOpOpt(BinOp *ast) {
-        any l = ((Num *) ast->left)->getValue();
-        any r = ((Num *) ast->right)->getValue();
-
-        // TODO
-    }
-
     llvm::Value *AST::codeGen() {
         return llvm::Constant::getNullValue(REAL_TY);
     }
