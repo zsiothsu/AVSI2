@@ -3,44 +3,42 @@
 # the module name must be the same as the file name
 mod com::avsi::main
 
-import com::avsi::export_mod as ef
-import com::avsi::mod1
-import com::avsi::mod3::object
-import com::avsi::mod2::loop
-
 import std::io as io
 
-export function cast_test() {
-    a = 1
-    b = 1.5
-    c = b as i64
-    d:f32 = b as f64
-    e = b as i128
-    f: bool = true
+import com::avsi::function_test::fun
+import com::avsi::if_test::if
+import com::avsi::interface_test
+import com::avsi::loop_test
+import com::avsi::object_test::object
+import com::avsi::type_test
 
-    arr = {:i32:2}
-    i8_ptr = arr as vec[i8;0]
-    addr = i8_ptr as i64 + 4
-    i8_ptr = addr as vec[i32;0]
-    void_ptr = arr as vec[void;0]
-}
+export no_mangle function entry() -> i32 {
+    a = com::avsi::function_test::fun::foo_p_i64_r_f64(1 as i64)
+    b = com::avsi::function_test::fun::foo_p_i8ptr_i32_r_i8({'a', 'b', 46 as i8}, 2)
 
-export no_mangle function entry() {
-    a = com::avsi::export_mod::foo(1 as f64)       # absolute path
-    a = export_mod::foo(1 as f64)                  # relative path
-    a = ef::foo(1 as f64)                          # rename com::avsi::export_mod to ef
+    c = com::avsi::if_test::if::foo_iftest(0)
 
-    a = com::avsi::mod1::sub_mod1::foo()    # module with sub-module
+    com::avsi::interface_test::mangle::fun_mangled()
+    com::avsi::interface_test::mangle::fun_nomangle()
+    fun_nomangle()
+    com::avsi::interface_test::private::function_public()
+    # interface_test::private::function_private()
 
-    export_mod::no_mangle_function()        # no mangling function
-    no_mangle_function()                    # no mangling function, path could be ignored
+    # com::avsi::loop_test::for::for_test()
+    # com::avsi::loop_test::while::while_test(1.23 as f64)
 
+    com::avsi::object_test::object::obj_test()
+
+    com::avsi::type_test::cast::cast_test()
+    com::avsi::type_test::expr::expr_test()
 
     str = {:char:100}
     io::printStr("Hello World!\n")
     io::printStr("input: ")
-    io::readStr(str, 50 as f64)
+    io::readStr(str)
     io::printStr("your input: ")
     io::printStr(str)
     io::printStr("\n")
+
+    return 0
 }

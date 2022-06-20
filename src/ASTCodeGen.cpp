@@ -333,7 +333,7 @@ namespace AVSI {
                                                          l_alloca_addr,
                                                          "dest.addr");
                 size = min(type_size[l_type->getPointerElementType()],
-                           type_size[l_type->getPointerElementType()]);
+                           type_size[r_type->getPointerElementType()]);
                 builder->CreateMemCpy(l_ptr, llvm::MaybeAlign(), r_ptr, llvm::MaybeAlign(),
                                       size);
             } else if (l_type->getPointerElementType()->isArrayTy()) {
@@ -610,8 +610,10 @@ namespace AVSI {
                     else if (float_point)
                         return builder->CreateMul(lv, rv, "mulTmp");
                 case SLASH:
-                    lv_real = l_type->isDoubleTy() ? lv : builder->CreateSIToFP(lv, F64_TY);
-                    rv_real = r_type->isDoubleTy() ? rv : builder->CreateSIToFP(rv, F64_TY);
+                    if(!float_point) {
+                        lv_real = builder->CreateSIToFP(lv, F32_TY);
+                        rv_real = builder->CreateSIToFP(rv, F32_TY);
+                    }
                     return builder->CreateFDiv(lv_real, rv_real, "divTmp");
                 case EQ:
                     if (float_point) {
@@ -1476,7 +1478,7 @@ namespace AVSI {
         } else {
             if (this->getValue().type() == Float) {
                 return llvm::ConstantFP::get(F32_TY,
-                                             this->getValue().any_cast<double>());
+                                             this->getValue().any_cast<float>());
             } else {
                 return llvm::ConstantInt::get(I32_TY,
                                               this->getValue().any_cast<int>());

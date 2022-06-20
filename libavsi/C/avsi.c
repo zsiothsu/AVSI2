@@ -14,6 +14,6 @@ double readNum() {
     return num;
 }
 
-double readStr(char* str, double n) {
+int readStr(char* str) {
     return scanf("%s", str);
 }

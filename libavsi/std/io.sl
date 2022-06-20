@@ -6,4 +6,4 @@ export no_mangle function printReal(num: real)
 
 export no_mangle function readNum() -> real
 
-export no_mangle function readStr(str: vec[char;0], n: real) -> real
+export no_mangle function readStr(str: vec[char;0]) -> i32
