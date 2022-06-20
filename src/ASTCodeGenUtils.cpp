@@ -76,10 +76,15 @@ namespace AVSI {
     /*******************************************************
      *               protos & definition                   *
      *******************************************************/
-    extern llvm::Type *REAL_TY;
-    extern llvm::Type *CHAR_TY;
+    extern llvm::Type *F64_TY;
+    extern llvm::Type *F32_TY;
+    extern llvm::Type *I128_TY;
+    extern llvm::Type *I64_TY;
+    extern llvm::Type *I32_TY;
+    extern llvm::Type *I16_TY;
+    extern llvm::Type *I8_TY;
+    extern llvm::Type *I1_TY;
     extern llvm::Type *VOID_TY;
-    extern llvm::Type *BOOL_TY;
 
     extern AST *ASTEmpty;
     extern AST *ASTEmptyNotEnd;
@@ -95,6 +100,8 @@ namespace AVSI {
     extern map<llvm::Type *, uint32_t> type_size;
 
     extern map<string, string> module_name_alias;
+
+    map<TokenType, llvm::Type *> token_to_simple_types;
 
     /*******************************************************
      *                     function                        *
@@ -392,10 +399,15 @@ namespace AVSI {
 
         // reset symbols
         delete symbol_table;
-        REAL_TY = llvm::Type::getDoubleTy(*the_context);
-        CHAR_TY = llvm::Type::getInt8Ty(*the_context);
+        F64_TY = llvm::Type::getDoubleTy(*the_context);
+        F32_TY = llvm::Type::getFloatTy(*the_context);
+        I128_TY = llvm::Type::getInt128Ty(*the_context);
+        I64_TY = llvm::Type::getInt64Ty(*the_context);
+        I32_TY = llvm::Type::getInt32Ty(*the_context);
+        I16_TY = llvm::Type::getInt16Ty(*the_context);
+        I8_TY = llvm::Type::getInt8Ty(*the_context);
+        I1_TY = llvm::Type::getInt1Ty(*the_context);
         VOID_TY = llvm::Type::getVoidTy(*the_context);
-        BOOL_TY = llvm::Type::getInt1Ty(*the_context);
 
         symbol_table = new SymbolTable();
         struct_types.clear();
@@ -405,24 +417,57 @@ namespace AVSI {
         type_name.clear();
         type_size.clear();
 
-        simple_types = {REAL_TY,
-                        CHAR_TY,
-                        BOOL_TY};
+        simple_types = {
+                F64_TY, F32_TY,
+                I128_TY, I64_TY,
+                I32_TY, I16_TY,
+                I8_TY, I1_TY,
+                VOID_TY
+        };
+
         simple_types_map = {
-                {REAL_TY, 0x04},
-                {CHAR_TY, 0x02},
-                {BOOL_TY, 0x01}};
+                {F64_TY,  (uint8_t) (0x1 << 7)},
+                {F32_TY,  (uint8_t) (0x1 << 6)},
+                {I128_TY, (uint8_t) (0x1 << 5)},
+                {I64_TY,  (uint8_t) (0x1 << 4)},
+                {I32_TY,  (uint8_t) (0x1 << 3)},
+                {I16_TY,  (uint8_t) (0x1 << 2)},
+                {I8_TY,   (uint8_t) (0x1 << 1)},
+                {I1_TY,   (uint8_t) 0x1},
+        };
         type_name = {
-                {REAL_TY, "real"},
-                {CHAR_TY, "char"},
+                {F64_TY,  "f64"},
+                {F32_TY,  "f32"},
+                {I128_TY, "i128"},
+                {I64_TY,  "i64"},
+                {I32_TY,  "i32"},
+                {I16_TY,  "i16"},
+                {I8_TY,   "i8"},
+                {I1_TY,   "bool"},
                 {VOID_TY, "void"},
-                {BOOL_TY, "bool"},
         };
         type_size = {
-                {REAL_TY, 8},
-                {CHAR_TY, 1},
+                {F64_TY,  8},
+                {F32_TY,  4},
+                {I128_TY, 16},
+                {I64_TY,  8},
+                {I32_TY,  4},
+                {I16_TY,  2},
+                {I8_TY,   1},
+                {I1_TY,   1},
                 {VOID_TY, 0},
-                {BOOL_TY, 1},
+        };
+
+        token_to_simple_types = {
+                {F64,  F64_TY},
+                {F32,  F32_TY},
+                {I128, I128_TY},
+                {I64,  I64_TY},
+                {I32,  I32_TY},
+                {I16,  I16_TY},
+                {I8,   I8_TY},
+                {BOOL, I1_TY},
+                {VOID, VOID_TY}
         };
 
         module_name = "";

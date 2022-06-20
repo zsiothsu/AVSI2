@@ -76,6 +76,7 @@
 #define __SIZEOF_NAME           "Sizeof"
 #define __STRING_NAME           "String"
 #define __STRUCTINIT_NAME       "StructInit"
+#define __TYPETRANS_NAME        "TypeTrans"
 #define __ARRAYINIT_NAME        "ArrayInit"
 #define __UNARYTOP_NAME         "UnaryOp"
 #define __VARIABLE_NAME         "Variable"
@@ -295,7 +296,7 @@ namespace AVSI {
         llvm::Value *codeGen() override;
     };
 
-    class LoopCtrl: public AST {
+    class LoopCtrl : public AST {
     public:
         enum LoopCtrlType {
             CTRL_BREAK = 0,
@@ -306,7 +307,7 @@ namespace AVSI {
 
         LoopCtrl() : AST(__LOOPCTRL_NAME) {}
 
-        LoopCtrl(LoopCtrlType type, Token token): AST(__LOOPCTRL_NAME,token), type(type) {}
+        LoopCtrl(LoopCtrlType type, Token token) : AST(__LOOPCTRL_NAME, token), type(type) {}
 
         llvm::Value *codeGen() override;
     };
@@ -456,6 +457,22 @@ namespace AVSI {
                 : AST(__STRUCTINIT_NAME, token), id(std::move(id)), paramList(std::move(paramList)) {};
 
         virtual ~StructInit();
+
+        llvm::Value *codeGen() override;
+    };
+
+    class TypeTrans : public AST {
+    public:
+        AST *factor;
+        Type Ty;
+
+        TypeTrans(void)
+                : AST(__TYPETRANS_NAME), factor(nullptr) {};
+
+        TypeTrans(AST *factor, Type Ty, Token token)
+                : AST(__TYPETRANS_NAME, token), factor(factor), Ty(Ty) {};
+
+        virtual ~TypeTrans();
 
         llvm::Value *codeGen() override;
     };

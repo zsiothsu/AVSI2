@@ -187,7 +187,7 @@ namespace AVSI {
             ret = &this->valueChar;
         else if (typeid(T) == typeid(int) && this->typeInfo <= typeInt)
             ret = &this->valueInt;
-        else if (typeid(T) == typeid(double) && this->typeInfo <= typeFloat)
+        else if ((typeid(T) == typeid(double) || typeid(T) == typeid(float)) && this->typeInfo <= typeFloat)
             ret = &this->valueFloat;
         else if (typeid(T) == typeid(string))
             ret = &this->valueString;

@@ -76,7 +76,6 @@ namespace AVSI {
 
         Token character();
 
-
         Token Id();
     };
 
@@ -98,33 +97,42 @@ namespace AVSI {
             {'.', DOT}};
 
     static map<string, TokenType> reservedKeyword = {
-            {"function",  FUNCTION},
-            {"return",    RETURN},
-            {"true",      TRUE},
-            {"false",     FALSE},
-            {"if",        IF},
-            {"else",      ELSE},
-            {"elif",      ELIF},
-            {"fi",        FI},
-            {"then",      THEN},
-            {"for",       FOR},
-            {"while",     WHILE},
-            {"do",        DO},
-            {"done",      DONE},
-            {"global",    GLOBAL},
-            {"import",    IMPORT},
-            {"export",    EXPORT},
-            {"mod",       MODULE},
-            {"real",      REAL},
-            {"vec",       VEC},
-            {"obj",       OBJ},
-            {"char",      CHAR},
-            {"sizeof",    SIZEOF},
-            {"typename",  TYPENAME},
-            {"break",     BREAK},
-            {"continue",  CONTINUE},
+            {"function", FUNCTION},
+            {"return", RETURN},
+            {"true", TRUE},
+            {"false", FALSE},
+            {"if", IF},
+            {"else", ELSE},
+            {"elif", ELIF},
+            {"fi", FI},
+            {"then", THEN},
+            {"for", FOR},
+            {"while", WHILE},
+            {"do", DO},
+            {"done", DONE},
+            {"global", GLOBAL},
+            {"import", IMPORT},
+            {"export", EXPORT},
+            {"mod", MODULE},
+            {"real", F64},
+            {"vec", VEC},
+            {"obj", OBJ},
+            {"char", I8},
+            {"sizeof", SIZEOF},
+            {"typename", TYPENAME},
+            {"break", BREAK},
+            {"continue", CONTINUE},
             {"no_mangle", NOMANGLE},
-            {"as",        AS}
+            {"as", AS},
+            {"f64", F64},
+            {"f32", F32},
+            {"i128", I128},
+            {"i64", I64},
+            {"i32", I32},
+            {"i16", I16},
+            {"i8", I8},
+            {"bool", BOOL},
+            {"void", VOID},
     };
 } // namespace AVSI
 

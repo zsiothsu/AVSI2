@@ -81,6 +81,10 @@ namespace AVSI {
         for (auto param: this->paramList) { delete param; }
     }
 
+    TypeTrans::~TypeTrans() {
+        delete this->factor;
+    }
+
     ArrayInit::~ArrayInit() {
         for (auto param: this->paramList) { delete param; }
     }

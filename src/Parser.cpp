@@ -72,6 +72,21 @@ namespace AVSI {
 
     extern map<string, string> module_name_alias;
 
+    extern llvm::Type *F64_TY;
+    extern llvm::Type *F32_TY;
+    extern llvm::Type *I128_TY;
+    extern llvm::Type *I64_TY;
+    extern llvm::Type *I32_TY;
+    extern llvm::Type *I16_TY;
+    extern llvm::Type *I8_TY;
+    extern llvm::Type *I1_TY;
+    extern llvm::Type *VOID_TY;
+
+    extern map<llvm::Type *, string> type_name;
+
+    extern set<llvm::Type *> simple_types;
+    extern map<TokenType, llvm::Type *> token_to_simple_types;
+
     /*******************************************************
      *                    constructor                      *
      *******************************************************/
@@ -513,8 +528,8 @@ namespace AVSI {
                 );
             }
 
-            if (i->Ty.second != "real" && i->Ty.second != "vec") {
-                if (struct_types.find(i->id) == struct_types.end()) {
+            if (simple_types.find(i->Ty.first) == simple_types.end() && i->Ty.second != "vec") {
+                if (struct_types.find(i->Ty.second) == struct_types.end()) {
                     throw ExceptionFactory<MissingException>(
                             "missing type '" + i->Ty.second + "'",
                             i->getToken().line, i->getToken().column
@@ -791,39 +806,46 @@ namespace AVSI {
 
         Token token = this->currentToken;
 
+        AST *ret = nullptr;
+
         if (token.getType() == SIZEOF) {
-            return sizeOf();
-        }
-        if (token.getType() == INTEGER || token.getType() == FLOAT || token.getType() == CHAR) {
+            ret = sizeOf();
+        } else if (token.getType() == INTEGER || token.getType() == FLOAT || token.getType() == CHAR) {
             eat(token.getType());
-            return new Num(token);
-        }
-        if (token.getType() == TRUE || token.getType() == FALSE) {
+            ret = new Num(token);
+        } else if (token.getType() == TRUE || token.getType() == FALSE) {
             eat(token.getType());
-            return new Boolean(token);
-        }
-        if (token.getType() == PLUS) {
+            ret = new Boolean(token);
+        } else if (token.getType() == PLUS) {
             eat(PLUS);
-            return new UnaryOp(token, factor());
-        }
-        if (token.getType() == MINUS) {
+            ret = new UnaryOp(token, factor());
+        } else if (token.getType() == MINUS) {
             eat(MINUS);
-            return new UnaryOp(token, factor());
-        }
-        if (token.getType() == NOT) {
+            ret = new UnaryOp(token, factor());
+        } else if (token.getType() == NOT) {
             eat(NOT);
-            return new UnaryOp(token, factor());
-        }
-        if (token.getType() == ID && this->lexer->currentChar == '(') {
-            return functionCall();
-        }
-        if (token.getType() == ID || token.getType() == DOLLAR) { return variable(); }
-        if (token.getType() == LPAR) {
+            ret = new UnaryOp(token, factor());
+        } else if (token.getType() == ID && this->lexer->currentChar == '(') {
+            ret = functionCall();
+        } else if (token.getType() == ID || token.getType() == DOLLAR) {
+            ret = variable();
+        } else if (token.getType() == LPAR) {
             eat(LPAR);
             AST *res = expr();
             eat(RPAR);
-            return res;
+            ret = res;
         }
+
+        if (ret != nullptr) {
+            if (this->currentToken.getType() == AS) {
+                Token as = this->currentToken;
+                eat(AS);
+                Type Ty = eatType();
+                ret = new TypeTrans(ret, Ty, as);
+            }
+            return ret;
+        }
+
         if (token.getType() == RPAR) {
             if (this->parenCnt <= 0)
                 throw ExceptionFactory<SyntaxException>(
@@ -920,7 +942,7 @@ namespace AVSI {
           and show to code generator. the variable type in right value
           will be ignored.
         */
-        Type Ty = Type(llvm::Type::getVoidTy(*the_context), "void");
+        Type Ty = Type(llvm::Type::getVoidTy(*the_context), "none");
         if (this->currentToken.getType() == COLON) {
             eat(COLON);
             Ty = eatType();
@@ -928,7 +950,8 @@ namespace AVSI {
         }
 
         // process [expr] and .ID
-        vector<pair<Variable::offsetType, AST *>> offset;
+        vector<pair<Variable::offsetType, AST *>>
+                offset;
         TokenType current_type = this->currentToken.getType();
         while (current_type == LSQB || current_type == DOT) {
             if (current_type == LSQB) {
@@ -994,18 +1017,21 @@ namespace AVSI {
     Type Parser::eatType() {
         PARSE_LOG(INNERTYPE);
 
-        if (this->currentToken.getType() == REAL) {
-            eat(REAL);
-            return Type(llvm::Type::getDoubleTy(*the_context), "real");
-        } else if (this->currentToken.getType() == CHAR) {
-            eat(CHAR);
-            return Type(llvm::Type::getInt8Ty(*the_context), "char");
+        if (token_to_simple_types.find(this->currentToken.getType()) != token_to_simple_types.end()) {
+            TokenType token = this->currentToken.getType();
+            eat(token);
+            auto ty = token_to_simple_types[token];
+            return Type(ty, type_name[ty]);
         } else if (this->currentToken.getType() == VEC) {
             eat(VEC);
             eat(LSQB);
             if (this->currentToken.getType() != RSQB) {
                 // Type can be any types, even another vector
                 Type nest = eatType();
+                if(nest.first == VOID_TY) {
+                    nest.first = I8_TY;
+                }
+
                 eat(SEMI);
                 int array_size = 0;
                 if (this->currentToken.getType() == INTEGER) {
@@ -1050,7 +1076,7 @@ namespace AVSI {
                 );
             }
 
-            Type Ty = Type(struct_types[id]->Ty, this->currentToken.getValue().any_cast<string>());
+            Type Ty = Type(struct_types[id]->Ty, id);
             eat(ID);
             return Ty;
         } else {

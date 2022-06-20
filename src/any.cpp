@@ -77,6 +77,7 @@ namespace AVSI {
 
     any::any(int var) {
         this->typeInfo = typeInt;
+        this->valueChar = (char)var;
         this->valueInt = this->valueFloat = var;
         this->valueBool = (bool)var;
     }
@@ -84,6 +85,7 @@ namespace AVSI {
     any::any(double var) {
         this->typeInfo = typeFloat;
         this->valueFloat = var;
+        this->valueInt = (int)var;
         this->valueBool = (bool)var;
     }
 

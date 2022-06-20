@@ -4,7 +4,7 @@ export function private_function() {
     return
 }
 
-export function foo(x: real) -> real{
+export function foo(x: f64) -> f64{
     private_function()
     return 0
 }

@@ -1,6 +1,6 @@
 mod com::avsi::mod2::loop
 
-export function while_test(x: real) -> real{
+export function while_test(x: f64) -> f64{
     a = x
 
     while [ true ] do
