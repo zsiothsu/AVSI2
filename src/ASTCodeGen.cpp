@@ -53,6 +53,7 @@ namespace AVSI {
      *                      llvm base                      *
      *******************************************************/
     string module_name;
+    string module_name_nopath;
     vector<string> module_path = vector<string>();
 
     llvm::LLVMContext *the_context;
@@ -1048,10 +1049,38 @@ namespace AVSI {
         if (module_name_alias.find(mod_path) != module_name_alias.end()) {
             mod_path = module_name_alias[mod_path];
         }
-
         // get function with mangled name. if module get null function, try with non-mangled name again
+        // may be absolute path or aliased
         llvm::Function *fun = the_module->getFunction(
                 getFunctionNameMangling(getpathUnresolvedToList(mod_path), this->id));
+
+        // may be alias
+        if (!fun && !this->getToken().getModInfo().empty()) {
+            string head = this->getToken().getModInfo()[0];
+            if (module_name_alias.find(head) != module_name_alias.end()) {
+                auto path_cut = this->getToken().getModInfo();
+                path_cut.erase(path_cut.begin());
+                head = module_name_alias[head];
+                auto head_to_origin = getpathUnresolvedToList(head);
+                for (auto i: path_cut) {
+                    head_to_origin.push_back(i);
+                }
+                fun = the_module->getFunction(
+                        getFunctionNameMangling(head_to_origin, this->id));
+            }
+        }
+
+        // may be relative path
+        if (!fun) {
+            auto fun_path = module_path;
+            for (auto i: this->getToken().getModInfo()) {
+                fun_path.push_back(i);
+            }
+            mod_path = getpathListToUnresolved(fun_path);
+            fun = the_module->getFunction(
+                    getFunctionNameMangling(getpathUnresolvedToList(mod_path), this->id));
+        }
+        // or non-mangled
         if (!fun) fun = the_module->getFunction(this->id);
 
         if (!fun) {

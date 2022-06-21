@@ -131,6 +131,7 @@ namespace AVSI {
             {"i32", I32},
             {"i16", I16},
             {"i8", I8},
+            {"isize", ISIZE},
             {"bool", BOOL},
             {"void", VOID},
     };

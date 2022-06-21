@@ -63,6 +63,7 @@ namespace AVSI {
      *                      llvm base                      *
      *******************************************************/
     extern string module_name;
+    extern string module_name_nopath;
     extern vector<string> module_path;
 
     extern llvm::LLVMContext *the_context;
@@ -261,8 +262,7 @@ namespace AVSI {
                      << mod
                      << __COLOR_RESET << " by " << __COLOR_GREEN
                      << getpathListToUnresolved(module_path)
-                     << "::"
-                     << module_name
+                     << ((input_file_name_no_suffix == MODULE_INIT_NAME) ? "" : "::" + module_name_nopath)
                      << __COLOR_RESET << endl;
                 if (opt_verbose) {
                     clog << args[0] << " "
@@ -473,6 +473,7 @@ namespace AVSI {
                 {I16,  I16_TY},
                 {I8,   I8_TY},
                 {BOOL, I1_TY},
+                {ISIZE, ISIZE_TY},
                 {VOID, VOID_TY}
         };
 

@@ -63,6 +63,7 @@ namespace AVSI {
     extern llvm::LLVMContext *the_context;
     extern llvm::Module *the_module;
     extern string module_name;
+    extern string module_name_nopath;
     extern vector<string> module_path;
 
     extern map<string, StructDef *> struct_types;
@@ -453,7 +454,8 @@ namespace AVSI {
                 module_path.push_back(dir);
             }
 
-            path.push_back(this->currentToken.getValue().any_cast<string>());
+            module_name_nopath = this->currentToken.getValue().any_cast<string>();
+            path.push_back(module_name_nopath);
             module_name = __getModuleNameByPath(path);
             mod_named = true;
             the_module->setModuleIdentifier(module_name);

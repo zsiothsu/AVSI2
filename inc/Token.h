@@ -110,6 +110,7 @@ namespace AVSI {
         I16,
         I8,
         BOOL,
+        ISIZE,
         VOID,
     } TokenType;
 
@@ -249,6 +250,7 @@ namespace AVSI {
             {I16, "I16"},
             {I8, "I8"},
             {BOOL, "BOOL"},
+            {ISIZE, "BOOL"},
             {VOID, "VOID"}
     };
 } // namespace AVSI
