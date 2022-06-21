@@ -16,7 +16,7 @@ export no_mangle function entry() -> i32 {
     a = com::avsi::function_test::fun::foo_p_i64_r_f64(1 as i64)
     b = com::avsi::function_test::fun::foo_p_i8ptr_i32_r_i8({'a', 'b', 46 as i8}, 2)
 
-    c = com::avsi::if_test::if::foo_iftest(0)
+    c = com::avsi::if_test::if::foo_iftest(0 as i8)
 
     com::avsi::interface_test::mangle::fun_mangled()
     com::avsi::interface_test::mangle::fun_nomangle()
@@ -24,8 +24,8 @@ export no_mangle function entry() -> i32 {
     com::avsi::interface_test::private::function_public()
     # interface_test::private::function_private()
 
-    # com::avsi::loop_test::for::for_test()
-    # com::avsi::loop_test::while::while_test(1.23 as f64)
+    com::avsi::loop_test::for::for_test()
+    com::avsi::loop_test::while::while_test(5 as f64)
 
     com::avsi::object_test::object::obj_test()
 

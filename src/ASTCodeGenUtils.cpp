@@ -85,6 +85,7 @@ namespace AVSI {
     extern llvm::Type *I8_TY;
     extern llvm::Type *I1_TY;
     extern llvm::Type *VOID_TY;
+    extern llvm::Type *ISIZE_TY;
 
     extern AST *ASTEmpty;
     extern AST *ASTEmptyNotEnd;
@@ -109,9 +110,9 @@ namespace AVSI {
     void llvm_module_fpm_init() {
         if (opt_optimize) {
             the_fpm->add(llvm::createReassociatePass());
-            the_fpm->add(llvm::createGVNPass());
+//            the_fpm->add(llvm::createGVNPass());
             the_fpm->add(llvm::createInstructionCombiningPass());
-            the_fpm->add(llvm::createCFGSimplificationPass());
+//            the_fpm->add(llvm::createCFGSimplificationPass());
             the_fpm->add(llvm::createDeadCodeEliminationPass());
             the_fpm->add(llvm::createFlattenCFGPass());
         }
@@ -408,6 +409,8 @@ namespace AVSI {
         I8_TY = llvm::Type::getInt8Ty(*the_context);
         I1_TY = llvm::Type::getInt1Ty(*the_context);
         VOID_TY = llvm::Type::getVoidTy(*the_context);
+        ISIZE_TY = MACHINE_WIDTH_TY;
+
 
         symbol_table = new SymbolTable();
         struct_types.clear();
@@ -422,7 +425,7 @@ namespace AVSI {
                 I128_TY, I64_TY,
                 I32_TY, I16_TY,
                 I8_TY, I1_TY,
-                VOID_TY
+                VOID_TY, ISIZE_TY,
         };
 
         simple_types_map = {
@@ -434,6 +437,7 @@ namespace AVSI {
                 {I16_TY,  (uint8_t) (0x1 << 2)},
                 {I8_TY,   (uint8_t) (0x1 << 1)},
                 {I1_TY,   (uint8_t) 0x1},
+                {ISIZE_TY, PTR_SIZE == 8 ? (uint8_t) (0x1 << 4) : (uint8_t) (0x1 << 3)}
         };
         type_name = {
                 {F64_TY,  "f64"},
@@ -445,6 +449,7 @@ namespace AVSI {
                 {I8_TY,   "i8"},
                 {I1_TY,   "bool"},
                 {VOID_TY, "void"},
+                {ISIZE_TY, "isize"}
         };
         type_size = {
                 {F64_TY,  8},
@@ -456,6 +461,7 @@ namespace AVSI {
                 {I8_TY,   1},
                 {I1_TY,   1},
                 {VOID_TY, 0},
+                {ISIZE_TY, PTR_SIZE},
         };
 
         token_to_simple_types = {

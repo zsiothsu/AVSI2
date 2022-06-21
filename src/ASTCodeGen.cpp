@@ -75,6 +75,7 @@ namespace AVSI {
     llvm::Type *I8_TY;
     llvm::Type *I1_TY;
     llvm::Type *VOID_TY;
+    llvm::Type *ISIZE_TY;
 
     AST *ASTEmpty = new NoneAST();
     AST *ASTEmptyNotEnd = new NoneAST();
@@ -100,6 +101,9 @@ namespace AVSI {
     // map a relative or renamed module path to absolute
     map<string, string> module_name_alias;
 
+    extern void debug_type(llvm::Value *v);
+
+    extern void debug_type(llvm::Type *v);
     /*******************************************************
      *                    IR generator                     *
      *******************************************************/
@@ -171,6 +175,8 @@ namespace AVSI {
          *  c:vec[vec[real;2];0]    the same as b
          *  d = {:vec[real;2];0}    the same as b
          */
+
+        // remember that all value token from symbol table is address
         llvm::Value *v = symbol_table->find(var->id);
 
         string mod_path = getpathListToUnresolved(var->getToken().getModInfo());
@@ -182,60 +188,40 @@ namespace AVSI {
         }
 
         if (v && !var->offset.empty()) {
-            /*
-             * for the variable of vector type is a pointer,
-             * offset is not effective in pointer, but that it point to
-             * so get the address point to first
-             */
             for (auto i: var->offset) {
-                if (v->getType()->getPointerElementType()->isPtrOrPtrVectorTy()) {
-                    v = builder->CreateLoad(v->getType()->getPointerElementType(), v);
-                }
+
+                auto current_ty = v->getType()->getPointerElementType();
                 vector<llvm::Value *> offset_list;
-                offset_list.push_back(llvm::ConstantInt::get(
-                        llvm::Type::getInt32Ty(*the_context),
-                        0,
-                        true));
-                if (i.first == Variable::ARRAY) {
+                offset_list.push_back(llvm::ConstantInt::get(I32_TY, 0));
+                if (
+                        current_ty->isArrayTy()
+                        || (
+                                current_ty->isPtrOrPtrVectorTy()
+                                && current_ty->getPointerElementType()->isArrayTy()
+                        )
+                        ) {
+                    // array
                     llvm::Value *index = i.second->codeGen();
 
+                    if (current_ty->isPtrOrPtrVectorTy()) {
+                        v = builder->CreateLoad(current_ty->getPointerElementType(), v);
+                    }
+
                     if (index->getType()->isFloatingPointTy()) {
-                        index = builder->CreateFPToSI(index, MACHINE_WIDTH_TY);
+                        index = builder->CreateFPToSI(index, I32_TY);
                     } else {
-                        index = builder->CreateSExtOrTrunc(index, MACHINE_WIDTH_TY);
+                        index = builder->CreateSExtOrTrunc(index, I32_TY);
                     }
                     offset_list.push_back(index);
 
-                    if (!v->getType()->getPointerElementType()->isArrayTy()) {
-                        // for raw pointer
-                        index = builder->CreateMul(index,
-                                                   llvm::ConstantInt::get(
-                                                           MACHINE_WIDTH_TY,
-                                                           v->getType()->getPointerElementType()->isPtrOrPtrVectorTy()
-                                                           ? PTR_SIZE
-                                                           : type_size[v->getType()->getPointerElementType()]));
-
-                        llvm::Type *v_oldTy = v->getType();
-                        v = builder->CreatePtrToInt(v, MACHINE_WIDTH_TY);
-                        v = builder->CreateAdd(v, index);
-                        v = builder->CreateIntToPtr(v, v_oldTy);
-                    } else {
-                        try {
-                            v = builder->CreateGEP(
-                                    llvm::cast<llvm::PointerType>(v->getType()->getScalarType())->getElementType(),
-                                    v,
-                                    offset_list,
-                                    var->id);
-                        }
-                        catch (...) {
-                            throw ExceptionFactory<TypeException>(
-                                    "index out of range or not an array",
-                                    i.second->getToken().line, i.second->getToken().column);
-                        }
-                    }
-                } else {
+                    v = builder->CreateGEP(
+                            llvm::cast<llvm::PointerType>(v->getType()->getScalarType())->getElementType(),
+                            v,
+                            offset_list,
+                            var->id);
+                } else if (current_ty->isStructTy()) {
+                    // structure
                     string member_name = ((Variable *) (i.second))->id;
-                    auto current_ty = v->getType()->getPointerElementType();
 
                     bool find_flag = false;
                     for (auto iter: struct_types) {
@@ -246,7 +232,7 @@ namespace AVSI {
 
                             auto index = iter.second->members[member_name];
                             offset_list.push_back(llvm::ConstantInt::get(
-                                    llvm::Type::getInt32Ty(*the_context),
+                                    I32_TY,
                                     index,
                                     true));
                             find_flag = true;
@@ -265,17 +251,35 @@ namespace AVSI {
                                 "unrecognized member '" + member_name + "'",
                                 i.second->getToken().line, i.second->getToken().column);
                     }
-                }
+                } else if (current_ty->isPtrOrPtrVectorTy()) {
+                    // raw pointer
+                    llvm::Value *index = i.second->codeGen();
 
-                /**
-                 * for nest array, the result of GEP instruction is just the raw space
-                 * of array. we need to create a pointer point to the space.
-                 */
-                if (v->getType()->getPointerElementType()->isArrayTy()) {
-                    llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
-                    auto alloca = allocaBlockEntry(the_scope, "array.ptr.addr", v->getType());
-                    builder->CreateStore(v, alloca);
-                    v = alloca;
+                    if (index->getType()->isFloatingPointTy()) {
+                        index = builder->CreateFPToSI(index, MACHINE_WIDTH_TY);
+                    } else {
+                        index = builder->CreateSExtOrTrunc(index, MACHINE_WIDTH_TY);
+                    }
+
+                    index = builder->CreateMul(
+                            index,
+                            llvm::ConstantInt::get(
+                                    MACHINE_WIDTH_TY,
+                                    current_ty->getPointerElementType()->isPtrOrPtrVectorTy()
+                                    ? PTR_SIZE
+                                    : type_size[current_ty->getPointerElementType()]
+                            )
+
+                    );
+
+                    llvm::Type *v_Ty = v->getType();
+                    v = builder->CreatePtrToInt(v, ISIZE_TY);
+                    v = builder->CreateAdd(v, index);
+                    v = builder->CreateIntToPtr(v, v_Ty);
+                } else {
+                    throw ExceptionFactory<TypeException>(
+                            "subscripted value is not an array, pointer, or structure",
+                            i.second->getToken().line, i.second->getToken().column);
                 }
             }
         }
@@ -295,12 +299,27 @@ namespace AVSI {
      * @param:          l_base_name: space name. if l_alloca_addr is nullptr, new space
      *                               will be named by l_base_name
      * @return:         none
+     * @note:           new variable won't be created if the function is called by statement
+     *                  that isn't assignment statement.
+     *                  store "a = b" is allowed only in the following cases:
+     *                  2. a and b are both basic number types
+     *                  3. a except an array pointer and b is an array. a will point to be in
+     *                     this case
+     *                  4. a except an array and b is an array pointer.
      */
     llvm::Value *
     store(AST *ast, llvm::Value *l_alloca_addr, llvm::Value *r_value, bool assignment = true,
           string l_base_name = "member") {
+
+
+        llvm::Value *r_alloca_addr = llvm::getLoadStorePointerOperand(r_value);
         llvm::Type *r_type = r_value->getType();
-        Assign *assigin_ast = (Assign *) ast;
+
+        llvm::Type *l_alloca_content_type = l_alloca_addr ? l_alloca_addr->getType()->getPointerElementType() : nullptr;
+        llvm::Type *l_except_type =
+                assignment ? ((Variable *) (((Assign *) ast)->left))->Ty.first : nullptr;
+        bool l_is_single_value = assignment && ((Variable *) (((Assign *) ast)->left))->offset.empty();
+        bool l_except_type_is_offered = assignment && ((Variable *) (((Assign *) ast)->left))->Ty.second != "none";
 
         if (r_type == VOID_TY) {
             throw ExceptionFactory<LogicException>(
@@ -308,219 +327,257 @@ namespace AVSI {
                     ast->getToken().line, ast->getToken().column);
         }
 
-        llvm::Type *l_type = l_alloca_addr ? l_alloca_addr->getType()->getPointerElementType() : nullptr;
+        // default : rebind variable
+        llvm::Type *store_type = r_type;
+        bool create_new_space = true;
 
-        if (
-                l_alloca_addr != nullptr &&
-                l_type->isPtrOrPtrVectorTy() &&
-                r_type->isPtrOrPtrVectorTy() &&
-                (l_type->getPointerElementType()->isArrayTy() || r_type->getPointerElementType()->isArrayTy()) &&
-                isTheSameBasicType((llvm::PointerType *) l_type, (llvm::PointerType *) r_type)) {
-            /*
-             * real* = real*
-             * obj* = obj*
-             *
-             * An array pointer assigned to another pointer.
-             * But in AVSI, high-dimensional array is not an
-             * array of pointer of low-dimensional array,
-             * so the role of assign is copy right array to left
-             */
-            auto &r_ptr = r_value;
-
-            uint32_t size = 0;
-            if (l_type->getPointerElementType()->isArrayTy() && r_type->getPointerElementType()->isArrayTy()) {
-                llvm::Value *l_ptr = builder->CreateLoad(l_alloca_addr->getType()->getPointerElementType(),
-                                                         l_alloca_addr,
-                                                         "dest.addr");
-                size = min(type_size[l_type->getPointerElementType()],
-                           type_size[r_type->getPointerElementType()]);
-                builder->CreateMemCpy(l_ptr, llvm::MaybeAlign(), r_ptr, llvm::MaybeAlign(),
-                                      size);
-            } else if (l_type->getPointerElementType()->isArrayTy()) {
-                llvm::Value *l_ptr = builder->CreateLoad(l_alloca_addr->getType()->getPointerElementType(),
-                                                         l_alloca_addr,
-                                                         "dest.addr");
-                size = type_size[l_type->getPointerElementType()];
-                builder->CreateMemCpy(l_ptr, llvm::MaybeAlign(), r_ptr, llvm::MaybeAlign(),
-                                      size);
-            } else {
-                r_ptr = builder->CreatePointerCast(r_ptr, l_type, "ptr.cast");
-                builder->CreateStore(r_ptr, l_alloca_addr);
-            }
-        } else if (
-                l_alloca_addr != nullptr &&
-                l_type == r_type) {
-            builder->CreateStore(r_value, l_alloca_addr);
-        } else if (l_alloca_addr != nullptr &&
-                   simple_types.find(l_type) != simple_types.end() &&
-                   simple_types.find(r_type) != simple_types.end()) {
-            bool is_l_fp = l_type->isFloatingPointTy();
-            bool is_r_fp = r_type->isFloatingPointTy();
-            if (simple_types_map[r_type] < simple_types_map[l_type]) {
-                if (is_r_fp && is_l_fp) {
-                    r_value = builder->CreateFPExt(r_value, l_type, "conv");
-                } else if (!is_r_fp && is_l_fp) {
-                    r_value = builder->CreateSIToFP(r_value, l_type, "conv");
-                } else {
-                    r_value = builder->CreateSExt(r_value, l_type, "conv");
-                }
-            } else {
-                if (is_r_fp && is_l_fp) {
-                    r_value = builder->CreateFPTrunc(r_value, l_type, "conv");
-                } else if (is_r_fp && !is_l_fp) {
-                    r_value = builder->CreateFPToSI(r_value, l_type, "conv");
-                } else {
-                    r_value = builder->CreateTrunc(r_value, l_type, "conv");
-                }
-            }
-            builder->CreateStore(r_value, l_alloca_addr);
-        } else if (assignment && ((Variable *) assigin_ast->left)->offset.empty()) {
-            llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
-
-            llvm::Type *cast_to_type = r_type;
-            string cast_to_name = l_base_name;
-            auto l_excepted_type = ((Variable *) assigin_ast->left)->Ty.first;
-
-            // if right value is an array initializer or another array
-            if (
-                    r_type->isPtrOrPtrVectorTy() &&
-                    r_type->getPointerElementType()->isArrayTy()) {
-                cast_to_type = r_type;
-                cast_to_name = l_base_name + ".addr";
-
-                if (
-                        l_excepted_type->isPtrOrPtrVectorTy() &&
-                        l_excepted_type->getPointerElementType()->isArrayTy() &&
-                        isTheSameBasicType((llvm::PointerType *) r_type,
-                                           (llvm::PointerType *) l_excepted_type)) {
-
-                    if (
-                            type_size[l_excepted_type->getPointerElementType()] <=
-                            type_size[r_type->getPointerElementType()]) {
-                        /*
-                         * if excepted array size less than or equal right,
-                         * create a pointer to right value
-                         */
-                        cast_to_name = l_base_name + ".cast.array2array";
-                        cast_to_type = l_excepted_type;
-                        r_value = builder->CreatePointerCast(r_value, cast_to_type);
-
-                        llvm::AllocaInst *new_var_alloca = allocaBlockEntry(the_scope, cast_to_name, cast_to_type);
-                        builder->CreateStore(r_value, new_var_alloca);
-                        symbol_table->insert(l_base_name, new_var_alloca);
-                        goto assign_end;
-                    } else {
-                        /*
-                         * if excepted array size greate than offered
-                         * create a new array of size excepted
-                         */
-                        cast_to_type = l_excepted_type;
-
-                        // new array init
-                        llvm::AllocaInst *new_array_alloca = allocaBlockEntry(the_scope, "ArrayInit.cast.begin",
-                                                                              l_excepted_type->getPointerElementType());
-                        builder->CreateMemSet(
-                                new_array_alloca,
-                                llvm::ConstantInt::get(
-                                        llvm::Type::getInt8Ty(*the_context),
-                                        0),
-                                type_size[l_excepted_type->getPointerElementType()],
-                                llvm::MaybeAlign());
-
-                        llvm::AllocaInst *new_ptr = allocaBlockEntry(the_scope, l_base_name + ".ArrayInit.Ptr",
-                                                                     cast_to_type);
-                        builder->CreateStore(new_array_alloca, new_ptr);
-
-                        // copy array
-                        builder->CreateMemCpy(new_array_alloca, llvm::MaybeAlign(), r_value, llvm::MaybeAlign(),
-                                              type_size[r_type->getPointerElementType()]);
-
-                        symbol_table->insert(l_base_name, new_ptr);
-                        goto assign_end;
-                    }
-                } else {
-                    if (l_excepted_type != VOID_TY) {
-                        if (l_excepted_type->isPtrOrPtrVectorTy() &&
-                            isTheSameBasicType((llvm::PointerType *) r_type, (llvm::PointerType *) l_excepted_type)) {
-                            cast_to_type = l_excepted_type;
-                            cast_to_name = l_base_name + ".cast.array2ptr";
-                            r_value = builder->CreatePointerCast(r_value, l_excepted_type);
-                        } else {
-                            Warning(
-                                    "failed to cast type '" +
-                                    type_name[cast_to_type] +
-                                    "' to '" + type_name[l_excepted_type] +
-                                    "', the left type will be ignored ",
-                                    assigin_ast->getToken().line, assigin_ast->getToken().column);
-                        }
-                    }
-                    goto assign_begin;
-                }
-            } else {
-                if (
-                        r_type->isPtrOrPtrVectorTy() &&
-                        l_excepted_type->isPtrOrPtrVectorTy() &&
-                        l_excepted_type->getPointerElementType()->isArrayTy() &&
-                        isTheSameBasicType((llvm::PointerType *) r_type,
-                                           (llvm::PointerType *) l_excepted_type)) {
-                    // if right is a normal pointer
-                    cast_to_type = l_excepted_type;
-                    r_value = builder->CreatePointerCast(r_value, cast_to_type);
-                    cast_to_name = l_base_name + ".cast.ptr2array";
-                } else {
-                    if (
-                            simple_types.find(l_excepted_type) != simple_types.end() &&
-                            simple_types.find(r_type) != simple_types.end() &&
-                            l_excepted_type != VOID_TY
-                            ) {
-                        cast_to_type = l_excepted_type;
-                        bool is_l_fp = l_excepted_type->isFloatingPointTy();
-                        bool is_r_fp = r_type->isFloatingPointTy();
-                        if (simple_types_map[r_type] < simple_types_map[l_excepted_type]) {
-                            if (is_r_fp && is_l_fp) {
-                                r_value = builder->CreateFPExt(r_value, l_excepted_type, "conv");
-                            } else if (!is_r_fp && is_l_fp) {
-                                r_value = builder->CreateSIToFP(r_value, l_excepted_type, "conv");
-                            } else {
-                                r_value = builder->CreateSExt(r_value, l_excepted_type, "conv");
-                            }
-                        } else {
-                            if (is_r_fp && is_l_fp) {
-                                r_value = builder->CreateFPTrunc(r_value, l_excepted_type, "conv");
-                            } else if (is_r_fp && !is_l_fp) {
-                                r_value = builder->CreateFPToSI(r_value, l_excepted_type, "conv");
-                            } else {
-                                r_value = builder->CreateTrunc(r_value, l_excepted_type, "conv");
-                            }
-                        }
-                    } else {
-                        cast_to_type = r_type;
-                        if(((Variable *) assigin_ast->left)->Ty.second != "none") {
-                            Warning(
-                                "failed to cast type '" +
-                                type_name[cast_to_type] +
-                                "' to '" + type_name[l_excepted_type] +
-                                "', the left type will be ignored ",
-                                assigin_ast->getToken().line, assigin_ast->getToken().column);
-                        }
-                    }
-                }
-                goto assign_begin;
-            }
-
-            assign_begin:
-            llvm::AllocaInst *new_var_alloca = allocaBlockEntry(the_scope, cast_to_name, cast_to_type);
-            builder->CreateStore(r_value, new_var_alloca);
-            symbol_table->insert(l_base_name, new_var_alloca);
-        } else {
+        auto assign_err = [&](llvm::Type *l, llvm::Type *r) -> void {
             throw ExceptionFactory<LogicException>(
-                    "not matched type, left: " +
-                    type_name[l_alloca_addr->getType()->getPointerElementType()] +
-                    ", right: " + type_name[r_type],
+                    "failed to store value, except type '" +
+                    type_name[l] +
+                    "', offered '" + type_name[r] + "'",
                     ast->getToken().line, ast->getToken().column);
+        };
+
+        auto assign = [&](llvm::Value *v, llvm::Value *ptr, llvm::Type *Ty) -> void {
+            llvm::AllocaInst *addr = (llvm::AllocaInst *) ptr;
+            if (create_new_space) {
+                llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
+                addr = allocaBlockEntry(the_scope, l_base_name, Ty);
+            }
+
+            if (addr == nullptr) {
+                throw ExceptionFactory<SysErrException>(
+                        "failed to store value",
+                        ast->getToken().line, ast->getToken().column);
+            }
+
+            builder->CreateStore(v, addr);
+            if (create_new_space) symbol_table->insert(l_base_name, addr);
+        };
+
+        auto memcp = [&](llvm::Value *l_addr, llvm::Value *r_addr, llvm::Type *l_type, llvm::Type *r_type) -> void {
+            auto size = min(type_size[l_type], type_size[r_type]);
+            builder->CreateMemCpy(l_addr, llvm::MaybeAlign(), r_addr, llvm::MaybeAlign(), size);
+        };
+
+        if (simple_types.find(r_type) != simple_types.end()) {
+            if (l_alloca_content_type && simple_types.find(l_alloca_content_type) != simple_types.end() &&
+                l_alloca_content_type != VOID_TY) {
+                store_type = l_alloca_content_type;
+                create_new_space = false;
+            }
+            if (l_except_type_is_offered && l_except_type && l_except_type != l_alloca_content_type &&
+                simple_types.find(l_except_type) != simple_types.end() &&
+                l_except_type != VOID_TY) {
+                store_type = l_except_type;
+                create_new_space = true;
+            } else if (l_except_type_is_offered && simple_types.find(l_except_type) == simple_types.end()) {
+                assign_err(l_except_type, r_type);
+            }
+
+            bool is_l_fp = store_type->isFloatingPointTy();
+            bool is_r_fp = r_type->isFloatingPointTy();
+            if (simple_types_map[r_type] < simple_types_map[store_type]) {
+                if (is_r_fp && is_l_fp) {
+                    r_value = builder->CreateFPExt(r_value, store_type, "conv");
+                } else if (!is_r_fp && is_l_fp) {
+                    r_value = builder->CreateSIToFP(r_value, store_type, "conv");
+                } else {
+                    r_value = builder->CreateSExt(r_value, store_type, "conv");
+                }
+            } else {
+                if (is_r_fp && is_l_fp) {
+                    r_value = builder->CreateFPTrunc(r_value, store_type, "conv");
+                } else if (is_r_fp && !is_l_fp) {
+                    r_value = builder->CreateFPToSI(r_value, store_type, "conv");
+                } else {
+                    r_value = builder->CreateTrunc(r_value, store_type, "conv");
+                }
+            }
+
+            assign(r_value, create_new_space ? nullptr : l_alloca_addr, store_type);
+        } else if (r_type->isArrayTy()) {
+            if (l_alloca_addr) {
+                if (l_alloca_content_type->isArrayTy() &&
+                    l_alloca_content_type->getArrayElementType() == r_type->getArrayElementType()) {
+
+                    if (!r_alloca_addr) {
+                        llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
+                        r_alloca_addr = allocaBlockEntry(the_scope, "array.init", r_type);
+                        builder->CreateStore(r_value, r_alloca_addr);
+                    }
+
+                    if (!r_alloca_addr) {
+                        throw ExceptionFactory<MissingException>(
+                                "failed to store value, right value, type '" +
+                                type_name[r_type] + "', is missing",
+                                ast->getToken().line, ast->getToken().column);
+                    }
+
+                    memcp(l_alloca_addr, r_alloca_addr, l_alloca_content_type, r_type);
+                } else if (!l_is_single_value) {
+                    assign_err(l_alloca_content_type, r_type);
+                } else {
+                    store_type = r_type;
+                    create_new_space = true;
+                    assign(r_value, nullptr, store_type);
+                }
+            } else if (l_except_type_is_offered && l_except_type->isArrayTy() &&
+                       l_except_type->getArrayElementType() == r_type->getArrayElementType()) {
+                llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
+                llvm::AllocaInst *new_ptr = allocaBlockEntry(the_scope, l_base_name + ".array.init.addr",
+                                                             l_except_type);
+                builder->CreateMemSet(new_ptr, llvm::ConstantInt::get(I8_TY, 0), type_size[l_except_type],
+                                      llvm::MaybeAlign());
+
+                if (!r_alloca_addr) {
+                    r_alloca_addr = allocaBlockEntry(the_scope, "array.init", r_type);
+                    builder->CreateStore(r_value, r_alloca_addr);
+                }
+
+                memcp(l_alloca_addr, r_alloca_addr, l_except_type, r_type);
+            } else if (!l_except_type_is_offered) {
+                store_type = r_type;
+                create_new_space = true;
+                assign(r_value, nullptr, store_type);
+            } else {
+                assign_err(l_except_type, r_type);
+            }
+        } else if (r_type->isPtrOrPtrVectorTy() && r_type->getPointerElementType()->isArrayTy()) {
+            if (l_alloca_content_type && l_alloca_content_type->isPtrOrPtrVectorTy() &&
+                l_alloca_content_type->getPointerElementType()->isArrayTy() &&
+                l_alloca_content_type->getPointerElementType()->getArrayElementType() ==
+                r_type->getPointerElementType()->getPointerElementType()) {
+                auto l_dest = builder->CreateLoad(l_alloca_content_type, l_alloca_addr);
+                memcp(l_dest, r_value, l_alloca_content_type, r_type);
+            } else if (l_alloca_content_type && l_alloca_content_type->isArrayTy() &&
+                       l_alloca_content_type->getArrayElementType() ==
+                       r_type->getPointerElementType()->getArrayElementType()) {
+                memcp(l_alloca_addr, r_value, l_alloca_content_type, r_type);
+            } else if (l_except_type_is_offered && l_except_type != r_type) {
+                assign_err(l_except_type, r_type);
+            } else {
+                store_type = r_type;
+                create_new_space = true;
+                assign(r_value, nullptr, store_type);
+            }
+        } else if (r_type->isPtrOrPtrVectorTy()) {
+            if (l_alloca_content_type && l_alloca_content_type == r_type) {
+                store_type = r_type;
+                create_new_space = false;
+                assign(r_value, l_alloca_addr, store_type);
+            } else if (l_except_type_is_offered && l_except_type != r_type) {
+                assign_err(l_except_type, r_type);
+            } else {
+                store_type = r_type;
+                create_new_space = true;
+                assign(r_value, nullptr, store_type);
+            }
+        } else if (r_type->isStructTy()) {
+            if (l_alloca_content_type && l_alloca_content_type->isStructTy() &&
+                ((llvm::StructType *) l_alloca_content_type)->isLayoutIdentical((llvm::StructType *) r_type)) {
+                store_type = l_alloca_content_type;
+                create_new_space = false;
+                r_value = builder->CreateBitCast(r_value, l_alloca_content_type, "conv");
+                assign(r_value, l_alloca_addr, store_type);
+            } else if (l_except_type_is_offered && l_except_type->isStructTy() &&
+                       ((llvm::StructType *) l_except_type)->isLayoutIdentical((llvm::StructType *) r_type)) {
+                store_type = l_except_type;
+                create_new_space = true;
+                r_value = builder->CreateBitCast(r_value, l_alloca_content_type, "conv");
+                assign(r_value, nullptr, store_type);
+            } else if (l_except_type_is_offered && l_except_type != r_type) {
+                assign_err(l_except_type, r_type);
+            } else {
+                store_type = r_type;
+                create_new_space = true;
+                assign(r_value, nullptr, store_type);
+            }
         }
-        assign_end:
+
         return llvm::Constant::getNullValue(F64_TY);
+    }
+
+    llvm::Value *type_conv(AST *ast, llvm::Value *v, llvm::Type *vtype, llvm::Type *etype) {
+        if (vtype == etype) return v;
+
+        if (etype == VOID_TY) {
+            throw ExceptionFactory<LogicException>(
+                    "void type is not allowed",
+                    ast->getToken().column, ast->getToken().column);
+        }
+
+        bool is_v_simple = simple_types.find(vtype) != simple_types.end();
+        bool is_e_simple = simple_types.find(etype) != simple_types.end();
+
+        if (is_v_simple && is_e_simple) {
+            bool is_v_fp = vtype->isFloatingPointTy();
+            bool is_e_fp = etype->isFloatingPointTy();
+            if (simple_types_map[vtype] < simple_types_map[etype]) {
+                if (is_v_fp && is_e_fp) {
+                    return builder->CreateFPExt(v, etype, "conv");
+                } else if (!is_v_fp && is_e_fp) {
+                    return builder->CreateSIToFP(v, etype, "conv");
+                } else {
+                    return builder->CreateSExt(v, etype, "conv");
+                }
+            } else {
+                if (is_v_fp && is_e_fp) {
+                    return builder->CreateFPTrunc(v, etype, "conv");
+                } else if (is_v_fp && !is_e_fp) {
+                    return builder->CreateFPToSI(v, etype, "conv");
+                } else {
+                    return builder->CreateTrunc(v, etype, "conv");
+                }
+            }
+        } else if (!(is_v_simple ^ is_e_simple)) {
+            bool is_v_ptr = vtype->isPtrOrPtrVectorTy();
+            bool is_e_ptr = etype->isPtrOrPtrVectorTy();
+            bool is_v_arr = vtype->isArrayTy();
+            bool is_e_arr = etype->isArrayTy();
+
+            if (is_v_ptr && is_e_ptr) {
+                return builder->CreatePointerBitCastOrAddrSpaceCast(v, etype, "conv");
+            } else if (is_v_ptr && is_e_arr) {
+                throw ExceptionFactory<SyntaxException>(
+                        "undefined C-like cast '" + type_name[vtype] + "' to '" + type_name[etype] +
+                        "'. cast from pointer to array is not allowed",
+                        ast->getToken().line, ast->getToken().column);
+            } else if (is_v_arr && is_e_ptr) {
+                auto addr = getLoadStorePointerOperand(v);
+                if (addr) {
+                    addr = builder->CreatePointerCast(addr, etype);
+                    return addr;
+                } else {
+                    llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
+                    addr = allocaBlockEntry(the_scope, "cond", vtype);
+                    builder->CreateStore(v, addr);
+                    addr = builder->CreatePointerCast(addr, etype);
+                    return addr;
+                }
+
+            }
+
+            throw ExceptionFactory<LogicException>(
+                    "undefined cast '" + type_name[vtype] + "' to '" + type_name[etype] + "'",
+                    ast->getToken().line, ast->getToken().column);
+        } else {
+            bool is_v_ptr = vtype->isPtrOrPtrVectorTy();
+            bool is_e_ptr = etype->isPtrOrPtrVectorTy();
+
+            if (is_e_ptr) {
+                return builder->CreateIntToPtr(v, etype
+                );
+            } else if (is_v_ptr) {
+                return builder->CreatePtrToInt(v, etype
+                );
+            }
+
+            throw ExceptionFactory<LogicException>(
+                    "undefined cast '" + type_name[vtype] + "' to '" + type_name[etype] + "'",
+                    ast->getToken().column, ast->getToken().column);
+        }
     }
 
     llvm::Value *AST::codeGen() {
@@ -610,7 +667,7 @@ namespace AVSI {
                     else if (float_point)
                         return builder->CreateMul(lv, rv, "mulTmp");
                 case SLASH:
-                    if(!float_point) {
+                    if (!float_point) {
                         lv_real = builder->CreateSIToFP(lv, F32_TY);
                         rv_real = builder->CreateSIToFP(rv, F32_TY);
                     }
@@ -869,18 +926,18 @@ namespace AVSI {
              * To be able to call external functions. Passing
              * array type by C ABI.
              *
-             * e.g. [3 x double]* will be represented as double*
+             * e.g. [3 x double] will be represented as [3 x double]*
              * in function declaration
              */
             if (i->Ty.first->isArrayTy()) {
-                Tys.push_back(getArrayBasicTypePointer(i->Ty.first->getPointerTo()));
+                Tys.push_back(i->Ty.first->getArrayElementType()->getPointerTo());
             } else {
                 Tys.push_back(i->Ty.first);
             }
         }
 
         llvm::Type *retTy = this->retTy.first->isArrayTy()
-                            ? getArrayBasicTypePointer(this->retTy.first->getPointerTo())
+                            ? this->retTy.first->getArrayElementType()->getPointerTo()
                             : this->retTy.first;
 
         if (this->id == ENTRY_NAME || this->id == "_start") {
@@ -946,7 +1003,7 @@ namespace AVSI {
 
             // initialize param
             for (auto &arg: the_function->args()) {
-                llvm::AllocaInst *alloca = allocaBlockEntry(the_function, arg.getName().str(), arg.getType());
+                llvm::AllocaInst *alloca = allocaBlockEntry(the_function, arg.getName().str() + ".addr", arg.getType());
                 builder->CreateStore(&arg, alloca);
                 symbol_table->insert(arg.getName().str(), alloca);
             }
@@ -1026,13 +1083,27 @@ namespace AVSI {
             llvm::Type *callee_type = callee_arg_iter->getType();
             llvm::Type *caller_type = v->getType();
 
+            if (caller_type->isArrayTy()) {
+                llvm::AllocaInst *addr = (llvm::AllocaInst *) llvm::getLoadStorePointerOperand(v);
+                if (!addr) {
+                    llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
+                    addr = allocaBlockEntry(the_scope, "array.init", caller_type);
+                    builder->CreateStore(v, addr);
+                }
+
+                v = builder->CreateGEP(
+                        caller_type,
+                        addr,
+                        {
+                                llvm::ConstantInt::get(I32_TY, 0),
+                                llvm::ConstantInt::get(I32_TY, 0)
+                        },
+                        "arraydecay"
+                );
+                caller_type = v->getType();
+            }
+
             if (
-                    caller_type->isPtrOrPtrVectorTy() &&
-                    callee_type->isPtrOrPtrVectorTy() &&
-                    isTheSameBasicType((llvm::PointerType *) caller_type,
-                                       (llvm::PointerType *) callee_type)) {
-                v = builder->CreatePointerCast(v, callee_type);
-            } else if (
                     caller_type->isStructTy() &&
                     caller_type->isStructTy() &&
                     ((llvm::StructType *) caller_type)->isLayoutIdentical((llvm::StructType *) callee_type)) {
@@ -1040,11 +1111,15 @@ namespace AVSI {
                 v = builder->CreatePointerCast(v, callee_type->getPointerTo());
                 v = builder->CreateLoad(callee_type, v);
             } else if (callee_type != caller_type) {
-                throw ExceptionFactory<LogicException>(
-                        "unmatched type, provided: " +
-                        type_name[caller_type] +
-                        ", excepted: " + type_name[callee_arg_iter->getType()],
-                        this->getToken().line, this->getToken().column);
+                try {
+                    v = type_conv(this, v, caller_type, callee_type);
+                } catch (...) {
+                    throw ExceptionFactory<LogicException>(
+                            "unmatched type, provided: " +
+                            type_name[caller_type] +
+                            ", excepted: " + type_name[callee_arg_iter->getType()],
+                            this->getToken().line, this->getToken().column);
+                }
             }
 
             args.push_back(v);
@@ -1077,7 +1152,7 @@ namespace AVSI {
         }
 
         // initialize struct
-        llvm::AllocaInst *new_var_alloca = allocaBlockEntry(the_scope, this->id + "InitTemp", Ty);
+        llvm::AllocaInst *new_var_alloca = allocaBlockEntry(the_scope, "struct." + this->id + ".init", Ty);
         for (int i = 0; i < param_num; i++) {
             AST *param = this->paramList[i];
             llvm::Value *rv = param->codeGen();
@@ -1086,8 +1161,8 @@ namespace AVSI {
                     llvm::cast<llvm::PointerType>(new_var_alloca->getType()->getScalarType())->getElementType(),
                     new_var_alloca,
                     {
-                            llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), 0),
-                            llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), i),
+                            llvm::ConstantInt::get(I32_TY, 0),
+                            llvm::ConstantInt::get(I32_TY, i),
                     },
                     id + ".member." + to_string(i));
 
@@ -1103,62 +1178,7 @@ namespace AVSI {
         auto vtype = v->getType();
         auto etype = this->Ty.first;
 
-        if (vtype == etype) return v;
-
-        if (etype == VOID_TY) {
-            throw ExceptionFactory<LogicException>(
-                    "void type is not allowed",
-                    this->getToken().column, this->getToken().column);
-        }
-
-        bool is_v_simple = simple_types.find(vtype) != simple_types.end();
-        bool is_e_simple = simple_types.find(etype) != simple_types.end();
-
-        if (is_v_simple && is_e_simple) {
-            bool is_v_fp = vtype->isFloatingPointTy();
-            bool is_e_fp = etype->isFloatingPointTy();
-            if (simple_types_map[vtype] < simple_types_map[etype]) {
-                if (is_v_fp && is_e_fp) {
-                    return builder->CreateFPExt(v, etype, "conv");
-                } else if (!is_v_fp && is_e_fp) {
-                    return builder->CreateSIToFP(v, etype, "conv");
-                } else {
-                    return builder->CreateSExt(v, etype, "conv");
-                }
-            } else {
-                if (is_v_fp && is_e_fp) {
-                    return builder->CreateFPTrunc(v, etype, "conv");
-                } else if (is_v_fp && !is_e_fp) {
-                    return builder->CreateFPToSI(v, etype, "conv");
-                } else {
-                    return builder->CreateTrunc(v, etype, "conv");
-                }
-            }
-        } else if (!(is_v_simple ^ is_e_simple)) {
-            bool is_v_ptr = vtype->isPtrOrPtrVectorTy();
-            bool is_e_ptr = etype->isPtrOrPtrVectorTy();
-
-            if (is_v_ptr && is_e_ptr) {
-                return builder->CreatePointerBitCastOrAddrSpaceCast(v, etype, "conv");
-            } else {
-                throw ExceptionFactory<LogicException>(
-                        "undefined cast '" + type_name[vtype] + "' to '" + type_name[etype] + "'",
-                        this->getToken().column, this->getToken().column);
-            }
-        } else {
-            bool is_v_ptr = vtype->isPtrOrPtrVectorTy();
-            bool is_e_ptr = etype->isPtrOrPtrVectorTy();
-
-            if (is_e_ptr) {
-                return builder->CreateIntToPtr(v, etype);
-            } else if (is_v_ptr) {
-                return builder->CreatePtrToInt(v, etype);
-            }
-
-            throw ExceptionFactory<LogicException>(
-                    "undefined cast '" + type_name[vtype] + "' to '" + type_name[etype] + "'",
-                    this->getToken().column, this->getToken().column);
-        }
+        return type_conv(this, v, vtype, etype);
     }
 
     llvm::Value *ArrayInit::codeGen() {
@@ -1177,8 +1197,8 @@ namespace AVSI {
             llvm::Type *ptr_type = contain_type->getPointerTo();
             type_name[ptr_type] = type_name[contain_type] + "*";
             type_size[ptr_type] = PTR_SIZE;
-            llvm::AllocaInst *ptr_alloca = allocaBlockEntry(the_scope, "ArrayInitTemp", contain_type);
-            return ptr_alloca;
+            auto nullptr_init = llvm::ConstantInt::get(ISIZE_TY, 0);
+            return builder->CreateIntToPtr(nullptr_init, ptr_type);
         }
 
         if (this->paramList.size() == 0 && this->Ty.first == VOID_TY) {
@@ -1197,7 +1217,7 @@ namespace AVSI {
                     "vec[" + type_name[this->Ty.first] + ";" + to_string(element_num) + "]*";
             type_size[arr_type] = type_size[this->Ty.first] * element_num;
             type_size[arr_type->getPointerTo()] = PTR_SIZE;
-            llvm::AllocaInst *array_alloca = allocaBlockEntry(the_scope, "ArrayInit.by_type", arr_type);
+            llvm::AllocaInst *array_alloca = allocaBlockEntry(the_scope, "array.init.by.type", arr_type);
             builder->CreateMemSet(
                     array_alloca,
                     llvm::ConstantInt::get(
@@ -1206,7 +1226,7 @@ namespace AVSI {
                     type_size[arr_type],
                     llvm::MaybeAlign());
 
-            return array_alloca;
+            return builder->CreateLoad(arr_type, array_alloca);
         }
 
         bool is_const_array = true;
@@ -1227,7 +1247,7 @@ namespace AVSI {
             // create a constant data array for constant array
             llvm::Constant *arr = nullptr;
             llvm::Type *tname;
-            int tsize;
+            ::size_t tsize;
             if (is_char_array) {
                 string str;
                 for (auto i: this->paramList) {
@@ -1246,15 +1266,11 @@ namespace AVSI {
                 tsize = type_size[F64_TY];
             }
 
-            llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
-            auto addr_alloca = allocaBlockEntry(the_scope, "const.array", arr->getType());
-            builder->CreateStore(arr, addr_alloca);
-
             type_name[arr->getType()] = "vec[" + type_name[tname] + ";" + to_string(element_num) + "]";
             type_name[arr->getType()->getPointerTo()] = "vec[" + type_name[tname] + ";" + to_string(element_num) + "]*";
             type_size[arr->getType()] = tsize * element_num;
 
-            return addr_alloca;
+            return arr;
         } else {
             // else initialize an array by store action
 
@@ -1266,17 +1282,17 @@ namespace AVSI {
             type_name[arr_type->getPointerTo()] = "vec[" + type_name[eleTy] + ";" + to_string(element_num) + "]*";
             type_size[arr_type] = (eleTy->isPointerTy() ? PTR_SIZE : type_size[eleTy]) * element_num;
             // initialize array
-            llvm::AllocaInst *array_alloca = allocaBlockEntry(the_scope, "ArrayInit.begin", arr_type);
+            llvm::AllocaInst *array_alloca = allocaBlockEntry(the_scope, "array.init.by.value", arr_type);
 
             // store first element
             auto first_element_addr = builder->CreateGEP(
                     llvm::cast<llvm::PointerType>(array_alloca->getType()->getScalarType())->getElementType(),
                     array_alloca,
                     {
-                            llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), 0),
-                            llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), 0),
+                            llvm::ConstantInt::get(ISIZE_TY, 0),
+                            llvm::ConstantInt::get(ISIZE_TY, 0),
                     },
-                    "ArrayInit.element." + to_string(0));
+                    "Array.init.element." + to_string(0));
             builder->CreateStore(head_rv, first_element_addr);
 
             // initialize other elements
@@ -1302,7 +1318,7 @@ namespace AVSI {
 
                 builder->CreateStore(rv, element_addr);
             }
-            return array_alloca;
+            return builder->CreateLoad(arr_type, array_alloca);
         }
     }
 
@@ -1397,10 +1413,6 @@ namespace AVSI {
                 builder->SetInsertPoint(thenBB);
                 symbol_table->push(thenBB);
 
-                // // I don't know why the instruction must be placed here.
-                // // Removing it will result in segmentation fault
-                //  auto ph = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "placeholder");
-                //  UNUSED(ph);
                 llvm::Value *thenv = this->compound->codeGen();
                 if (!thenv) {
                     return nullptr;
@@ -1419,7 +1431,6 @@ namespace AVSI {
                     the_function->getBasicBlockList().push_back(elseBB);
                     builder->SetInsertPoint(elseBB);
                     symbol_table->push(elseBB);
-                    //  ph = builder->CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0), "placeholder");
                     elsev = this->next->codeGen();
                     if (!elsev) {
                         return nullptr;
@@ -1547,16 +1558,13 @@ namespace AVSI {
     }
 
     llvm::Value *String::codeGen() {
-        llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
-        auto value = llvm::ConstantDataArray::getString(*the_context, this->getValue().any_cast<string>());
-        llvm::AllocaInst *ptr_alloca = allocaBlockEntry(the_scope, "String", value->getType());
-        builder->CreateStore(value, ptr_alloca);
+        auto v = llvm::ConstantDataArray::getString(*the_context, this->getValue().any_cast<string>());
 
-        llvm::Type *Ty = value->getType();
+        llvm::Type *Ty = v->getType();
         type_name[Ty] = "vec[char;" + to_string(this->getValue().any_cast<string>().length() + 1) + "]";
         type_name[Ty->getPointerTo()] = type_name[Ty] + "*";
         type_size[Ty] = this->getValue().any_cast<string>().length() + 1;
-        return ptr_alloca;
+        return v;
     }
 
     llvm::Value *Variable::codeGen() {
@@ -1566,11 +1574,6 @@ namespace AVSI {
             throw ExceptionFactory<MissingException>(
                     "variable '" + this->id + "' is not defined",
                     this->token.line, this->token.column);
-        }
-
-        // if v is an array pointer, return pointer directly
-        if (v->getType()->getPointerElementType()->isArrayTy()) {
-            return v;
         }
 
         return builder->CreateLoad(v->getType()->getPointerElementType(), v, this->id.c_str());
@@ -1629,15 +1632,15 @@ namespace AVSI {
                 return nullptr;
             }
 
-            if (re->getType()->isArrayTy()) {
-                re = getLoadStorePointerOperand(re);
+            if (re->getType() == builder->getCurrentFunctionReturnType()) {
+                return builder->CreateRet(re);
+            } else {
+                llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
+                auto ret_alloca_addr = allocaBlockEntry(the_scope, "ret", the_scope->getReturnType());
+                store(this, ret_alloca_addr, re, false, "ret");
+                re = builder->CreateLoad(the_scope->getReturnType(), ret_alloca_addr);
+                return builder->CreateRet(re);
             }
-
-            llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
-            auto ret_alloca_addr = allocaBlockEntry(the_scope, "ret", the_scope->getReturnType());
-            store(this, ret_alloca_addr, re, true, "ret");
-            re = builder->CreateLoad(the_scope->getReturnType(), ret_alloca_addr);
-            return builder->CreateRet(re);
         } else {
             return builder->CreateRetVoid();
         }
@@ -1698,7 +1701,7 @@ namespace AVSI {
         the_function->getBasicBlockList().push_back(mergeBB);
         builder->SetInsertPoint(mergeBB);
 
-        if (!mergeBB->getUniquePredecessor()) {
+        if (!mergeBB->hasNPredecessorsOrMore(1)) {
             if (opt_warning) {
                 Warning(
                         "endless loop",
@@ -1714,4 +1717,5 @@ namespace AVSI {
     llvm::Value *NoneAST::codeGen() {
         return llvm::Constant::getNullValue(F64_TY);
     }
+
 }

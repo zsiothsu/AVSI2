@@ -537,11 +537,8 @@ namespace AVSI {
                 }
             }
 
-            // turn array to pointer
-            bool i_is_array = i->Ty.first->isArrayTy();
-
-            member_types.push_back(i_is_array ? i->Ty.first->getPointerTo() : i->Ty.first);
-            struct_size += i_is_array ? type_size[i->Ty.first] : type_size[member_types.back()];
+            member_types.push_back(i->Ty.first);
+            struct_size += i->Ty.first->isPtrOrPtrVectorTy() ? PTR_SIZE : type_size[i->Ty.first];
             member_index[i->id] = index++;
         }
 
