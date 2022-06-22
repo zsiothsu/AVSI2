@@ -263,15 +263,18 @@ namespace AVSI {
     public:
         AST *var;
         bool is_export;
+        bool is_mangle;
 
         Global(void)
                 : AST(__GLOBAL_NAME),
-                  is_export(false) {};
+                  is_export(false),
+                  is_mangle(true) {};
 
         Global(AST *var, Token token)
                 : AST(__GLOBAL_NAME, token),
                   var(var),
-                  is_export(false) {};
+                  is_export(false),
+                  is_mangle(true) {};
 
         virtual ~Global();
 
@@ -391,22 +394,26 @@ namespace AVSI {
         string id;
         vector<Variable *> memberList;
         bool is_export;
+        bool is_mangle;
 
         Object(void)
                 : AST(__OBJECT_NAME),
                   memberList(vector<Variable *>()),
-                  is_export(false) {};
+                  is_export(false),
+                  is_mangle(true) {};
 
         Object(const Token &token)
                 : AST(__OBJECT_NAME, token),
                   memberList(vector<Variable *>()),
-                  is_export(false) {};
+                  is_export(false),
+                  is_mangle(true) {};
 
         Object(const Token &token, string id, vector<Variable *> memberList)
                 : AST(__OBJECT_NAME, token),
                   id(std::move(id)),
                   memberList(std::move(memberList)),
-                  is_export(false) {};
+                  is_export(false),
+                  is_mangle(true) {};
 
         virtual ~Object() {}
 

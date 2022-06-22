@@ -29,6 +29,10 @@ export no_mangle function entry() -> i32 {
     loop_test::while::while_test(5)
 
     object_test::object::obj_test()
+    size = sizeof(typename object_test::object::S)
+    size = sizeof(typename NS)
+    s = object_test::object::S(1 as i8, 1.2 as f32, {'H', 'E', 'L', 'L', 'O'})
+    s = s.a
 
     type_test::cast::cast_test()
     type_test::expr::expr_test()
@@ -36,11 +40,12 @@ export no_mangle function entry() -> i32 {
     submod::submod::test::test()
     sub::submod::test::test()
 
-    type_test::global::global_variable = 1234
+    type_test::global::global_init()
     io::printReal(type_test::global::global_variable)
+     io::printReal(com::avsi::type_test::global::global_variable)
 
     banner = 
-    "\033[1;5;34m"
+    "\n\033[1;5;34m"
     "      __      _______ _____ \n"
     "     /\\ \\    / / ____|_   _|\n"
     "    /  \\ \\  / / (___   | |  \n"

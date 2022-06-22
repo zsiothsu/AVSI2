@@ -55,6 +55,7 @@ namespace AVSI {
     string module_name;
     string module_name_nopath;
     vector<string> module_path = vector<string>();
+    vector<string> module_path_with_module_name = vector<string>();
 
     llvm::LLVMContext *the_context;
     llvm::Module *the_module;
@@ -181,11 +182,17 @@ namespace AVSI {
         llvm::Value *v = symbol_table->find(var->id);
 
         string mod_path = getpathListToUnresolved(var->getToken().getModInfo());
-        mod_path = module_name_alias[mod_path];
+        if (module_name_alias.find(mod_path) != module_name_alias.end()) {
+            mod_path = module_name_alias[mod_path];
+        }
 
         if (!v) {
             v = the_module->getGlobalVariable(
                     getFunctionNameMangling(getpathUnresolvedToList(mod_path), var->id));
+        }
+
+        if (!v) {
+            v = the_module->getGlobalVariable(var->id);
         }
 
         // may be alias
@@ -206,12 +213,12 @@ namespace AVSI {
 
         // may be relative path
         if (!v) {
-            auto fun_path = module_path;
+            auto global_path = module_path;
             for (auto i: var->getToken().getModInfo()) {
-                fun_path.push_back(i);
+                global_path.push_back(i);
             }
-            mod_path = getpathListToUnresolved(fun_path);
-            v = the_module->getFunction(
+            mod_path = getpathListToUnresolved(global_path);
+            v = the_module->getGlobalVariable(
                     getFunctionNameMangling(getpathUnresolvedToList(mod_path), var->id));
         }
 
@@ -1381,11 +1388,11 @@ namespace AVSI {
     llvm::Value *Global::codeGen() {
         auto *v = (Variable *)
                 this->var;
-        string name = v->id;
+        string id = v->id;
 
         if (v->Ty.first == VOID_TY) {
             throw ExceptionFactory<LogicException>(
-                    "missing type of global variable '" + name + "'",
+                    "missing type of global variable '" + id + "'",
                     this->getToken().column, this->getToken().column);
         }
 
@@ -1395,15 +1402,15 @@ namespace AVSI {
                 : llvm::GlobalVariable::PrivateLinkage;
 
         the_module->getOrInsertGlobal(
-                NAME_MANGLING(name), v->Ty.first,
-                [v, link_type, name] {
+                this->is_mangle ? NAME_MANGLING(id) : id, v->Ty.first,
+                [v, link_type, id] {
                     return new llvm::GlobalVariable(
                             *the_module,
                             v->Ty.first,
                             false,
                             link_type,
                             llvm::Constant::getNullValue(v->Ty.first),
-                            NAME_MANGLING(name));
+                            NAME_MANGLING(id));
                 });
 
         return llvm::Constant::getNullValue(F64_TY);

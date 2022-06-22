@@ -368,15 +368,42 @@ namespace AVSI {
         auto global_iter = ptr->getGlobalList().begin();
         while (global_iter != ptr->getGlobalList().end()) {
             auto glb = &(*global_iter);
-            the_module->getOrInsertFunction(glb->getName(), glb->getValueType());
+            the_module->getOrInsertGlobal(glb->getName(), glb->getValueType());
             global_iter++;
         }
 
         auto md_iter = ptr->getNamedMDList().begin();
         while (md_iter != ptr->getNamedMDList().end()) {
             auto md = &(*md_iter);
-            the_module->getOrInsertNamedMetadata(md->getName());
+            auto new_md = the_module->getOrInsertNamedMetadata(md->getName());
+            for (auto node: md->operands()) {
+                new_md->addOperand(node);
+            }
             md_iter++;
+        }
+
+        auto struct_iter = ptr->getIdentifiedStructTypes();
+        for (auto i: struct_iter) {
+            ::size_t size = i->getNumElements();
+            string id = string(i->getName());
+            auto md = ptr->getOrInsertNamedMetadata("struct." + id);
+
+            StructDef *sd = new StructDef(i);
+            for (int j = 0; j < size; j++) {
+                auto member_name = llvm::dyn_cast<llvm::MDString>(
+                        llvm::dyn_cast<llvm::MDNode>(md->getOperand(j))->getOperand(0)
+                )->getString();
+                sd->members[string(member_name)] = j;
+            }
+            auto struct_type_size = llvm::dyn_cast<llvm::MDString>(
+                    llvm::dyn_cast<llvm::MDNode>(md->getOperand(size))->getOperand(0)
+            )->getString();
+            type_size[i] = stoi(string(struct_type_size));
+            auto struct_type_name = llvm::dyn_cast<llvm::MDString>(
+                    llvm::dyn_cast<llvm::MDNode>(md->getOperand(size + 1))->getOperand(0)
+            )->getString();
+            type_name[i] = struct_type_name;
+            struct_types[id] = sd;
         }
     }
 
@@ -440,15 +467,15 @@ namespace AVSI {
                 {ISIZE_TY, PTR_SIZE == 8 ? (uint8_t) (0x1 << 4) : (uint8_t) (0x1 << 3)}
         };
         type_name = {
-                {F64_TY,  "f64"},
-                {F32_TY,  "f32"},
-                {I128_TY, "i128"},
-                {I64_TY,  "i64"},
-                {I32_TY,  "i32"},
-                {I16_TY,  "i16"},
-                {I8_TY,   "i8"},
-                {I1_TY,   "bool"},
-                {VOID_TY, "void"},
+                {F64_TY,   "f64"},
+                {F32_TY,   "f32"},
+                {I128_TY,  "i128"},
+                {I64_TY,   "i64"},
+                {I32_TY,   "i32"},
+                {I16_TY,   "i16"},
+                {I8_TY,    "i8"},
+                {I1_TY,    "bool"},
+                {VOID_TY,  "void"},
                 {ISIZE_TY, "isize"}
         };
         type_size = {
@@ -465,16 +492,16 @@ namespace AVSI {
         };
 
         token_to_simple_types = {
-                {F64,  F64_TY},
-                {F32,  F32_TY},
-                {I128, I128_TY},
-                {I64,  I64_TY},
-                {I32,  I32_TY},
-                {I16,  I16_TY},
-                {I8,   I8_TY},
-                {BOOL, I1_TY},
+                {F64,   F64_TY},
+                {F32,   F32_TY},
+                {I128,  I128_TY},
+                {I64,   I64_TY},
+                {I32,   I32_TY},
+                {I16,   I16_TY},
+                {I8,    I8_TY},
+                {BOOL,  I1_TY},
                 {ISIZE, ISIZE_TY},
-                {VOID, VOID_TY}
+                {VOID,  VOID_TY}
         };
 
         module_name = "";
@@ -601,9 +628,6 @@ namespace AVSI {
          */
         llvm::ValueToValueMapTy vmt;
         auto clone = llvm::CloneModule(*the_module, vmt).release();
-
-        llvm::legacy::PassManager pass;
-        pass.run(*clone);
 
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);

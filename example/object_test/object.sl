@@ -1,6 +1,15 @@
 mod com::avsi::object_test::object
 
+import com::avsi::object_test::subobject
+
 obj S {
+    a: i8
+    b: f32
+    c: vec[i8;100]
+    d: subobject::subS
+}
+
+no_mangle obj NS {
     a: i8
     b: f32
     c: vec[i8;100]

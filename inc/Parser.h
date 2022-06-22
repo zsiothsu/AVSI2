@@ -78,7 +78,7 @@ namespace AVSI {
 
         AST *moduleImport();
 
-        AST *object();
+        AST *object(bool is_mangle);
 
         AST *IfStatement();
 

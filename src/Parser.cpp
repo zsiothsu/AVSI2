@@ -65,6 +65,7 @@ namespace AVSI {
     extern string module_name;
     extern string module_name_nopath;
     extern vector<string> module_path;
+    extern vector<string> module_path_with_module_name;
 
     extern map<string, StructDef *> struct_types;
 
@@ -243,14 +244,16 @@ namespace AVSI {
             return WhileStatement();
         } else if (token_type == GLOBAL) {
             PARSE_LOG(STATEMENT);
-            Global *may_be_export = (Global *) global();
-            may_be_export->is_export = is_export;
-            return may_be_export;
+            Global *glb = (Global *) global();
+            glb->is_export = is_export;
+            glb->is_mangle = is_mangle;
+            return glb;
         } else if (token_type == OBJ) {
             PARSE_LOG(STATEMENT);
-            Object *may_be_export = (Object *) object();
-            may_be_export->is_export = is_export;
-            return may_be_export;
+            Object *obj = (Object *) object(is_mangle);
+            obj->is_export = is_export;
+            obj->is_mangle = is_mangle;
+            return obj;
         } else if (token_type == BREAK || token_type == CONTINUE) {
             PARSE_LOG(LOOPCTRL);
             return loopCtrl();
@@ -383,6 +386,7 @@ namespace AVSI {
 
         Token token = this->currentToken;
         string id = this->currentToken.getValue().any_cast<string>();
+        string id_clone = id;
         eat(ID);
 
         vector<AST *> paramList;
@@ -396,8 +400,67 @@ namespace AVSI {
         }
         eat(RPAR);
 
-        if (struct_types.find(id) != struct_types.end()) {
-            StructInit *struct_init_fun = new StructInit(id, paramList, token);
+
+        auto ty = struct_types.find(id_clone);
+
+        // try local
+        if (ty == struct_types.end()) {
+            id_clone.clear();
+            for (auto i: module_path_with_module_name) {
+                id_clone.append(i + "::");
+            }
+            id_clone.append(token.getValue().any_cast<string>());
+            ty = struct_types.find(id_clone);
+        }
+
+        if (!token.getModInfo().empty()) {
+            // try alias
+            if (ty == struct_types.end()) {
+                string head = token.getModInfo()[0];
+                if (module_name_alias.find(head) != module_name_alias.end()) {
+                    auto path_cut = token.getModInfo();
+                    path_cut.erase(path_cut.begin());
+                    head = module_name_alias[head];
+                    auto head_to_origin = getpathUnresolvedToList(head);
+                    for (auto i: path_cut) {
+                        head_to_origin.push_back(i);
+                    }
+
+                    id_clone.clear();
+                    for (auto i: head_to_origin) {
+                        id_clone.append(i + "::");
+                    }
+                    id_clone.append(token.getValue().any_cast<string>());
+                    ty = struct_types.find(id_clone);
+                }
+            }
+
+            // try external, absolute path
+            if (ty == struct_types.end()) {
+                id_clone.clear();
+                for (auto i: token.getModInfo()) {
+                    id_clone.append(i + "::");
+                }
+                id_clone.append(token.getValue().any_cast<string>());
+                ty = struct_types.find(id_clone);
+            }
+
+            // try external, relative path
+            if (ty == struct_types.end()) {
+                id_clone.clear();
+                for (auto i: module_path) {
+                    id_clone.append(i + "::");
+                }
+                for (auto i: token.getModInfo()) {
+                    id_clone.append(i + "::");
+                }
+                id_clone.append(token.getValue().any_cast<string>());
+                ty = struct_types.find(id_clone);
+            }
+        }
+
+        if (ty != struct_types.end()) {
+            StructInit *struct_init_fun = new StructInit(id_clone, paramList, token);
             return struct_init_fun;
         }
 
@@ -432,6 +495,7 @@ namespace AVSI {
         if (this->currentToken.getType() == ID) {
             vector<string> path = this->currentToken.getModInfo();
             module_path = path;
+            module_path_with_module_name = path;
 
             /**
              * if current file is __init__.sl， the parent folder should be added to searh path
@@ -452,9 +516,15 @@ namespace AVSI {
             if (input_file_name_no_suffix == MODULE_INIT_NAME) {
                 std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
                 module_path.push_back(dir);
+                module_path_with_module_name.push_back(dir);
             }
 
             module_name_nopath = this->currentToken.getValue().any_cast<string>();
+
+            if (input_file_name_no_suffix != MODULE_INIT_NAME) {
+                module_path_with_module_name.push_back(module_name_nopath);
+            }
+
             path.push_back(module_name_nopath);
             module_name = __getModuleNameByPath(path);
             mod_named = true;
@@ -494,7 +564,7 @@ namespace AVSI {
         return ASTEmptyNotEnd;
     }
 
-    AST *Parser::object() {
+    AST *Parser::object(bool is_mangle) {
         PARSE_LOG(OBJECTDEF);
 
         string id;
@@ -502,7 +572,12 @@ namespace AVSI {
         Token last_token = this->lastToken;
 
         eat(OBJ);
-        id = this->currentToken.getValue().any_cast<string>();
+        if (is_mangle) {
+            for (auto i: module_path_with_module_name) {
+                id.append(i + "::");
+            }
+        }
+        id.append(this->currentToken.getValue().any_cast<string>());
         eat(ID);
         eat(LBRACE);
 
@@ -512,6 +587,9 @@ namespace AVSI {
         map<string, int> member_index;
         int index = 0;
         uint32_t struct_size = 0;
+
+        llvm::NamedMDNode *meta = the_module->getOrInsertNamedMetadata("struct." + id);
+        vector<llvm::Metadata *> mdlist;
 
         // check types
         // map members' name to sequence
@@ -542,12 +620,27 @@ namespace AVSI {
             member_types.push_back(i->Ty.first);
             struct_size += i->Ty.first->isPtrOrPtrVectorTy() ? PTR_SIZE : type_size[i->Ty.first];
             member_index[i->id] = index++;
+            auto mdnode = llvm::MDNode::get(*the_context, {llvm::MDString::get(*the_context, i->id), llvm::MDString::get(*the_context, "struct_member")});
+            meta->addOperand(mdnode);
         }
 
         eat(RBRACE);
 
         // register a struct type
         llvm::StructType *Ty = llvm::StructType::create(*the_context, member_types, id);
+
+        the_module->getOrInsertGlobal(
+                "__reserve_ehuifggw&(^%#drzg)(*&ehhwhtiw3ghr389q2_" + id, Ty,
+                [&] {
+                    return new llvm::GlobalVariable(
+                            *the_module,
+                            Ty,
+                            false,
+                            llvm::GlobalValue::ExternalLinkage,
+                            llvm::Constant::getNullValue(Ty),
+                            "__reserve_ehuifggw&(^%#drzg)(*&ehhwhtiw3ghr389q2_" + id);
+                });
+
 
         StructDef *sd = new StructDef(Ty);
         sd->members = member_index;
@@ -566,6 +659,11 @@ namespace AVSI {
         struct_type_name += "}";
         type_name[Ty] = struct_type_name;
         type_size[Ty] = struct_size;
+
+        auto meta_size = llvm::MDNode::get(*the_context, {llvm::MDString::get(*the_context, to_string(struct_size)), llvm::MDString::get(*the_context, "struct_size")});
+        meta->addOperand(meta_size);
+        auto meta_name = llvm::MDNode::get(*the_context, {llvm::MDString::get(*the_context, struct_type_name), llvm::MDString::get(*the_context, "struct_name")});
+        meta->addOperand(meta_name);
 
         return new Object(token, id, members_list->paramList);
     }
@@ -790,7 +888,7 @@ namespace AVSI {
             eat(STRING);
 
             string buffer = token.getValue().any_cast<string>();
-            while(this->currentToken.getType() == STRING) {
+            while (this->currentToken.getType() == STRING) {
                 Token next = this->currentToken;
                 buffer.append(next.getValue().any_cast<string>());
                 eat(STRING);
@@ -1037,7 +1135,7 @@ namespace AVSI {
             if (this->currentToken.getType() != RSQB) {
                 // Type can be any types, even another vector
                 Type nest = eatType();
-                if(nest.first == VOID_TY) {
+                if (nest.first == VOID_TY) {
                     nest.first = I8_TY;
                 }
 
@@ -1077,7 +1175,65 @@ namespace AVSI {
             );
         } else if (this->currentToken.getType() == ID) {
             string id = this->currentToken.getValue().any_cast<string>();
-            if (struct_types.find(id) == struct_types.end()) {
+
+            // try no mangle
+            auto ty = struct_types.find(id);
+
+            // try local
+            if (ty == struct_types.end()) {
+                id.clear();
+                for (auto i: module_path_with_module_name) {
+                    id.append(i + "::");
+                }
+                id.append(this->currentToken.getValue().any_cast<string>());
+                ty = struct_types.find(id);
+            }
+
+            // try alias
+            if (ty == struct_types.end()) {
+                string head = this->currentToken.getModInfo()[0];
+                if (module_name_alias.find(head) != module_name_alias.end()) {
+                    auto path_cut = this->currentToken.getModInfo();
+                    path_cut.erase(path_cut.begin());
+                    head = module_name_alias[head];
+                    auto head_to_origin = getpathUnresolvedToList(head);
+                    for (auto i: path_cut) {
+                        head_to_origin.push_back(i);
+                    }
+
+                    id.clear();
+                    for (auto i: head_to_origin) {
+                        id.append(i + "::");
+                    }
+                    id.append(this->currentToken.getValue().any_cast<string>());
+                    ty = struct_types.find(id);
+                }
+            }
+
+            // try external, absolute path
+            if (ty == struct_types.end()) {
+                id.clear();
+                for (auto i: this->currentToken.getModInfo()) {
+                    id.append(i + "::");
+                }
+                id.append(this->currentToken.getValue().any_cast<string>());
+                ty = struct_types.find(id);
+            }
+
+            // try external, relative path
+            if (ty == struct_types.end()) {
+                id.clear();
+                for (auto i: module_path) {
+                    id.append(i + "::");
+                }
+                for (auto i: this->currentToken.getModInfo()) {
+                    id.append(i + "::");
+                }
+                id.append(this->currentToken.getValue().any_cast<string>());
+                ty = struct_types.find(id);
+            }
+
+            if (ty == struct_types.end()) {
                 throw ExceptionFactory<MissingException>(
                         "missing type '" + id + "'",
                         this->currentToken.line,
@@ -1085,7 +1241,7 @@ namespace AVSI {
                 );
             }
 
-            Type Ty = Type(struct_types[id]->Ty, id);
+            Type Ty = Type(ty->second->Ty, id);
             eat(ID);
             return Ty;
         } else {
