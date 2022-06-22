@@ -188,6 +188,33 @@ namespace AVSI {
                     getFunctionNameMangling(getpathUnresolvedToList(mod_path), var->id));
         }
 
+        // may be alias
+        if (!v && !var->getToken().getModInfo().empty()) {
+            string head = var->getToken().getModInfo()[0];
+            if (module_name_alias.find(head) != module_name_alias.end()) {
+                auto path_cut = var->getToken().getModInfo();
+                path_cut.erase(path_cut.begin());
+                head = module_name_alias[head];
+                auto head_to_origin = getpathUnresolvedToList(head);
+                for (auto i: path_cut) {
+                    head_to_origin.push_back(i);
+                }
+                v = the_module->getGlobalVariable(
+                        getFunctionNameMangling(head_to_origin, var->id));
+            }
+        }
+
+        // may be relative path
+        if (!v) {
+            auto fun_path = module_path;
+            for (auto i: var->getToken().getModInfo()) {
+                fun_path.push_back(i);
+            }
+            mod_path = getpathListToUnresolved(fun_path);
+            v = the_module->getFunction(
+                    getFunctionNameMangling(getpathUnresolvedToList(mod_path), var->id));
+        }
+
         if (v && !var->offset.empty()) {
             for (auto i: var->offset) {
 
@@ -733,18 +760,17 @@ namespace AVSI {
 
                 auto the_function = builder->GetInsertBlock()->getParent();
                 auto Positive = llvm::BasicBlock::Create(*the_context, "land.lhs.true.rhs.head", the_function);
-                auto Negative = llvm::BasicBlock::Create(*the_context, "land.end", the_function);
+                auto Negative = llvm::BasicBlock::Create(*the_context, "land.end");
 
                 if (l->getType() != I1_TY) {
                     if (l->getType()->isIntegerTy()) {
                         l = builder->CreateICmpNE(l, llvm::ConstantInt::get(l->getType(), 0), "toBool");
                     } else {
-                        l = builder->CreateFCmpUNE(l, llvm::ConstantFP::get(F64_TY, 0.0), "toBool");
+                        l = builder->CreateFCmpUNE(l, llvm::ConstantFP::get(l->getType(), 0.0), "toBool");
                     }
                 }
                 builder->CreateCondBr(l, Positive, Negative);
 
-                the_function->getBasicBlockList().push_back(Positive);
                 builder->SetInsertPoint(Positive);
                 auto r = this->right->codeGen();
                 auto r_phi_path = builder->GetInsertBlock();
@@ -752,7 +778,7 @@ namespace AVSI {
                     if (r->getType()->isIntegerTy()) {
                         r = builder->CreateICmpNE(r, llvm::ConstantInt::get(r->getType(), 0), "toBool");
                     } else {
-                        r = builder->CreateFCmpUNE(r, llvm::ConstantFP::get(F64_TY, 0.0), "toBool");
+                        r = builder->CreateFCmpUNE(r, llvm::ConstantFP::get(r->getType(), 0.0), "toBool");
                     }
                 }
                 builder->CreateBr(Negative);
@@ -824,9 +850,9 @@ namespace AVSI {
         llvm::Function *the_function = builder->GetInsertBlock()->getParent();
 
         llvm::BasicBlock *headBB = llvm::BasicBlock::Create(*the_context, "loop.head", the_function);
-        llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(*the_context, "loop.body", the_function);
-        llvm::BasicBlock *adjBB = llvm::BasicBlock::Create(*the_context, "loop.adjust", the_function);
-        llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*the_context, "loop.end", the_function);
+        llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(*the_context, "loop.body");
+        llvm::BasicBlock *adjBB = llvm::BasicBlock::Create(*the_context, "loop.adjust");
+        llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*the_context, "loop.end");
 
         // not region of headBB, but symbol table should be pushed before initial list
         symbol_table->push(headBB);
@@ -840,7 +866,7 @@ namespace AVSI {
 
         builder->CreateBr(headBB);
 
-        the_function->getBasicBlockList().push_back(headBB);
+//        the_function->getBasicBlockList().push_back(headBB);
         builder->SetInsertPoint(headBB);
 
         if (!this->noCondition) {
@@ -1285,6 +1311,7 @@ namespace AVSI {
                 arr = llvm::ConstantDataArray::getString(*the_context, str);
                 tname = I8_TY;
                 tsize = type_size[I8_TY];
+                element_num += 1;
             } else {
                 vector<double> data;
                 for (auto i: this->paramList) {
@@ -1419,17 +1446,13 @@ namespace AVSI {
             } else {
                 llvm::Function *the_function = builder->GetInsertBlock()->getParent();
 
-                llvm::BasicBlock *loop_mergeBB = symbol_table->getLoopExit();
-
                 bool have_merge = false;
 
-                llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(*the_context, "if.then", the_function,
-                                                                    loop_mergeBB);
+                llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(*the_context, "if.then", the_function);
                 llvm::BasicBlock *elseBB = nullptr;
                 if (this->next != ASTEmpty)
-                    elseBB = llvm::BasicBlock::Create(*the_context, "if.else", the_function, loop_mergeBB);
-                llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*the_context, "if.end", the_function,
-                                                                     loop_mergeBB);
+                    elseBB = llvm::BasicBlock::Create(*the_context, "if.else");
+                llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*the_context, "if.end");
 
                 if (elseBB != nullptr) {
                     builder->CreateCondBr(cond, thenBB, elseBB);
@@ -1438,7 +1461,6 @@ namespace AVSI {
                     builder->CreateCondBr(cond, thenBB, mergeBB);
                 }
 
-                the_function->getBasicBlockList().push_back(thenBB);
                 builder->SetInsertPoint(thenBB);
                 symbol_table->push(thenBB);
 
@@ -1477,7 +1499,7 @@ namespace AVSI {
                     the_function->getBasicBlockList().push_back(mergeBB);
                     builder->SetInsertPoint(mergeBB);
                 } else {
-                    mergeBB->eraseFromParent();
+                    delete mergeBB;
                 }
 
                 return llvm::Constant::getNullValue(F64_TY);
@@ -1679,12 +1701,11 @@ namespace AVSI {
         llvm::Function *the_function = builder->GetInsertBlock()->getParent();
 
         llvm::BasicBlock *headBB = llvm::BasicBlock::Create(*the_context, "loop.head", the_function);
-        llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(*the_context, "loop.body", the_function);
-        llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*the_context, "loop.end", the_function);
+        llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(*the_context, "loop.body");
+        llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*the_context, "loop.end");
 
         builder->CreateBr(headBB);
 
-        the_function->getBasicBlockList().push_back(headBB);
         builder->SetInsertPoint(headBB);
 
         symbol_table->push(headBB);

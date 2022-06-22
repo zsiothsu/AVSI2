@@ -36,8 +36,23 @@ export no_mangle function entry() -> i32 {
     submod::submod::test::test()
     sub::submod::test::test()
 
+    type_test::global::global_variable = 1234
+    io::printReal(type_test::global::global_variable)
+
+    banner = 
+    "\033[1;5;34m"
+    "      __      _______ _____ \n"
+    "     /\\ \\    / / ____|_   _|\n"
+    "    /  \\ \\  / / (___   | |  \n"
+    "   / /\\ \\ \\/ / \\___ \\  | |  \n"
+    "  / ____ \\  /  ____) |_| |_ \n"
+    " /_/    \\_\\/  |_____/|_____|\n"
+    "\033[0m"
+
+    io::printStr(banner)
+
     str = {:char:100}
-    io::printStr("Hello World!\n")
+    io::printStr("\nHello World!\n")
     io::printStr("input: ")
     io::readStr(str)
     io::printStr("your input: ")

@@ -788,6 +788,16 @@ namespace AVSI {
         if (this->currentToken.getType() == STRING) {
             Token token = this->currentToken;
             eat(STRING);
+
+            string buffer = token.getValue().any_cast<string>();
+            while(this->currentToken.getType() == STRING) {
+                Token next = this->currentToken;
+                buffer.append(next.getValue().any_cast<string>());
+                eat(STRING);
+            }
+
+            token = Token(STRING, buffer, token.line, token.column);
+
             return new class String(token);
         }
 

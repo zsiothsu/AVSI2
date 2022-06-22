@@ -111,9 +111,9 @@ namespace AVSI {
     void llvm_module_fpm_init() {
         if (opt_optimize) {
             the_fpm->add(llvm::createReassociatePass());
-//            the_fpm->add(llvm::createGVNPass());
+            the_fpm->add(llvm::createGVNPass());
             the_fpm->add(llvm::createInstructionCombiningPass());
-//            the_fpm->add(llvm::createCFGSimplificationPass());
+            the_fpm->add(llvm::createCFGSimplificationPass());
             the_fpm->add(llvm::createDeadCodeEliminationPass());
             the_fpm->add(llvm::createFlattenCFGPass());
         }
