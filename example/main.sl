@@ -42,7 +42,7 @@ export no_mangle function entry() -> i32 {
 
     type_test::global::global_init()
     io::printReal(type_test::global::global_variable)
-     io::printReal(com::avsi::type_test::global::global_variable)
+    io::printReal(com::avsi::type_test::global::global_variable)
 
     banner = 
     "\n\033[1;5;34m"

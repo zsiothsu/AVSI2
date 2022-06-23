@@ -623,11 +623,25 @@ namespace AVSI {
 
         /*
          * It is important to CLONE the module.
-         * Since the optimization may change the module.
-         * And generating bitcode directly may cause segmentation fault.
+         * Generating bitcode directly may cause segmentation fault.
          */
         llvm::ValueToValueMapTy vmt;
         auto clone = llvm::CloneModule(*the_module, vmt).release();
+
+        vector<string> remove_list;
+        for (auto & fun : clone->functions()) {
+            if(fun.hasExternalLinkage()) {
+                fun.deleteBody();
+            } else {
+                remove_list.emplace_back(fun.getName());
+            }
+        }
+
+        for(const auto& fun_name: remove_list) {
+            auto fun = clone->getFunction(fun_name);
+            fun->replaceAllUsesWith(llvm::UndefValue::get((llvm::Type*)fun->getType()));
+            fun->eraseFromParent();
+        }
 
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);
