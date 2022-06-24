@@ -58,6 +58,7 @@
 
 #define __ASSIGN_NAME           "Assign"
 #define __BINOP_NAME            "BinOp"
+#define __BLOCKEXPR_NAME        "BlockExpr"
 #define __BOOL_NAME             "Boolean"
 #define __COMPOUND_NAME         "Compound"
 #define __ECHO_NAME             "Echo"
@@ -158,6 +159,23 @@ namespace AVSI {
         virtual ~BinOp();
 
         TokenType getOp(void);
+
+        llvm::Value *codeGen() override;
+    };
+
+    class BlockExpr : public AST {
+    public:
+        AST *expr;
+
+        BlockExpr(void)
+                : AST(__BLOCKEXPR_NAME),
+                  expr(nullptr) {};
+
+        BlockExpr(Token token, AST *expr)
+                : AST(__BLOCKEXPR_NAME, token),
+                  expr(expr) {};
+
+        virtual ~BlockExpr() {};
 
         llvm::Value *codeGen() override;
     };

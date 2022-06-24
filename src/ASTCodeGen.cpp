@@ -357,7 +357,7 @@ namespace AVSI {
         bool l_except_type_is_offered = assignment && ((Variable *) (((Assign *) ast)->left))->Ty.second != "none";
 
         if (r_type == VOID_TY) {
-            throw ExceptionFactory<LogicException>(
+            throw ExceptionFactory<TypeException>(
                     "cannot assign void to variable",
                     ast->getToken().line, ast->getToken().column);
         }
@@ -367,7 +367,7 @@ namespace AVSI {
         bool create_new_space = true;
 
         auto assign_err = [&](llvm::Type *l, llvm::Type *r) -> void {
-            throw ExceptionFactory<LogicException>(
+            throw ExceptionFactory<TypeException>(
                     "failed to store value, except type '" +
                     type_name[l] +
                     "', offered '" + type_name[r] + "'",
@@ -461,17 +461,44 @@ namespace AVSI {
             } else if (l_except_type_is_offered && l_except_type->isArrayTy() &&
                        l_except_type->getArrayElementType() == r_type->getArrayElementType()) {
                 llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
-                llvm::AllocaInst *new_ptr = allocaBlockEntry(the_scope, l_base_name + ".array.init.addr",
-                                                             l_except_type);
-                builder->CreateMemSet(new_ptr, llvm::ConstantInt::get(I8_TY, 0), type_size[l_except_type],
-                                      llvm::MaybeAlign());
-
                 if (!r_alloca_addr) {
                     r_alloca_addr = allocaBlockEntry(the_scope, "array.init", r_type);
                     builder->CreateStore(r_value, r_alloca_addr);
                 }
 
-                memcp(l_alloca_addr, r_alloca_addr, l_except_type, r_type);
+                if (l_alloca_addr) {
+                    memcp(l_alloca_addr, r_alloca_addr, l_except_type, r_type);
+                } else {
+                    if (l_is_single_value) {
+                        symbol_table->insert(l_base_name, (llvm::AllocaInst *) r_alloca_addr);
+                    } else {
+                        throw ExceptionFactory<TypeException>(
+                                "left value is not allowed to be rebind",
+                                ast->getToken().column, ast->getToken().column);
+                    }
+                }
+            } else if (l_except_type_is_offered && l_except_type->isPtrOrPtrVectorTy() &&
+                       l_except_type->getPointerElementType() == r_type->getArrayElementType()) {
+                llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
+                if (!r_alloca_addr) {
+                    r_alloca_addr = allocaBlockEntry(the_scope, "array.init", r_type);
+                    builder->CreateStore(r_value, r_alloca_addr);
+                }
+
+                if (l_alloca_addr) {
+                    builder->CreateStore(r_alloca_addr, l_alloca_addr);
+                } else {
+                    if (l_is_single_value) {
+                        store_type = r_type;
+                        create_new_space = true;
+                        auto cast = builder->CreatePointerCast(r_alloca_addr, l_except_type);
+                        assign(cast, nullptr, l_except_type);
+                    } else {
+                        throw ExceptionFactory<TypeException>(
+                                "left value is not allowed to be rebind",
+                                ast->getToken().column, ast->getToken().column);
+                    }
+                }
             } else if (!l_except_type_is_offered) {
                 store_type = r_type;
                 create_new_space = true;
@@ -531,14 +558,14 @@ namespace AVSI {
             }
         }
 
-        return llvm::Constant::getNullValue(F64_TY);
+        return llvm::ConstantFP::getNaN(F64_TY);
     }
 
     llvm::Value *type_conv(AST *ast, llvm::Value *v, llvm::Type *vtype, llvm::Type *etype) {
         if (vtype == etype) return v;
 
         if (etype == VOID_TY) {
-            throw ExceptionFactory<LogicException>(
+            throw ExceptionFactory<TypeException>(
                     "void type is not allowed",
                     ast->getToken().column, ast->getToken().column);
         }
@@ -594,7 +621,7 @@ namespace AVSI {
 
             }
 
-            throw ExceptionFactory<LogicException>(
+            throw ExceptionFactory<TypeException>(
                     "undefined cast '" + type_name[vtype] + "' to '" + type_name[etype] + "'",
                     ast->getToken().line, ast->getToken().column);
         } else {
@@ -609,14 +636,14 @@ namespace AVSI {
                 );
             }
 
-            throw ExceptionFactory<LogicException>(
+            throw ExceptionFactory<TypeException>(
                     "undefined cast '" + type_name[vtype] + "' to '" + type_name[etype] + "'",
                     ast->getToken().column, ast->getToken().column);
         }
     }
 
     llvm::Value *AST::codeGen() {
-        return llvm::Constant::getNullValue(F64_TY);
+        return llvm::ConstantFP::getNaN(F64_TY);
     }
 
     llvm::Value *Assign::codeGen() {
@@ -628,7 +655,9 @@ namespace AVSI {
         auto l_alloca_addr = getAlloca((Variable *)
                                                this->left);
 
-        return store(this, l_alloca_addr, r_value, true, l_base_name);
+        store(this, l_alloca_addr, r_value, true, l_base_name);
+        return llvm::ConstantFP::getNaN(F64_TY);
+
     }
 
     llvm::Value *BinOp::codeGen() {
@@ -641,6 +670,22 @@ namespace AVSI {
 
             if (!lv || !rv) {
                 return nullptr;
+            }
+
+            auto lv_const = llvm::dyn_cast<llvm::Constant>(lv);
+            auto rv_const = llvm::dyn_cast<llvm::Constant>(rv);
+
+            if (lv_const && lv_const->isNaN()) {
+                throw ExceptionFactory<LogicException>(
+                        "left operand must have a value",
+                        this->left->getToken().column, this->left->getToken().column
+                );
+            }
+            if (rv_const && rv_const->isNaN()) {
+                throw ExceptionFactory<LogicException>(
+                        "right operand must have a value",
+                        this->right->getToken().column, this->right->getToken().column
+                );
             }
 
             llvm::Type *l_type = lv->getType();
@@ -699,7 +744,7 @@ namespace AVSI {
                 case STAR:
                     if (float_point)
                         return builder->CreateFMul(lv_real, rv_real, "mulTmp");
-                    else if (float_point)
+                    else
                         return builder->CreateMul(lv, rv, "mulTmp");
                 case SLASH:
                     if (!float_point) {
@@ -845,6 +890,10 @@ namespace AVSI {
         }
     }
 
+    llvm::Value *BlockExpr::codeGen() {
+        return this->expr->codeGen();
+    }
+
     llvm::Value *Boolean::codeGen() {
         if (this->value == true) {
             return llvm::ConstantInt::get(I1_TY, 1);
@@ -941,7 +990,7 @@ namespace AVSI {
             adjBB->eraseFromParent();
         }
 
-        return llvm::Constant::getNullValue(F64_TY);
+        return llvm::ConstantFP::getNaN(F64_TY);
     }
 
     llvm::Value *FunctionDecl::codeGen() {
@@ -1042,13 +1091,22 @@ namespace AVSI {
                 symbol_table->insert(arg.getName().str(), alloca);
             }
 
-            if (this->compound->codeGen()) {
+            llvm::Value *ret = nullptr;
+            ret = this->compound->codeGen();
+            if (ret) {
                 auto endbb = builder->GetInsertBlock();
                 auto t = endbb->getTerminator();
                 if (!endbb->isEntryBlock() && !endbb->hasNPredecessorsOrMore(1)) {
                     endbb->eraseFromParent();
                 } else if (!t) {
-                    if (the_function->getReturnType() == VOID_TY) {
+                    auto ret_const = llvm::dyn_cast<llvm::Constant>(ret);
+                    if (!ret_const || (ret_const && !ret_const->isNaN())) {
+                        // expr without "return" keyword
+                        auto ret_alloca_addr = allocaBlockEntry(the_function, "ret", the_function->getReturnType());
+                        store(this, ret_alloca_addr, ret, false, "ret");
+                        ret = builder->CreateLoad(the_function->getReturnType(), ret_alloca_addr);
+                        builder->CreateRet(ret);
+                    } else if (the_function->getReturnType() == VOID_TY) {
                         builder->CreateRetVoid();
                     } else if (the_function->getReturnType()->isFloatingPointTy()) {
                         builder->CreateRet(llvm::ConstantFP::get(the_function->getReturnType(), 0.0));
@@ -1067,6 +1125,7 @@ namespace AVSI {
                 if (last_BB != nullptr) {
                     builder->SetInsertPoint(last_BB, last_pt);
                 }
+
                 return the_function;
             }
             symbol_table->pop();
@@ -1176,7 +1235,7 @@ namespace AVSI {
                 try {
                     v = type_conv(this, v, caller_type, callee_type);
                 } catch (...) {
-                    throw ExceptionFactory<LogicException>(
+                    throw ExceptionFactory<TypeException>(
                             "unmatched type, provided: " +
                             type_name[caller_type] +
                             ", excepted: " + type_name[callee_arg_iter->getType()],
@@ -1264,7 +1323,7 @@ namespace AVSI {
         }
 
         if (this->paramList.size() == 0 && this->Ty.first == VOID_TY) {
-            throw ExceptionFactory<LogicException>(
+            throw ExceptionFactory<TypeException>(
                     "array with void type is not allowed",
                     this->getToken().column, this->getToken().column);
         }
@@ -1372,7 +1431,7 @@ namespace AVSI {
                         "ArrayInit.element." + to_string(i));
 
                 if (rv->getType() != eleTy) {
-                    throw ExceptionFactory<LogicException>(
+                    throw ExceptionFactory<TypeException>(
                             "not matched type, element type: " +
                             type_name[rv->getType()] +
                             ", array type: " + type_name[eleTy],
@@ -1413,7 +1472,7 @@ namespace AVSI {
                             NAME_MANGLING(id));
                 });
 
-        return llvm::Constant::getNullValue(F64_TY);
+        return llvm::ConstantFP::getNaN(F64_TY);
     }
 
     llvm::Value *If::codeGen() {
@@ -1461,6 +1520,9 @@ namespace AVSI {
                     elseBB = llvm::BasicBlock::Create(*the_context, "if.else");
                 llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*the_context, "if.end");
 
+                int phi_cnt = 0;
+                uint8_t phi_mask = 0x0;
+
                 if (elseBB != nullptr) {
                     builder->CreateCondBr(cond, thenBB, elseBB);
                 } else {
@@ -1481,9 +1543,14 @@ namespace AVSI {
                     have_merge = true;
                     builder->CreateBr(mergeBB);
                 }
+                auto then_const = llvm::dyn_cast<llvm::Constant>(thenv);
+                if (!then_const || (then_const && !then_const->isNaN())) {
+                    phi_cnt++;
+                    phi_mask |= 0x1;
+                }
                 thenBB = builder->GetInsertBlock();
 
-                llvm::Value *elsev;
+                llvm::Value *elsev = nullptr;
                 llvm::Instruction *t_else = nullptr;
                 if (elseBB != nullptr) {
                     the_function->getBasicBlockList().push_back(elseBB);
@@ -1499,17 +1566,41 @@ namespace AVSI {
                         have_merge = true;
                         builder->CreateBr(mergeBB);
                     }
+                    auto else_const = llvm::dyn_cast<llvm::Constant>(elsev);
+                    if (!else_const || (else_const && !else_const->isNaN())) {
+                        phi_cnt++;
+                        phi_mask |= 0x2;
+                    }
                     elseBB = builder->GetInsertBlock();
                 }
 
                 if (have_merge) {
                     the_function->getBasicBlockList().push_back(mergeBB);
                     builder->SetInsertPoint(mergeBB);
+                    if (phi_cnt == 2) {
+                        if (thenv->getType() != elsev->getType()) {
+                            throw ExceptionFactory<TypeException>(
+                                    "unmatched types of values from 'then' and 'else' block",
+                                    this->token.line, this->token.column);
+                        }
+
+                        llvm::PHINode *PN = builder->CreatePHI(thenv->getType(),
+                                                               2);
+                        PN->addIncoming(thenv, thenBB);
+                        PN->addIncoming(elsev, elseBB);
+
+                        return PN;
+                    } else if (phi_cnt == 1) {
+                        throw ExceptionFactory<LogicException>(
+                                "select statement must have two optional values, but "
+                                + string(phi_mask & 0x1 ? "'else'" : "'then'") + " is null value",
+                                this->token.line, this->token.column);
+                    }
                 } else {
                     delete mergeBB;
                 }
 
-                return llvm::Constant::getNullValue(F64_TY);
+                return llvm::ConstantFP::getNaN(F64_TY);
             }
         } else {
             return this->compound->codeGen();
@@ -1537,7 +1628,7 @@ namespace AVSI {
                         this->token.line, this->token.column);
             }
         }
-        return llvm::Constant::getNullValue(F64_TY);
+        return llvm::ConstantFP::getNaN(F64_TY);
     }
 
     llvm::Value *Num::codeGen() {
@@ -1556,7 +1647,7 @@ namespace AVSI {
     }
 
     llvm::Value *Object::codeGen() {
-        return llvm::Constant::getNullValue(F64_TY);
+        return llvm::ConstantFP::getNaN(F64_TY);
     }
 
     llvm::Value *UnaryOp::codeGen() {
@@ -1643,15 +1734,38 @@ namespace AVSI {
 
         size_t cnt = 0;
         size_t child_size = this->child.size();
+
+        llvm::Value *ret = llvm::ConstantFP::getNaN(F64_TY);
+
         for (AST *ast: this->child) {
             try {
-                ast->codeGen();
+                auto value = ast->codeGen();
                 cnt++;
+
+                // value of calling function is not belonging to block
+                if (ast->__AST_name != __FUNCTIONCALL_NAME) {
+                    ret = value;
+                }
+
+                // terminate
                 if (
-                        cnt != child_size &&
-                        ast->__AST_name != __FUNCTIONDECL_NAME &&
-                        builder->GetInsertBlock() &&
-                        builder->GetInsertBlock()->getTerminator()) {
+                        cnt != child_size
+                        && ast->__AST_name != __FUNCTIONDECL_NAME
+                        && (
+                                (
+                                        builder->GetInsertBlock()
+                                        && builder->GetInsertBlock()->getTerminator()
+                                )
+                                || (
+                                        (
+                                                ast->__AST_name == __BLOCKEXPR_NAME
+                                                || ast->__AST_name == __IF_NAME
+                                        )
+                                        && llvm::dyn_cast<llvm::Constant>(ret)
+                                        && !llvm::dyn_cast<llvm::Constant>(ret)->isNaN()
+                                )
+                        )
+                        ) {
                     if (opt_warning) {
                         Warning(
                                 "terminator detected, subsequent code will be ignored",
@@ -1680,7 +1794,7 @@ namespace AVSI {
                     0, 0);
         }
 
-        return llvm::Constant::getNullValue(F64_TY);
+        return ret;
     }
 
     llvm::Value *Return::codeGen() {
@@ -1768,11 +1882,11 @@ namespace AVSI {
             }
         }
 
-        return llvm::Constant::getNullValue(F64_TY);
+        return llvm::ConstantFP::getNaN(F64_TY);
     }
 
     llvm::Value *NoneAST::codeGen() {
-        return llvm::Constant::getNullValue(F64_TY);
+        return llvm::ConstantFP::getNaN(F64_TY);
     }
 
 }

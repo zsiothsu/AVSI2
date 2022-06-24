@@ -165,7 +165,8 @@ namespace AVSI {
             ID,
             LPAR,
             NOT,
-            LBRACE
+            LBRACE,
+            IF
     };
     const static TokenType ReOp[] = {
             EQ,

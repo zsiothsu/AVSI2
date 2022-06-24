@@ -114,6 +114,8 @@ namespace AVSI {
 
         AST *loopCtrl();
 
+        AST *IDHead();
+
         Type eatType();
 
         vector<string> eatModule();

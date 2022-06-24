@@ -41,9 +41,12 @@ namespace AVSI {
      * @param:          None
      * @return:         None
      */
-    Lexer::Lexer(void) {}
+    Lexer::Lexer(void) {
+    }
 
     Lexer::Lexer(ifstream *file) {
+        this->backup = new Lexer();
+
         this->file = file;
         this->linenum = 1;
         this->cur = 0;
@@ -113,7 +116,7 @@ namespace AVSI {
                 return Id();
             }
             if (this->currentChar == '"') { return str(); }
-            if (this->currentChar == '\'') { return character();}
+            if (this->currentChar == '\'') { return character(); }
             if (this->currentChar == '|') {
                 if (peek() == '|') {
                     advance();
@@ -245,6 +248,13 @@ namespace AVSI {
         return Token(END, string("EOF"), 0, 0);
     }
 
+    Token Lexer::peekNextToken() {
+        stash();
+        Token token = getNextToken();
+        restore();
+        return token;
+    }
+
     /**
      * @description:    extract a (multidigit) number from the sentence, refered
      *                  from cJson
@@ -339,7 +349,7 @@ namespace AVSI {
         std::string str;
         advance();
         while (this->currentChar != '"') {
-            if(this->currentChar == '\\') {
+            if (this->currentChar == '\\') {
                 str += getEscapeChar();
             } else {
                 str = str + this->currentChar;
@@ -453,7 +463,7 @@ namespace AVSI {
         advance();
         if (this->currentChar == '\\') {
             c = getEscapeChar();
-            if(currentChar != '\'') {
+            if (currentChar != '\'') {
                 throw ExceptionFactory<SyntaxException>(
                         "cannot read escape char",
                         this->linenum, this->cur
@@ -486,7 +496,7 @@ namespace AVSI {
             str = str + this->currentChar;
             advance();
 
-            if(this->currentChar == ':' && peek() == ':') {
+            if (this->currentChar == ':' && peek() == ':') {
                 mod_info.push_back(str);
                 str.clear();
                 advance();
@@ -496,11 +506,27 @@ namespace AVSI {
         map<string, TokenType>::iterator iter = reservedKeyword.find(str);
         if (mod_info.empty() && iter != reservedKeyword.end()) {
             return Token(iter->second, str, line, column);
-        }
-        else {
+        } else {
             Token token = Token(ID, str, line, column);
             token.setModInfo(mod_info);
             return token;
         }
     }
+
+    void Lexer::stash() {
+        this->backup->linenum = this->linenum;
+        this->backup->cur = this->cur;
+        this->backup->line = this->line;
+        this->backup->currentChar = this->currentChar;
+        file_state_backup = file->tellg();
+    }
+
+    void Lexer::restore() {
+        this->linenum = this->backup->linenum;
+        this->cur = this->backup->cur;
+        this->line = this->backup->line;
+        this->currentChar = this->backup->currentChar;
+        file->seekg(file_state_backup);
+    }
+
 } // namespace AVSI

@@ -70,13 +70,13 @@ namespace AVSI {
                 : BB(nullptr),
                   named_values(map < string, llvm::AllocaInst * > ()),
                   loop_exit(nullptr),
-                  loop_entry(nullptr) {}
+                  loop_entry(nullptr) {named_values.clear();}
 
         SymbolMap(llvm::BasicBlock *BB)
                 : BB(BB),
                   named_values(map < string, llvm::AllocaInst * > ()),
                   loop_exit(nullptr),
-                  loop_entry(nullptr) {}
+                  loop_entry(nullptr) {named_values.clear();}
 
         ~SymbolMap() = default;;
 
@@ -94,7 +94,7 @@ namespace AVSI {
         deque<SymbolMap *> maps;
 
     public:
-        SymbolTable() : maps(deque<SymbolMap *>()) {}
+        SymbolTable() : maps(deque<SymbolMap *>()) {maps.clear();}
 
         ~SymbolTable() = default;
 

@@ -564,6 +564,9 @@ namespace AVSI {
             return;
         }
 
+        llvm::ValueToValueMapTy vmt;
+        auto clone = llvm::CloneModule(*the_module, vmt).release();
+
         llvm::legacy::PassManager pass;
         auto FileType = llvm::CGFT_ObjectFile;
 
@@ -572,7 +575,7 @@ namespace AVSI {
             return;
         }
 
-        pass.run(*the_module);
+        pass.run(*clone);
         dest.flush();
 
         if (opt_verbose)
@@ -629,17 +632,17 @@ namespace AVSI {
         auto clone = llvm::CloneModule(*the_module, vmt).release();
 
         vector<string> remove_list;
-        for (auto & fun : clone->functions()) {
-            if(fun.hasExternalLinkage()) {
+        for (auto &fun: clone->functions()) {
+            if (fun.hasExternalLinkage()) {
                 fun.deleteBody();
             } else {
                 remove_list.emplace_back(fun.getName());
             }
         }
 
-        for(const auto& fun_name: remove_list) {
+        for (const auto &fun_name: remove_list) {
             auto fun = clone->getFunction(fun_name);
-            fun->replaceAllUsesWith(llvm::UndefValue::get((llvm::Type*)fun->getType()));
+            fun->replaceAllUsesWith(llvm::UndefValue::get((llvm::Type *) fun->getType()));
             fun->eraseFromParent();
         }
 

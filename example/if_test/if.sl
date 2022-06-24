@@ -16,5 +16,7 @@ export function foo_iftest(a: i32) -> bool {
         fi
     fi
 
+    select = if [c == true] then 1 else 2 fi
+
     return ret
 }

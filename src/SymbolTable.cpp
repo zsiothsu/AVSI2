@@ -80,7 +80,7 @@ namespace AVSI {
     void SymbolTable::push(llvm::BasicBlock *BB) {
         llvm::BasicBlock *last_breake_to = nullptr;
         llvm::BasicBlock *last_continue_to = nullptr;
-        if(!this->maps.empty()) {
+        if (!this->maps.empty()) {
             last_breake_to = this->maps.back()->loop_exit;
             last_continue_to = this->maps.back()->loop_entry;
         }

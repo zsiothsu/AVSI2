@@ -49,6 +49,9 @@ namespace AVSI {
         unsigned int cur;
         std::string line;
 
+        Lexer* backup;
+        decltype(file->tellg()) file_state_backup;
+
     public:
         char currentChar;
 
@@ -61,6 +64,8 @@ namespace AVSI {
         void advance();
 
         Token getNextToken();
+
+        Token peekNextToken();
 
         Token number();
 
@@ -77,6 +82,10 @@ namespace AVSI {
         Token character();
 
         Token Id();
+
+        void stash();
+
+        void restore();
     };
 
     static map<char, TokenType> TokenMap = {

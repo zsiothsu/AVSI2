@@ -225,14 +225,9 @@ namespace AVSI {
         } else if (token_type == RETURN) {
             PARSE_LOG(STATEMENT);
             return returnExpr();
-        } else if (token_type == ID &&
-                   this->lexer->currentChar == '(') {
-            PARSE_LOG(STATEMENT);
-            AST *ast = functionCall();
-            return ast;
         } else if (token_type == ID) {
             PARSE_LOG(STATEMENT);
-            return assignment();
+            return IDHead();
         } else if (token_type == IF) {
             PARSE_LOG(STATEMENT);
             return IfStatement();
@@ -263,6 +258,14 @@ namespace AVSI {
         } else if (token_type == IMPORT) {
             PARSE_LOG(STATEMENT);
             return moduleImport();
+        }
+
+        for (auto op: ExprOp) {
+            if (token_type == op) {
+                Token token = this->currentToken;
+                AST *ast = checkedExpr();
+                return new BlockExpr(token, ast);
+            }
         }
 
         return ASTEmpty;
@@ -620,7 +623,8 @@ namespace AVSI {
             member_types.push_back(i->Ty.first);
             struct_size += i->Ty.first->isPtrOrPtrVectorTy() ? PTR_SIZE : type_size[i->Ty.first];
             member_index[i->id] = index++;
-            auto mdnode = llvm::MDNode::get(*the_context, {llvm::MDString::get(*the_context, i->id), llvm::MDString::get(*the_context, "struct_member")});
+            auto mdnode = llvm::MDNode::get(*the_context, {llvm::MDString::get(*the_context, i->id),
+                                                           llvm::MDString::get(*the_context, "struct_member")});
             meta->addOperand(mdnode);
         }
 
@@ -660,9 +664,11 @@ namespace AVSI {
         type_name[Ty] = struct_type_name;
         type_size[Ty] = struct_size;
 
-        auto meta_size = llvm::MDNode::get(*the_context, {llvm::MDString::get(*the_context, to_string(struct_size)), llvm::MDString::get(*the_context, "struct_size")});
+        auto meta_size = llvm::MDNode::get(*the_context, {llvm::MDString::get(*the_context, to_string(struct_size)),
+                                                          llvm::MDString::get(*the_context, "struct_size")});
         meta->addOperand(meta_size);
-        auto meta_name = llvm::MDNode::get(*the_context, {llvm::MDString::get(*the_context, struct_type_name), llvm::MDString::get(*the_context, "struct_name")});
+        auto meta_name = llvm::MDNode::get(*the_context, {llvm::MDString::get(*the_context, struct_type_name),
+                                                          llvm::MDString::get(*the_context, "struct_name")});
         meta->addOperand(meta_name);
 
         return new Object(token, id, members_list->paramList);
@@ -912,35 +918,38 @@ namespace AVSI {
         PARSE_LOG(FACTOR);
 
         Token token = this->currentToken;
+        TokenType ty = token.getType();
 
         AST *ret = nullptr;
 
-        if (token.getType() == SIZEOF) {
+        if (ty == SIZEOF) {
             ret = sizeOf();
-        } else if (token.getType() == INTEGER || token.getType() == FLOAT || token.getType() == CHAR) {
-            eat(token.getType());
+        } else if (ty == INTEGER || ty == FLOAT || ty == CHAR) {
+            eat(ty);
             ret = new Num(token);
-        } else if (token.getType() == TRUE || token.getType() == FALSE) {
-            eat(token.getType());
+        } else if (ty == TRUE || ty == FALSE) {
+            eat(ty);
             ret = new Boolean(token);
-        } else if (token.getType() == PLUS) {
+        } else if (ty == PLUS) {
             eat(PLUS);
             ret = new UnaryOp(token, factor());
-        } else if (token.getType() == MINUS) {
+        } else if (ty == MINUS) {
             eat(MINUS);
             ret = new UnaryOp(token, factor());
-        } else if (token.getType() == NOT) {
+        } else if (ty == NOT) {
             eat(NOT);
             ret = new UnaryOp(token, factor());
-        } else if (token.getType() == ID && this->lexer->currentChar == '(') {
+        } else if (ty == ID && this->lexer->currentChar == '(') {
             ret = functionCall();
-        } else if (token.getType() == ID || token.getType() == DOLLAR) {
+        } else if (ty == ID || ty == DOLLAR) {
             ret = variable();
-        } else if (token.getType() == LPAR) {
+        } else if (ty == LPAR) {
             eat(LPAR);
             AST *res = expr();
             eat(RPAR);
             ret = res;
+        } else if (ty == IF) {
+            ret = IfStatement();
         }
 
         if (ret != nullptr) {
@@ -953,7 +962,7 @@ namespace AVSI {
             return ret;
         }
 
-        if (token.getType() == RPAR) {
+        if (ty == RPAR) {
             if (this->parenCnt <= 0)
                 throw ExceptionFactory<SyntaxException>(
                         "unmatched ')'",
@@ -1053,7 +1062,6 @@ namespace AVSI {
         if (this->currentToken.getType() == COLON) {
             eat(COLON);
             Ty = eatType();
-            if (Ty.first->isArrayTy()) Ty.first = Ty.first->getPointerTo();
         }
 
         // process [expr] and .ID
@@ -1118,6 +1126,37 @@ namespace AVSI {
         } else {
             eat(CONTINUE);
             return new LoopCtrl(LoopCtrl::LoopCtrlType::CTRL_CONTINUE, this->currentToken);
+        }
+    }
+
+    AST *Parser::IDHead() {
+        Token token = this->currentToken;
+        Token follow = this->lexer->peekNextToken();
+        if (follow.getType() == LPAR) {
+            return functionCall();
+        } else {
+            /*
+             * assignment or expression
+             * it' hard for LL parser to differentiate them
+             * so stash Lexer and try to find EQUAL
+             */
+            Token token_stashed = this->currentToken;
+            Token last_token_stashed = this->lastToken;
+            this->lexer->stash();
+
+            variable();
+            Token next_token = this->currentToken;
+
+            this->lexer->restore();
+            this->currentToken = token_stashed;
+            this->lastToken = last_token_stashed;
+
+            if (next_token.getType() == EQUAL) {
+                return assignment();
+            } else {
+                AST *ast = expr();
+                return new BlockExpr(token, ast);
+            }
         }
     }
 
