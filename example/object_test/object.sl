@@ -18,7 +18,7 @@ no_mangle obj NS {
 export function obj_test() {
     s = S(1 as i8, 1.2 as f32, {'H', 'E', 'L', 'L', 'O'})
 
-    s.a = 2
+    s.a = 2 as i8
     s.b = s.a as f32
     s.c[0] = 'h'
 

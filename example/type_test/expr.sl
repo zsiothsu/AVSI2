@@ -1,6 +1,27 @@
 mod com::avsi::type_test::expr
 
 export function expr_test() {
+    x = 1
+    y = 2
+    z = +x
+    z = ~x
+    z = -x
+    z = !x
+    z = x * y
+    z = x / y
+    z = x % y
+    z = x + y
+    z = x - y
+    z = x << y
+    z = x >> y
+    z = x >>> y
+    z = x == y
+    z = x != y
+    z = x & y
+    z = x | y
+    z = x && y
+    z = x || y
+
     a = 1
     b = 2
     c = a + b - 312
@@ -28,5 +49,5 @@ export function select_test() -> i32{
 
 export function block_expr_test() -> i32{
     b = 22.4
-    b
+    b as i32
 }

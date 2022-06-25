@@ -805,11 +805,45 @@ namespace AVSI {
 
         if (this->currentToken.getType() == SEMI) return ASTEmpty;
 
-        AST *res = equivalence_expr();
+        AST *res = bit_or_expr();
         auto type = this->currentToken.getType();
         while (type == AND) {
             Token opt = this->currentToken;
             eat(AND);
+            res = new BinOp(res, opt, bit_or_expr());
+            type = this->currentToken.getType();
+        }
+
+        return res;
+    }
+
+    AST *Parser::bit_or_expr() {
+        PARSE_LOG(BITOREXPR);
+
+        if (this->currentToken.getType() == SEMI) return ASTEmpty;
+
+        AST *res = bit_and_expr();
+        auto type = this->currentToken.getType();
+        while (type == BITOR) {
+            Token opt = this->currentToken;
+            eat(BITOR);
+            res = new BinOp(res, opt, bit_and_expr());
+            type = this->currentToken.getType();
+        }
+
+        return res;
+    }
+
+    AST *Parser::bit_and_expr() {
+        PARSE_LOG(BITANDEXPR);
+
+        if (this->currentToken.getType() == SEMI) return ASTEmpty;
+
+        AST *res = equivalence_expr();
+        auto type = this->currentToken.getType();
+        while (type == BITAND) {
+            Token opt = this->currentToken;
+            eat(BITAND);
             res = new BinOp(res, opt, equivalence_expr());
             type = this->currentToken.getType();
         }
@@ -839,9 +873,26 @@ namespace AVSI {
 
         if (this->currentToken.getType() == SEMI) return ASTEmpty;
 
-        AST *res = basic_expr();
+        AST *res = shift_expr();
         auto type = this->currentToken.getType();
         while (type == GT || type == LT || type == GE || type == LE) {
+            Token opt = this->currentToken;
+            eat(type);
+            res = new BinOp(res, opt, shift_expr());
+            type = this->currentToken.getType();
+        }
+
+        return res;
+    }
+
+    AST *Parser::shift_expr() {
+        PARSE_LOG(SHIFYEXPR);
+
+        if (this->currentToken.getType() == SEMI) return ASTEmpty;
+
+        AST *res = basic_expr();
+        auto type = this->currentToken.getType();
+        while (type == SHR || type == SHRU || type == SHL) {
             Token opt = this->currentToken;
             eat(type);
             res = new BinOp(res, opt, basic_expr());
@@ -865,21 +916,12 @@ namespace AVSI {
         if (this->currentToken.getType() == SEMI) return ASTEmpty;
 
         AST *res = term();
-        while (this->currentToken.getType() == PLUS ||
-               this->currentToken.getType() == MINUS) {
+        auto type = this->currentToken.getType();
+        while (type == PLUS || type == MINUS) {
             Token opt = this->currentToken;
-            if (this->currentToken.getType() == PLUS) {
-                eat(PLUS);
-                res = new BinOp(res, opt, term());
-            } else if (this->currentToken.getType() == MINUS) {
-                eat(MINUS);
-                res = new BinOp(res, opt, term());
-            } else
-                throw ExceptionFactory<SyntaxException>(
-                        "unrecognized operator",
-                        opt.line,
-                        opt.column
-                );
+            eat(type);
+            res = new BinOp(res, opt, term());
+            type = this->currentToken.getType();
         }
 
         return res;
@@ -922,34 +964,48 @@ namespace AVSI {
 
         AST *ret = nullptr;
 
-        if (ty == SIZEOF) {
-            ret = sizeOf();
-        } else if (ty == INTEGER || ty == FLOAT || ty == CHAR) {
-            eat(ty);
-            ret = new Num(token);
-        } else if (ty == TRUE || ty == FALSE) {
-            eat(ty);
-            ret = new Boolean(token);
-        } else if (ty == PLUS) {
-            eat(PLUS);
-            ret = new UnaryOp(token, factor());
-        } else if (ty == MINUS) {
-            eat(MINUS);
-            ret = new UnaryOp(token, factor());
-        } else if (ty == NOT) {
-            eat(NOT);
-            ret = new UnaryOp(token, factor());
-        } else if (ty == ID && this->lexer->currentChar == '(') {
-            ret = functionCall();
-        } else if (ty == ID || ty == DOLLAR) {
-            ret = variable();
-        } else if (ty == LPAR) {
-            eat(LPAR);
-            AST *res = expr();
-            eat(RPAR);
-            ret = res;
-        } else if (ty == IF) {
-            ret = IfStatement();
+        switch (ty) {
+            case SIZEOF:
+                ret = sizeOf();
+                break;
+            case INTEGER:
+            case FLOAT:
+            case CHAR:
+                eat(ty);
+                ret = new Num(token);
+                break;
+            case TRUE:
+            case FALSE:
+                eat(ty);
+                ret = new Boolean(token);
+                break;
+            case PLUS:
+            case MINUS:
+            case NOT:
+            case BITCPL:
+                eat(ty);
+                ret = new UnaryOp(token, factor());
+                break;
+            case ID:
+                if (this->lexer->peekNextToken().getType() == LPAR) {
+                    ret = functionCall();
+                } else {
+                    ret = variable();
+                }
+                break;
+            case DOLLAR:
+                ret = variable();
+                break;
+            case LPAR:
+                eat(LPAR);
+                ret = expr();
+                eat(RPAR);
+                break;
+            case IF:
+                ret = IfStatement();
+                break;
+            default:
+                break;
         }
 
         if (ret != nullptr) {
@@ -1006,22 +1062,17 @@ namespace AVSI {
     AST *Parser::term(void) {
         PARSE_LOG(TERM);
 
+        if (this->currentToken.getType() == SEMI) return ASTEmpty;
+
         AST *res = factor();
-        while (this->currentToken.getType() == STAR ||
-               this->currentToken.getType() == SLASH) {
+        auto type = this->currentToken.getType();
+        while (type == STAR || type == SLASH || type == REM) {
             Token opt = this->currentToken;
-            if (opt.getValue() == '*') {
-                eat(STAR);
-                res = new BinOp(res, opt, factor());
-            } else if (opt.getValue() == '/') {
-                eat(SLASH);
-                res = new BinOp(res, opt, factor());
-            } else
-                throw ExceptionFactory<SyntaxException>(
-                        "unrecognized operator",
-                        opt.line, opt.column
-                );
+            eat(type);
+            res = new BinOp(res, opt, factor());
+            type = this->currentToken.getType();
         }
+
         return res;
     }
 

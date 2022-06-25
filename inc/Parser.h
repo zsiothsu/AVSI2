@@ -90,9 +90,15 @@ namespace AVSI {
 
         AST *logic_and_expr();
 
+        AST *bit_or_expr();
+
+        AST *bit_and_expr();
+
         AST *equivalence_expr();
 
         AST *compare_expr();
+
+        AST *shift_expr();
 
         AST *basic_expr();
 

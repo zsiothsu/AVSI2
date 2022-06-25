@@ -224,7 +224,6 @@ namespace AVSI {
 
         if (v && !var->offset.empty()) {
             for (auto i: var->offset) {
-
                 auto current_ty = v->getType()->getPointerElementType();
                 vector<llvm::Value *> offset_list;
                 offset_list.push_back(llvm::ConstantInt::get(I32_TY, 0));
@@ -307,6 +306,7 @@ namespace AVSI {
 
                     );
 
+                    v = builder->CreateLoad(current_ty, v);
                     llvm::Type *v_Ty = v->getType();
                     v = builder->CreatePtrToInt(v, ISIZE_TY);
                     v = builder->CreateAdd(v, index);
@@ -333,7 +333,8 @@ namespace AVSI {
      *                              statements and struct initialization(false)
      * @param:          l_base_name: space name. if l_alloca_addr is nullptr, new space
      *                               will be named by l_base_name
-     * @return:         none
+     * @return:         true: variable changed
+     *                  false: rebind
      * @note:           new variable won't be created if the function is called by statement
      *                  that isn't assignment statement.
      *                  store "a = b" is allowed only in the following cases:
@@ -342,7 +343,7 @@ namespace AVSI {
      *                     this case
      *                  4. a except an array and b is an array pointer.
      */
-    llvm::Value *
+    bool
     store(AST *ast, llvm::Value *l_alloca_addr, llvm::Value *r_value, bool assignment = true,
           string l_base_name = "member") {
 
@@ -353,8 +354,17 @@ namespace AVSI {
         llvm::Type *l_alloca_content_type = l_alloca_addr ? l_alloca_addr->getType()->getPointerElementType() : nullptr;
         llvm::Type *l_except_type =
                 assignment ? ((Variable *) (((Assign *) ast)->left))->Ty.first : nullptr;
-        bool l_is_single_value = assignment && ((Variable *) (((Assign *) ast)->left))->offset.empty();
-        bool l_except_type_is_offered = assignment && ((Variable *) (((Assign *) ast)->left))->Ty.second != "none";
+
+        bool l_is_single_value;
+        bool l_except_type_is_offered;
+
+        if (!assignment) {
+            l_is_single_value = true;
+            l_except_type_is_offered = false;
+        } else {
+            l_is_single_value = ((Variable *) (((Assign *) ast)->left))->offset.empty();
+            l_except_type_is_offered = ((Variable *) (((Assign *) ast)->left))->Ty.second != "none";
+        }
 
         if (r_type == VOID_TY) {
             throw ExceptionFactory<TypeException>(
@@ -374,7 +384,7 @@ namespace AVSI {
                     ast->getToken().line, ast->getToken().column);
         };
 
-        auto assign = [&](llvm::Value *v, llvm::Value *ptr, llvm::Type *Ty) -> void {
+        auto assign = [&](llvm::Value *v, llvm::Value *ptr, llvm::Type *Ty) -> bool {
             llvm::AllocaInst *addr = (llvm::AllocaInst *) ptr;
             if (create_new_space) {
                 llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
@@ -388,7 +398,19 @@ namespace AVSI {
             }
 
             builder->CreateStore(v, addr);
-            if (create_new_space) symbol_table->insert(l_base_name, addr);
+            if (create_new_space) {
+                if (l_is_single_value) {
+                    symbol_table->insert(l_base_name, addr);
+                } else {
+                    throw ExceptionFactory<SysErrException>(
+                            "failed to store value, left: " +
+                            (l_alloca_content_type ? type_name[l_alloca_content_type] : string("null")) + " right: " +
+                            type_name[v->getType()],
+                            ast->getToken().line, ast->getToken().column);
+                }
+            }
+
+            return !create_new_space;
         };
 
         auto memcp = [&](llvm::Value *l_addr, llvm::Value *r_addr, llvm::Type *l_type, llvm::Type *r_type) -> void {
@@ -413,7 +435,7 @@ namespace AVSI {
 
             bool is_l_fp = store_type->isFloatingPointTy();
             bool is_r_fp = r_type->isFloatingPointTy();
-            if (simple_types_map[r_type] < simple_types_map[store_type]) {
+            if (simple_types_map[r_type] <= simple_types_map[store_type]) {
                 if (is_r_fp && is_l_fp) {
                     r_value = builder->CreateFPExt(r_value, store_type, "conv");
                 } else if (!is_r_fp && is_l_fp) {
@@ -422,16 +444,11 @@ namespace AVSI {
                     r_value = builder->CreateSExt(r_value, store_type, "conv");
                 }
             } else {
-                if (is_r_fp && is_l_fp) {
-                    r_value = builder->CreateFPTrunc(r_value, store_type, "conv");
-                } else if (is_r_fp && !is_l_fp) {
-                    r_value = builder->CreateFPToSI(r_value, store_type, "conv");
-                } else {
-                    r_value = builder->CreateTrunc(r_value, store_type, "conv");
-                }
+                store_type = r_type;
+                create_new_space = true;
             }
 
-            assign(r_value, create_new_space ? nullptr : l_alloca_addr, store_type);
+            return assign(r_value, create_new_space ? nullptr : l_alloca_addr, store_type);
         } else if (r_type->isArrayTy()) {
             if (l_alloca_addr) {
                 if (l_alloca_content_type->isArrayTy() &&
@@ -451,12 +468,13 @@ namespace AVSI {
                     }
 
                     memcp(l_alloca_addr, r_alloca_addr, l_alloca_content_type, r_type);
+                    return true;
                 } else if (!l_is_single_value) {
                     assign_err(l_alloca_content_type, r_type);
                 } else {
                     store_type = r_type;
                     create_new_space = true;
-                    assign(r_value, nullptr, store_type);
+                    return assign(r_value, nullptr, store_type);
                 }
             } else if (l_except_type_is_offered && l_except_type->isArrayTy() &&
                        l_except_type->getArrayElementType() == r_type->getArrayElementType()) {
@@ -468,9 +486,11 @@ namespace AVSI {
 
                 if (l_alloca_addr) {
                     memcp(l_alloca_addr, r_alloca_addr, l_except_type, r_type);
+                    return true;
                 } else {
                     if (l_is_single_value) {
                         symbol_table->insert(l_base_name, (llvm::AllocaInst *) r_alloca_addr);
+                        return true;
                     } else {
                         throw ExceptionFactory<TypeException>(
                                 "left value is not allowed to be rebind",
@@ -487,12 +507,14 @@ namespace AVSI {
 
                 if (l_alloca_addr) {
                     builder->CreateStore(r_alloca_addr, l_alloca_addr);
+                    return true;
                 } else {
                     if (l_is_single_value) {
                         store_type = r_type;
                         create_new_space = true;
                         auto cast = builder->CreatePointerCast(r_alloca_addr, l_except_type);
-                        assign(cast, nullptr, l_except_type);
+                        return assign(cast, nullptr, l_except_type);
+                        return false;
                     } else {
                         throw ExceptionFactory<TypeException>(
                                 "left value is not allowed to be rebind",
@@ -502,7 +524,7 @@ namespace AVSI {
             } else if (!l_except_type_is_offered) {
                 store_type = r_type;
                 create_new_space = true;
-                assign(r_value, nullptr, store_type);
+                return assign(r_value, nullptr, store_type);
             } else {
                 assign_err(l_except_type, r_type);
             }
@@ -513,28 +535,30 @@ namespace AVSI {
                 r_type->getPointerElementType()->getPointerElementType()) {
                 auto l_dest = builder->CreateLoad(l_alloca_content_type, l_alloca_addr);
                 memcp(l_dest, r_value, l_alloca_content_type, r_type);
+                return true;
             } else if (l_alloca_content_type && l_alloca_content_type->isArrayTy() &&
                        l_alloca_content_type->getArrayElementType() ==
                        r_type->getPointerElementType()->getArrayElementType()) {
                 memcp(l_alloca_addr, r_value, l_alloca_content_type, r_type);
+                return true;
             } else if (l_except_type_is_offered && l_except_type != r_type) {
                 assign_err(l_except_type, r_type);
             } else {
                 store_type = r_type;
                 create_new_space = true;
-                assign(r_value, nullptr, store_type);
+                return assign(r_value, nullptr, store_type);
             }
         } else if (r_type->isPtrOrPtrVectorTy()) {
             if (l_alloca_content_type && l_alloca_content_type == r_type) {
                 store_type = r_type;
                 create_new_space = false;
-                assign(r_value, l_alloca_addr, store_type);
+                return assign(r_value, l_alloca_addr, store_type);
             } else if (l_except_type_is_offered && l_except_type != r_type) {
                 assign_err(l_except_type, r_type);
             } else {
                 store_type = r_type;
                 create_new_space = true;
-                assign(r_value, nullptr, store_type);
+                return assign(r_value, nullptr, store_type);
             }
         } else if (r_type->isStructTy()) {
             if (l_alloca_content_type && l_alloca_content_type->isStructTy() &&
@@ -542,23 +566,23 @@ namespace AVSI {
                 store_type = l_alloca_content_type;
                 create_new_space = false;
                 r_value = builder->CreateBitCast(r_value, l_alloca_content_type, "conv");
-                assign(r_value, l_alloca_addr, store_type);
+                return assign(r_value, l_alloca_addr, store_type);
             } else if (l_except_type_is_offered && l_except_type->isStructTy() &&
                        ((llvm::StructType *) l_except_type)->isLayoutIdentical((llvm::StructType *) r_type)) {
                 store_type = l_except_type;
                 create_new_space = true;
                 r_value = builder->CreateBitCast(r_value, l_alloca_content_type, "conv");
-                assign(r_value, nullptr, store_type);
+                return assign(r_value, nullptr, store_type);
             } else if (l_except_type_is_offered && l_except_type != r_type) {
                 assign_err(l_except_type, r_type);
             } else {
                 store_type = r_type;
                 create_new_space = true;
-                assign(r_value, nullptr, store_type);
+                return assign(r_value, nullptr, store_type);
             }
         }
 
-        return llvm::ConstantFP::getNaN(F64_TY);
+        return false;
     }
 
     llvm::Value *type_conv(AST *ast, llvm::Value *v, llvm::Type *vtype, llvm::Type *etype) {
@@ -649,11 +673,8 @@ namespace AVSI {
     llvm::Value *Assign::codeGen() {
         llvm::Value *r_value = this->right->codeGen();
 
-        string
-                l_base_name = ((Variable *)
-                this->left)->id;
-        auto l_alloca_addr = getAlloca((Variable *)
-                                               this->left);
+        string l_base_name = ((Variable *) this->left)->id;
+        auto l_alloca_addr = getAlloca((Variable *) this->left);
 
         store(this, l_alloca_addr, r_value, true, l_base_name);
         return llvm::ConstantFP::getNaN(F64_TY);
@@ -733,67 +754,120 @@ namespace AVSI {
             switch (this->op.getType()) {
                 case PLUS:
                     if (float_point)
-                        return builder->CreateFAdd(lv_real, rv_real, "addTmp");
+                        return builder->CreateFAdd(lv_real, rv_real, "add");
                     else
-                        return builder->CreateAdd(lv, rv, "addTmp");
+                        return builder->CreateAdd(lv, rv, "add");
                 case MINUS:
                     if (float_point)
-                        return builder->CreateFSub(lv_real, rv_real, "subTmp");
+                        return builder->CreateFSub(lv_real, rv_real, "sub");
                     else
-                        return builder->CreateSub(lv, rv, "subTmp");
+                        return builder->CreateSub(lv, rv, "sub");
                 case STAR:
                     if (float_point)
-                        return builder->CreateFMul(lv_real, rv_real, "mulTmp");
+                        return builder->CreateFMul(lv_real, rv_real, "mul");
                     else
-                        return builder->CreateMul(lv, rv, "mulTmp");
+                        return builder->CreateMul(lv, rv, "mul");
                 case SLASH:
+                    if (llvm::dyn_cast<llvm::Constant>(rv) && llvm::dyn_cast<llvm::Constant>(rv)->isZeroValue()) {
+                        throw ExceptionFactory<MathException>(
+                                "divisor cannot be 0",
+                                this->token.line, this->token.column);
+                    }
                     if (!float_point) {
                         lv_real = builder->CreateSIToFP(lv, F32_TY);
                         rv_real = builder->CreateSIToFP(rv, F32_TY);
                     }
-                    return builder->CreateFDiv(lv_real, rv_real, "divTmp");
+                    return builder->CreateFDiv(lv_real, rv_real, "div");
                 case EQ:
                     if (float_point) {
-                        cmp_value_boolean = builder->CreateFCmpOEQ(lv_real, rv_real, "cmpEQTmp");
+                        cmp_value_boolean = builder->CreateFCmpOEQ(lv_real, rv_real, "eq");
                     } else {
-                        cmp_value_boolean = builder->CreateICmpEQ(lv, rv, "cmpEQTmp");
+                        cmp_value_boolean = builder->CreateICmpEQ(lv, rv, "eq");
                     }
                     return cmp_value_boolean;
                 case NE:
                     if (float_point) {
-                        cmp_value_boolean = builder->CreateFCmpONE(lv_real, rv_real, "cmpNETmp");
+                        cmp_value_boolean = builder->CreateFCmpONE(lv_real, rv_real, "ne");
                     } else {
-                        cmp_value_boolean = builder->CreateICmpNE(lv, rv, "cmpNETmp");
+                        cmp_value_boolean = builder->CreateICmpNE(lv, rv, "ne");
                     }
                     return cmp_value_boolean;
                 case GT:
                     if (float_point) {
-                        cmp_value_boolean = builder->CreateFCmpOGT(lv_real, rv_real, "cmpGTTmp");
+                        cmp_value_boolean = builder->CreateFCmpOGT(lv_real, rv_real, "gt");
                     } else {
-                        cmp_value_boolean = builder->CreateICmpSGT(lv, rv, "cmpGTTmp");
+                        cmp_value_boolean = builder->CreateICmpSGT(lv, rv, "gt");
                     }
                     return cmp_value_boolean;
                 case LT:
                     if (float_point) {
-                        cmp_value_boolean = builder->CreateFCmpOLT(lv_real, rv_real, "cmpLTTmp");
+                        cmp_value_boolean = builder->CreateFCmpOLT(lv_real, rv_real, "lt");
                     } else {
-                        cmp_value_boolean = builder->CreateICmpSLT(lv, rv, "cmpLTTmp");
+                        cmp_value_boolean = builder->CreateICmpSLT(lv, rv, "lt");
                     }
                     return cmp_value_boolean;
                 case GE:
                     if (float_point) {
-                        cmp_value_boolean = builder->CreateFCmpOGE(lv_real, rv_real, "cmpGETmp");
+                        cmp_value_boolean = builder->CreateFCmpOGE(lv_real, rv_real, "gt");
                     } else {
-                        cmp_value_boolean = builder->CreateICmpSGE(lv, rv, "cmpGETmp");
+                        cmp_value_boolean = builder->CreateICmpSGE(lv, rv, "gt");
                     }
                     return cmp_value_boolean;
                 case LE:
                     if (float_point) {
-                        cmp_value_boolean = builder->CreateFCmpOLE(lv_real, rv_real, "cmpLETmp");
+                        cmp_value_boolean = builder->CreateFCmpOLE(lv_real, rv_real, "le");
                     } else {
-                        cmp_value_boolean = builder->CreateICmpSLE(lv, rv, "cmpLETmp");
+                        cmp_value_boolean = builder->CreateICmpSLE(lv, rv, "le");
                     }
                     return cmp_value_boolean;
+                case BITOR:
+                    if (float_point)
+                        throw ExceptionFactory<MathException>(
+                                "unsupported type '" + type_name[l_type] + "' and '" + type_name[r_type]
+                                + "to bitor expression",
+                                this->token.line, this->token.column);
+                    else
+                        return builder->CreateOr(lv, rv, "bitor");
+                case BITAND:
+                    if (float_point)
+                        throw ExceptionFactory<MathException>(
+                                "unsupported type '" + type_name[l_type] + "' and '" + type_name[r_type]
+                                + "to bitand expression",
+                                this->token.line, this->token.column);
+                    else
+                        return builder->CreateAnd(lv, rv, "bitand");
+                case SHL:
+                    if (float_point)
+                        throw ExceptionFactory<MathException>(
+                                "unsupported type '" + type_name[l_type] + "' and '" + type_name[r_type]
+                                + "to shift expression",
+                                this->token.line, this->token.column);
+                    else
+                        return builder->CreateShl(lv, rv, "shl");
+                case SHR:
+                    if (float_point)
+                        throw ExceptionFactory<MathException>(
+                                "unsupported type '" + type_name[l_type] + "' and '" + type_name[r_type]
+                                + "to shift expression",
+                                this->token.line, this->token.column);
+                    else
+                        return builder->CreateAShr(lv, rv, "shr");
+                case SHRU:
+                    if (float_point)
+                        throw ExceptionFactory<MathException>(
+                                "unsupported type '" + type_name[l_type] + "' and '" + type_name[r_type]
+                                + "to shift expression",
+                                this->token.line, this->token.column);
+                    else
+                        return builder->CreateLShr(lv, rv, "shr");
+                case REM:
+                    if (float_point)
+                        throw ExceptionFactory<MathException>(
+                                "unsupported type '" + type_name[l_type] + "' and '" + type_name[r_type]
+                                + "to remainder expression",
+                                this->token.line, this->token.column);
+                    else
+                        return builder->CreateSRem(lv, rv, "rem");
                 default:
                     return nullptr;
             }
@@ -1003,7 +1077,7 @@ namespace AVSI {
 
         // create function parameters' type
         std::vector<llvm::Type *> Tys;
-        for (Variable *i: ((Param *) (this->paramList))->paramList) {
+        for (Variable *i: ((Param * )(this->paramList))->paramList) {
             /* Passing array pointers between functions
              *
              * To be able to call external functions. Passing
@@ -1063,8 +1137,8 @@ namespace AVSI {
 
             uint8_t param_index = 0;
             for (auto &arg: the_function->args()) {
-                Variable *var = ((Param *)
-                        this->paramList)->paramList[param_index++];
+                Variable *var = ((Param * )
+                this->paramList)->paramList[param_index++];
                 arg.setName(var->id);
             }
 
@@ -1103,7 +1177,29 @@ namespace AVSI {
                     if (!ret_const || (ret_const && !ret_const->isNaN())) {
                         // expr without "return" keyword
                         auto ret_alloca_addr = allocaBlockEntry(the_function, "ret", the_function->getReturnType());
-                        store(this, ret_alloca_addr, ret, false, "ret");
+                        bool state = store(this, ret_alloca_addr, ret, false, "ret");
+
+                        if (!state) {
+                            // rebind variable
+                            if (
+                                    simple_types.find(ret->getType()) != simple_types.end()
+                                    && simple_types.find(the_function->getReturnType()) != simple_types.end()
+                                    ) {
+                                throw ExceptionFactory<LogicException>(
+                                        "unmatched return type '" + type_name[ret->getType()]
+                                        + "', excepted '" + type_name[the_function->getReturnType()] + "'."
+                                        + "This return expression cause a loss of precision",
+                                        this->getToken().line, this->getToken().column
+                                );
+                            }
+                            throw ExceptionFactory<LogicException>(
+                                    "unmatched return type '" + type_name[ret->getType()]
+                                    + "', excepted '" + type_name[the_function->getReturnType()] + "'."
+                                    + "please check return expression",
+                                    this->getToken().line, this->getToken().column
+                            );
+                        }
+
                         ret = builder->CreateLoad(the_function->getReturnType(), ret_alloca_addr);
                         builder->CreateRet(ret);
                     } else if (the_function->getReturnType() == VOID_TY) {
@@ -1658,19 +1754,34 @@ namespace AVSI {
                     this->token.line, this->token.column);
         }
 
+        llvm::Type *ty = rv->getType();
+        bool float_point = rv->getType()->isFloatingPointTy();
+
+        if (simple_types.find(ty) == simple_types.end()) {
+            throw ExceptionFactory<MathException>(
+                    "unsupported type '" + type_name[ty] + "' to unary expression",
+                    this->token.line, this->token.column);
+        }
+
         if (this->op.getType() == MINUS) {
-            return builder->CreateFSub(
-                    llvm::ConstantFP::get(F64_TY, 0.0),
-                    rv,
-                    "unaryAddTmp");
+            if (float_point)
+                return builder->CreateFSub(llvm::ConstantFP::get(ty, 0.0), rv, "neg");
+            else
+                return builder->CreateSub(llvm::ConstantInt::get(ty, 0), rv, "neg");
         } else if (this->op.getType() == PLUS) {
-            return builder->CreateFAdd(
-                    llvm::ConstantFP::get(F64_TY, 0.0),
-                    rv,
-                    "unarySubTmp");
+            return rv;
         } else if (this->op.getType() == NOT) {
-            llvm::Value *rv_bool = builder->CreateFCmpUNE(rv, llvm::ConstantFP::get(F64_TY, 0.0), "toBool");
-            return builder->CreateNot(rv_bool, "unaryNotTmp");
+            if (float_point)
+                return builder->CreateFCmpUNE(rv, llvm::ConstantFP::get(ty, 0.0), "not");
+            else
+                return builder->CreateICmpNE(rv, llvm::ConstantInt::get(ty, 0), "not");
+        } else if (this->op.getType() == BITCPL) {
+            if (float_point)
+                throw ExceptionFactory<MathException>(
+                        "unsupported type '" + type_name[ty] + "' to bit complement expression",
+                        this->token.line, this->token.column);
+            else
+                return builder->CreateXor(rv, llvm::ConstantInt::get(ty, -1), "complement");
         } else {
             return nullptr;
         }
@@ -1809,7 +1920,29 @@ namespace AVSI {
             } else {
                 llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
                 auto ret_alloca_addr = allocaBlockEntry(the_scope, "ret", the_scope->getReturnType());
-                store(this, ret_alloca_addr, re, false, "ret");
+                bool state = store(this, ret_alloca_addr, re, false, "ret");
+
+                if (!state) {
+                    // rebind variable
+                    if (
+                            simple_types.find(re->getType()) != simple_types.end()
+                            && simple_types.find(the_scope->getReturnType()) != simple_types.end()
+                            ) {
+                        throw ExceptionFactory<LogicException>(
+                                "unmatched return type '" + type_name[re->getType()]
+                                + "', excepted '" + type_name[the_scope->getReturnType()] + "'."
+                                + "This return expression cause a loss of precision",
+                                this->getToken().line, this->getToken().column
+                        );
+                    }
+                    throw ExceptionFactory<LogicException>(
+                            "unmatched return type '" + type_name[re->getType()]
+                            + "', excepted '" + type_name[the_scope->getReturnType()] + "'."
+                            + "please check return expression",
+                            this->getToken().line, this->getToken().column
+                    );
+                }
+
                 re = builder->CreateLoad(the_scope->getReturnType(), ret_alloca_addr);
                 return builder->CreateRet(re);
             }
