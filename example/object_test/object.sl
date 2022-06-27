@@ -15,6 +15,10 @@ no_mangle obj NS {
     c: vec[i8;100]
 }
 
+no_mangle obj VS {
+    c: vec[i32;100]
+}
+
 export function obj_test() {
     s = S(1 as i8, 1.2 as f32, {'H', 'E', 'L', 'L', 'O'})
 

@@ -65,31 +65,50 @@ namespace AVSI {
 
     any::any(bool var) {
         this->typeInfo = typeBool;
+        this->valueChar = (char) var;
+        this->valueInt = (int) var;
+        this->valueFloat = (float) var;
+        this->valueDouble = (double) var;
         this->valueBool = var;
-        this->valueChar = this->valueFloat = this->valueInt = 1;
     }
 
     any::any(char var) {
         this->typeInfo = typeChar;
-        this->valueChar = this->valueInt = this->valueFloat = var;
-        this->valueBool = (bool)var;
+        this->valueChar = var;
+        this->valueInt = (int) var;
+        this->valueFloat = (float) var;
+        this->valueDouble = (double ) var;
+        this->valueBool = (bool) var;
     }
 
     any::any(int var) {
         this->typeInfo = typeInt;
-        this->valueChar = (char)var;
-        this->valueInt = this->valueFloat = var;
-        this->valueBool = (bool)var;
+        this->valueChar = (char) var;
+        this->valueInt = var;
+        this->valueFloat = (float) var;
+        this->valueDouble = (float) var;
+        this->valueBool = (bool) var;
+    }
+
+    any::any(float var) {
+        this->typeInfo = typeFloat;
+        this->valueDouble = (double)var;
+        this->valueFloat = var;
+        this->valueInt = (int) var;
+        this->valueBool = (bool) var;
+        this->valueChar = (char) var;
     }
 
     any::any(double var) {
         this->typeInfo = typeFloat;
-        this->valueFloat = var;
-        this->valueInt = (int)var;
-        this->valueBool = (bool)var;
+        this->valueDouble = var;
+        this->valueFloat = (float) var;
+        this->valueInt = (int) var;
+        this->valueBool = (bool) var;
+        this->valueChar = (char) var;
     }
 
-    any::any(char* var) {
+    any::any(char *var) {
         this->typeInfo = typeString;
         this->valueString = string(var);
     }
@@ -105,26 +124,47 @@ namespace AVSI {
 
     any any::operator=(bool var) {
         this->typeInfo = typeBool;
-        this->valueChar = this->valueFloat = this->valueInt = var;
+        this->valueDouble = (double) var;
+        this->valueFloat = (float) var;
+        this->valueInt = (int) var;
+        this->valueChar = (char) var;
         return this->valueBool = var;
     }
 
     any any::operator=(char var) {
         this->typeInfo = typeChar;
-        this->valueBool = (bool)var;
-        return this->valueChar = this->valueInt = this->valueFloat = var;
+        this->valueBool = (bool) var;
+        this->valueFloat = (float) var;
+        this->valueDouble = (double) var;
+        this->valueInt = (int) var;
+        return this->valueChar = var;
     }
 
     any any::operator=(int var) {
         this->typeInfo = typeInt;
-        this->valueBool = (bool)var;
-        return this->valueInt = this->valueFloat = var;
+        this->valueBool = (bool) var;
+        this->valueFloat = (float) var;
+        this->valueDouble = (double) var;
+        this->valueChar = (char) var;
+        return this->valueInt = var;
+    }
+
+    any any::operator=(float var) {
+        this->typeInfo = typeFloat;
+        this->valueBool = (bool) var;
+        this->valueChar = (char) var;
+        this->valueInt = (int) var;
+        this->valueDouble = (double) var;
+        return this->valueFloat = var;
     }
 
     any any::operator=(double var) {
         this->typeInfo = typeFloat;
-        this->valueBool = (bool)var;
-        return this->valueFloat = var;
+        this->valueBool = (bool) var;
+        this->valueChar = (char) var;
+        this->valueInt = (int) var;
+        this->valueFloat = (float) var;
+        return this->valueDouble = var;
     }
 
     any any::operator=(string var) {
@@ -135,8 +175,8 @@ namespace AVSI {
     any any::operator+(any var) {
         checkOperand(this->type(), var.type(), "+");
 
-        if (this->typeInfo == typeString) return any(string(this->valueString + (string)var));
-        if (var.typeInfo == typeString) return any(string((string)(*this) + var.valueString));
+        if (this->typeInfo == typeString) return any(string(this->valueString + (string) var));
+        if (var.typeInfo == typeString) return any(string((string) (*this) + var.valueString));
 
         if (this->typeInfo.type() >= var.typeInfo.type()) {
             if (this->typeInfo == typeBool)
@@ -240,24 +280,24 @@ namespace AVSI {
     }
 
     bool any::operator==(char var) const {
-        return this->valueFloat == (double) var;
+        return this->valueDouble == (double) var;
     }
 
     bool any::operator==(int var) const {
-        return this->valueFloat == (double) var;
+        return this->valueDouble == (double) var;
     }
 
-    bool any::operator==(double var) const { return this->valueFloat == var; }
+    bool any::operator==(double var) const { return this->valueDouble == var; }
 
     bool any::operator==(string var) const { return this->valueString == var; }
 
-    bool any::operator>(any var) const { return (this->valueFloat - var.valueFloat) > 0;}
+    bool any::operator>(any var) const { return (this->valueDouble - var.valueDouble) > 0; }
 
-    bool any::operator<(any var) const { return (this->valueFloat - var.valueFloat) < 0;}
+    bool any::operator<(any var) const { return (this->valueDouble - var.valueDouble) < 0; }
 
-    bool any::operator>=(any var) const { return (this->valueFloat - var.valueFloat) >= 0;}
+    bool any::operator>=(any var) const { return (this->valueDouble - var.valueDouble) >= 0; }
 
-    bool any::operator<=(any var) const { return (this->valueFloat - var.valueFloat) <= 0;}
+    bool any::operator<=(any var) const { return (this->valueDouble - var.valueDouble) <= 0; }
 
     any::operator bool() {
         return this->valueBool;
@@ -265,9 +305,9 @@ namespace AVSI {
 
     any::operator string() {
         if (this->typeInfo == typeBool) return string(this->valueBool ? "True" : "False");
-        else if (this->typeInfo == typeChar) return string(1,this->valueChar);
+        else if (this->typeInfo == typeChar) return string(1, this->valueChar);
         else if (this->typeInfo == typeInt) return to_string(this->valueInt);
-        else if (this->typeInfo == typeFloat) return to_string(this->valueFloat);
+        else if (this->typeInfo == typeFloat) return to_string(this->valueDouble);
         else if (this->typeInfo == typeString) return this->valueString;
         else return string();
     }

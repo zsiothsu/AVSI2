@@ -467,28 +467,29 @@ namespace AVSI {
                 {ISIZE_TY, PTR_SIZE == 8 ? (uint8_t) (0x1 << 4) : (uint8_t) (0x1 << 3)}
         };
         type_name = {
-                {F64_TY,   "f64"},
-                {F32_TY,   "f32"},
-                {I128_TY,  "i128"},
-                {I64_TY,   "i64"},
-                {I32_TY,   "i32"},
-                {I16_TY,   "i16"},
-                {I8_TY,    "i8"},
-                {I1_TY,    "bool"},
-                {VOID_TY,  "void"},
-                {ISIZE_TY, "isize"}
+                {F64_TY, "f64"}, {F64_TY->getPointerTo(), "f64*"},
+                {F32_TY, "f32"}, {F32_TY->getPointerTo(), "f32*"},
+                {I128_TY, "i128"}, {I128_TY->getPointerTo(), "i128*"},
+                {I64_TY, "i64"}, {I64_TY->getPointerTo(), "i64*"},
+                {I32_TY, "i32"}, {I32_TY->getPointerTo(), "i32*"},
+                {I16_TY, "i16"}, {I16_TY->getPointerTo(), "i16*"},
+                {I8_TY, "i8"}, {I8_TY->getPointerTo(), "i8*"},
+                {I1_TY, "bool"}, {I1_TY->getPointerTo(), "bool*"},
+                {VOID_TY, "void"}, {VOID_TY->getPointerTo(), "void*"},
+                {ISIZE_TY, "isize"}, {ISIZE_TY->getPointerTo(), "isize*"},
         };
+        
         type_size = {
-                {F64_TY,  8},
-                {F32_TY,  4},
-                {I128_TY, 16},
-                {I64_TY,  8},
-                {I32_TY,  4},
-                {I16_TY,  2},
-                {I8_TY,   1},
-                {I1_TY,   1},
-                {VOID_TY, 0},
-                {ISIZE_TY, PTR_SIZE},
+                {F64_TY, 8}, {F64_TY->getPointerTo(), 1},
+                {F32_TY, 4}, {F32_TY->getPointerTo(), 1},
+                {I128_TY, 16}, {I128_TY->getPointerTo(), 1},
+                {I64_TY, 8}, {I64_TY->getPointerTo(), 1},
+                {I32_TY, 4}, {I32_TY->getPointerTo(), 1},
+                {I16_TY, 2}, {I16_TY->getPointerTo(), 1},
+                {I8_TY, 1}, {I8_TY->getPointerTo(), 1},
+                {I1_TY, 1}, {I1_TY->getPointerTo(), 1},
+                {VOID_TY, 0}, {VOID_TY->getPointerTo(), 1},
+                {ISIZE_TY, PTR_SIZE}, {ISIZE_TY->getPointerTo(), 1},
         };
 
         token_to_simple_types = {
@@ -645,6 +646,20 @@ namespace AVSI {
             fun->replaceAllUsesWith(llvm::UndefValue::get((llvm::Type *) fun->getType()));
             fun->eraseFromParent();
         }
+
+        remove_list.clear();
+        for (auto &glb: clone->globals()) {
+            if (glb.getLinkage() == llvm::GlobalValue::LinkageTypes::PrivateLinkage) {
+                remove_list.emplace_back(string(glb.getName()));
+            }
+        }
+
+        for (const auto &glb_name: remove_list) {
+            auto glb = clone->getGlobalVariable(glb_name, true);
+            glb->replaceAllUsesWith(llvm::UndefValue::get((llvm::Type *) glb->getType()));
+            glb->eraseFromParent();
+        }
+
 
         std::error_code EC;
         llvm::raw_fd_ostream dest(Filename, EC, llvm::sys::fs::OF_None);

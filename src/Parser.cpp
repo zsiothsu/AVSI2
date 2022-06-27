@@ -634,7 +634,7 @@ namespace AVSI {
         llvm::StructType *Ty = llvm::StructType::create(*the_context, member_types, id);
 
         the_module->getOrInsertGlobal(
-                "__reserve_ehuifggw&(^%#drzg)(*&ehhwhtiw3ghr389q2_" + id, Ty,
+                ".reserve.object." + id, Ty,
                 [&] {
                     return new llvm::GlobalVariable(
                             *the_module,
@@ -642,7 +642,7 @@ namespace AVSI {
                             false,
                             llvm::GlobalValue::ExternalLinkage,
                             llvm::Constant::getNullValue(Ty),
-                            "__reserve_ehuifggw&(^%#drzg)(*&ehhwhtiw3ghr389q2_" + id);
+                            ".reserve.object." + id);
                 });
 
 

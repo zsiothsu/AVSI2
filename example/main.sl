@@ -33,6 +33,7 @@ export no_mangle function entry() -> i32 {
     size = sizeof(typename NS)
     s = object_test::object::S(1 as i8, 1.2 as f32, {'H', 'E', 'L', 'L', 'O'})
     s = s.a
+    t = VS({1,2})
 
     type_test::cast::cast_test()
     type_test::expr::expr_test()

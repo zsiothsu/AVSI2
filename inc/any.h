@@ -80,7 +80,8 @@ namespace AVSI {
     private:
         bool valueBool;
         int valueInt;
-        double valueFloat;
+        double valueDouble;
+        float valueFloat;
         char valueChar;
         string valueString;
         type_info typeInfo;
@@ -92,9 +93,11 @@ namespace AVSI {
 
         any(int var);
 
+        any(float var);
+
         any(double var);
 
-        any(char* var);
+        any(char *var);
 
         any(string var);
 
@@ -115,6 +118,8 @@ namespace AVSI {
         any operator=(char var);
 
         any operator=(int var);
+
+        any operator=(float var);
 
         any operator=(double var);
 
@@ -180,15 +185,19 @@ namespace AVSI {
 
     template<typename T>
     T any::any_cast(void) {
+        static_assert((std::is_arithmetic_v<T> || std::is_same_v<T, std::string>), "unsupported any_cast type");
+
         void *ret = &this->valueChar;
-        if (typeid(T) == typeid(bool) && this->typeInfo <= typeBool)
+        if (typeid(T) == typeid(bool) && this->typeInfo <= typeFloat)
             ret = &this->valueBool;
-        else if (typeid(T) == typeid(char) && this->typeInfo <= typeChar)
+        else if (typeid(T) == typeid(char) && this->typeInfo <= typeFloat)
             ret = &this->valueChar;
-        else if (typeid(T) == typeid(int) && this->typeInfo <= typeInt)
+        else if (typeid(T) == typeid(int) && this->typeInfo <= typeFloat)
             ret = &this->valueInt;
-        else if ((typeid(T) == typeid(double) || typeid(T) == typeid(float)) && this->typeInfo <= typeFloat)
+        else if (typeid(T) == typeid(float) && this->typeInfo <= typeFloat)
             ret = &this->valueFloat;
+        else if (typeid(T) == typeid(double) && this->typeInfo <= typeFloat)
+            ret = &this->valueDouble;
         else if (typeid(T) == typeid(string))
             ret = &this->valueString;
         T Tval = *((T *) ret);

@@ -68,11 +68,13 @@ $ avsi main.sl
 
 ```
 
-由於AVSI沒有自動連結的功能，所以必須使用gcc來連結執行檔。
+由於AVSI沒有自動連結的功能，所以必須使用gcc或clang來連結執行檔。
 
 ```shell
-$ objs=($(find .-name "*.o"))
-$ gcc $objs -lavsi -o ./a.out
+$ objs=($(find . -name "*.o"))
+$ gcc $objs -lavsi -no-pie -o ./a.out 
+# 或者使用 clang
+$ clang $objs -lavsi -no-pie -o ./a.out 
 ```
 
 ## 語法

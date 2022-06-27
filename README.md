@@ -1,5 +1,9 @@
 # A Very Simple <s>Interpreter</s> Compiler 2
 
+![Github repo size](https://img.shields.io/github/repo-size/zsiothsu/AVSI2)
+![Github license](https://img.shields.io/github/license/zsiothsu/AVSI2)
+![platform](https://img.shields.io/badge/platform-linux-green)
+
 [大陆简体](README.zh_cn.md) · [臺灣正體](README.zh_tw.md)
 
 ## Introduce
@@ -68,11 +72,13 @@ Now we have a folder called `build` including all object files. (You can use opt
 
 ```
 
-Since AVSI does not have the function of automatic linking, you have to use gcc to link the executable file.
+Since AVSI does not have the function of automatic linking, you have to use gcc or clang to link the executable file.
 
 ```shell
 $ objs=($(find . -name "*.o"))
-$ gcc $objs -lavsi -o ./a.out
+$ gcc $objs -lavsi -no-pie -o ./a.out 
+# or clang
+$ clang $objs -lavsi -no-pie -o ./a.out 
 ```
 
 ## Grammar

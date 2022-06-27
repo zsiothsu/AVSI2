@@ -14,8 +14,7 @@ export function cast_test() {
     i8_ptr = addr as vec[i32;0]
     void_ptr = arr as vec[void;0]
 
-    x: vec[f64;0] = {1,2,3}
-    y: vec[f64;2] = {1,2,3,4,5}
+    x: vec[i32;0] = {1, 2, 3}
     y = x
-    y:vec[f64;3] = x
+    y:vec[i32;3] = x
 }
