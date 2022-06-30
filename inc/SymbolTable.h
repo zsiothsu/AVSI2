@@ -50,7 +50,7 @@ to_string(string(x).size()) + string(x))
 #err "unsupported machine"
 #endif
 
-#define ENTRY_NAME          "entry"
+#define ENTRY_NAME          "main"
 
 namespace AVSI {
     using std::map;

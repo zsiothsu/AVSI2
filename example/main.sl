@@ -13,7 +13,9 @@ import com::avsi::object_test::object
 import com::avsi::type_test
 import submod as sub
 
-export no_mangle function entry() -> i32 {
+export no_mangle function main(argc: i32, argv: vec[vec[char;0];0]) -> i32 {
+    std::io::printStr("\n=============== test begin ===============\n")
+
     a = function_test::fun::foo_p_i64_r_f64(1 as i64)
     b = function_test::fun::foo_p_i8ptr_i32_r_i8({'a', 'b', 46 as i8}, 2)
 
@@ -46,6 +48,16 @@ export no_mangle function entry() -> i32 {
     io::printStr("\n")
     type_test::global::global_variable = 5678
     io::printReal(com::avsi::type_test::global::global_variable)
+    std::io::printStr("\n================ test end ================\n")
+    std::io::printStr("num args: ")
+    std::io::printReal(argc as real)
+    std::io::printStr("\n")
+
+    for (i = 0; i < argc; i = i + 1) do
+        std::io::printStr(argv[i])
+        std::io::printStr("\n")
+    done
+
 
     banner = 
     "\n\033[1;5;34m"
