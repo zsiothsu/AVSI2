@@ -1,6 +1,6 @@
-mod com::avsi::object_test::object
+mod object_test::object
 
-import com::avsi::object_test::subobject
+import subobject
 
 obj S {
     a: i8

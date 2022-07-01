@@ -1,4 +1,4 @@
-mod com::avsi::interface_test::private
+mod interface_test::private
 
 export function function_public() {
 

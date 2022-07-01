@@ -51,6 +51,7 @@ extern std::string compiler_command_line;
 extern std::string compiler_exec_path;
 extern std::string output_root_path;
 extern std::vector<std::string> include_path;
+extern std::vector<std::string> package_path;
 
 extern std::string input_file_name;
 extern std::string input_file_name_no_suffix;

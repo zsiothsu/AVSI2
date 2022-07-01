@@ -34,6 +34,7 @@
 
 #include "../inc/AST.h"
 #include "../inc/SymbolTable.h"
+#include "../inc/FileName.h"
 #include <filesystem>
 #include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/FileSystem.h>
@@ -133,21 +134,14 @@ namespace AVSI {
      */
     void llvm_import_module(vector<string> path, string mod, int line, int col, string as) {
         // to check absolute or relative path
-        auto path_size = module_path.size();
+        auto module_path_size = module_path.size();
         bool is_absolute_module_path = true;
-        if (path.size() < path_size) {
-            is_absolute_module_path = false;
+
+        if(!path.empty() && path[0] == "root") {
+            path.erase(path.begin());
+            path.insert(path.begin(), package_path.begin(), package_path.end());
         } else {
-            /**
-             * if module_path is the prefix of import module path,
-             * the provided path will be considered an absolute path
-             */
-            for (int i = 0; i < path_size; i++) {
-                if (module_path[i] != path[i]) {
-                    is_absolute_module_path = false;
-                    break;
-                }
-            }
+            is_absolute_module_path = false;
         }
 
         // create alias
@@ -156,7 +150,7 @@ namespace AVSI {
             unresolved_path_absulote += (unresolved_path_absulote.empty() ? "" : "::") + mod;
 
             // remove the module_path prefix so it can be treated as a relative path
-            path.erase(path.begin(), path.begin() + path_size);
+            path.erase(path.begin(), path.begin() + module_path_size);
 
             string unresolved_path_relative = getpathListToUnresolved(path);
             unresolved_path_relative += (unresolved_path_relative.empty() ? "" : "::") + mod;
@@ -235,24 +229,41 @@ namespace AVSI {
                 bcfile = module_file_system_path;
             } else {
                 string program = compiler_command_line;
-                const uint16_t arg_size = 9;
-                char const *args[arg_size] = {
+                vector<const char*> args =
+                {
                         program.c_str(),
                         module_source_file_system_path.c_str(),
                         "-o",
                         output_root_path.c_str(),
-                        "-m",
-                        (char *) 0,
-                        (char *) 0,
-                        (char *) 0,
-                        (char *) 0};
-                int index = 5;
-                if (opt_verbose)
-                    args[index++] = "-v";
-                if (opt_warning)
-                    args[index++] = "-W";
-                if (opt_optimize)
-                    args[index++] = "-O";
+                        "-m"
+                };
+
+                if (opt_verbose) args.push_back("-v");
+                if (opt_warning) args.push_back("-W");
+                if (opt_optimize) args.push_back("-O");
+
+                // include path
+                for(int i = 1; i < include_path.size(); i++) {
+                    args.push_back("-I");
+                    args.push_back(include_path[i].c_str());
+                }
+
+                // package name
+                if(!package_path.empty()) {
+                    string p;
+                    bool first_flag = true;
+                    for(auto i : package_path) {
+                        if(!first_flag) {
+                            p.append(".");
+                        }
+                        first_flag = false;
+                        p.append(i);
+                    }
+                    args.push_back("--package-name");
+                    args.push_back(p.c_str());
+                }
+
+                args.push_back((char const *)0);
 
                 clog << "importing "
                      << __COLOR_GREEN
@@ -269,7 +280,7 @@ namespace AVSI {
                          << filesystem::absolute(sourcefile) << " "
                          << args[2] << " "
                          << filesystem::absolute(filesystem::path(output_root_path)) << " ";
-                    for (int i = 4; i < arg_size - 1; i++) {
+                    for (int i = 4; i < args.size(); i++) {
                         if (args[i] != 0) {
                             clog << args[i] << " ";
                         }
@@ -277,7 +288,7 @@ namespace AVSI {
                     clog << endl;
                 }
 
-                execvp(compiler_command_line.c_str(), (char *const *) args);
+                execvp(compiler_command_line.c_str(), (char * const *)args.data());
                 exit(-1);
             }
         } else if (!std::filesystem::exists(bcfile)) {

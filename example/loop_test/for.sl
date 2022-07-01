@@ -1,4 +1,4 @@
-mod com::avsi::loop_test::for
+mod loop_test::for
 
 import std::io
 

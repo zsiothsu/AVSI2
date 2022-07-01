@@ -29,7 +29,6 @@
  */
 
 #include "../inc/Parser.h"
-#include "SymbolTable.h"
 #include <filesystem>
 
 uint16_t err_count = 0;
@@ -114,6 +113,75 @@ namespace AVSI {
     /*******************************************************
      *                         parser                      *
      *******************************************************/
+    pair<map<string, StructDef *>::iterator, string> Parser::find_struct(vector<string> modinfo, string &name) {
+        string id = name;
+        // try no mangle
+        auto ty = struct_types.find(id);
+
+        if (ty == struct_types.end()) {
+            if (modinfo.empty()) {
+                // try local
+                id.clear();
+                for (auto i: module_path_with_module_name) {
+                    id.append(i + "::");
+                }
+                id.append(name);
+                ty = struct_types.find(id);
+            } else if (modinfo[0] == "root") {
+                // try external, absolute path
+                id.clear();
+                modinfo.erase(modinfo.begin());
+
+                vector<string> fullpath;
+                fullpath.insert(fullpath.end(), package_path.begin(), package_path.end());
+                fullpath.insert(fullpath.end(), modinfo.begin(), modinfo.end());
+                for (auto i: fullpath) {
+                    id.append(i + "::");
+                }
+                id.append(name);
+                ty = struct_types.find(id);
+            } else {
+                // try alias
+                if (ty == struct_types.end()) {
+                    string head = modinfo[0];
+                    if (module_name_alias.find(head) != module_name_alias.end()) {
+                        auto path_cut = modinfo;
+                        path_cut.erase(path_cut.begin());
+                        head = module_name_alias[head];
+                        auto head_to_origin = getpathUnresolvedToList(head);
+                        for (auto i: path_cut) {
+                            head_to_origin.push_back(i);
+                        }
+
+                        id.clear();
+                        for (auto i: head_to_origin) {
+                            id.append(i + "::");
+                        }
+                        id.append(name);
+                        ty = struct_types.find(id);
+                    }
+                }
+
+                // try external, relative path
+                if (ty == struct_types.end()) {
+                    id.clear();
+                    for (auto i: module_path) {
+                        id.append(i + "::");
+                    }
+                    for (auto i: modinfo) {
+                        id.append(i + "::");
+                    }
+                    id.append(name);
+
+                    ty = struct_types.find(id);
+                }
+            }
+        }
+
+        return pair<map<string, StructDef *>::iterator, string>(ty, id);
+    }
+
+
     /**
      * @description:    compare the current token type with the passed token
      *                  type and if they match then "eat" the current token
@@ -403,67 +471,10 @@ namespace AVSI {
         }
         eat(RPAR);
 
+        auto ty = find_struct(token.getModInfo(), id_clone);
 
-        auto ty = struct_types.find(id_clone);
-
-        // try local
-        if (ty == struct_types.end()) {
-            id_clone.clear();
-            for (auto i: module_path_with_module_name) {
-                id_clone.append(i + "::");
-            }
-            id_clone.append(token.getValue().any_cast<string>());
-            ty = struct_types.find(id_clone);
-        }
-
-        if (!token.getModInfo().empty()) {
-            // try alias
-            if (ty == struct_types.end()) {
-                string head = token.getModInfo()[0];
-                if (module_name_alias.find(head) != module_name_alias.end()) {
-                    auto path_cut = token.getModInfo();
-                    path_cut.erase(path_cut.begin());
-                    head = module_name_alias[head];
-                    auto head_to_origin = getpathUnresolvedToList(head);
-                    for (auto i: path_cut) {
-                        head_to_origin.push_back(i);
-                    }
-
-                    id_clone.clear();
-                    for (auto i: head_to_origin) {
-                        id_clone.append(i + "::");
-                    }
-                    id_clone.append(token.getValue().any_cast<string>());
-                    ty = struct_types.find(id_clone);
-                }
-            }
-
-            // try external, absolute path
-            if (ty == struct_types.end()) {
-                id_clone.clear();
-                for (auto i: token.getModInfo()) {
-                    id_clone.append(i + "::");
-                }
-                id_clone.append(token.getValue().any_cast<string>());
-                ty = struct_types.find(id_clone);
-            }
-
-            // try external, relative path
-            if (ty == struct_types.end()) {
-                id_clone.clear();
-                for (auto i: module_path) {
-                    id_clone.append(i + "::");
-                }
-                for (auto i: token.getModInfo()) {
-                    id_clone.append(i + "::");
-                }
-                id_clone.append(token.getValue().any_cast<string>());
-                ty = struct_types.find(id_clone);
-            }
-        }
-
-        if (ty != struct_types.end()) {
-            StructInit *struct_init_fun = new StructInit(id_clone, paramList, token);
+        if (ty.first != struct_types.end()) {
+            StructInit *struct_init_fun = new StructInit(ty.second, paramList, token);
             return struct_init_fun;
         }
 
@@ -496,12 +507,18 @@ namespace AVSI {
 
         eat(MODULE);
         if (this->currentToken.getType() == ID) {
-            vector<string> path = this->currentToken.getModInfo();
+            vector<string> path;
+            vector<string> modinfo = this->currentToken.getModInfo();
+            path.insert(path.end(), package_path.begin(), package_path.end());
+            if (!modinfo.empty() && modinfo[0] == "root") {
+                modinfo.erase(modinfo.begin());
+            }
+            path.insert(path.end(), modinfo.begin(), modinfo.end());
             module_path = path;
             module_path_with_module_name = path;
 
             /**
-             * if current file is __init__.sl， the parent folder should be added to searh path
+             * if current file is __init__.sl， the    parent folder should be added to searh path
              * for example:
              *
              * this is a normal file:
@@ -1265,65 +1282,11 @@ namespace AVSI {
             );
         } else if (this->currentToken.getType() == ID) {
             string id = this->currentToken.getValue().any_cast<string>();
+            auto modinfo = this->currentToken.getModInfo();
 
-            // try no mangle
-            auto ty = struct_types.find(id);
+            auto ty = find_struct(modinfo, id);
 
-            // try local
-            if (ty == struct_types.end()) {
-                id.clear();
-                for (auto i: module_path_with_module_name) {
-                    id.append(i + "::");
-                }
-                id.append(this->currentToken.getValue().any_cast<string>());
-                ty = struct_types.find(id);
-            }
-
-            // try alias
-            if (ty == struct_types.end()) {
-                string head = this->currentToken.getModInfo()[0];
-                if (module_name_alias.find(head) != module_name_alias.end()) {
-                    auto path_cut = this->currentToken.getModInfo();
-                    path_cut.erase(path_cut.begin());
-                    head = module_name_alias[head];
-                    auto head_to_origin = getpathUnresolvedToList(head);
-                    for (auto i: path_cut) {
-                        head_to_origin.push_back(i);
-                    }
-
-                    id.clear();
-                    for (auto i: head_to_origin) {
-                        id.append(i + "::");
-                    }
-                    id.append(this->currentToken.getValue().any_cast<string>());
-                    ty = struct_types.find(id);
-                }
-            }
-
-            // try external, absolute path
-            if (ty == struct_types.end()) {
-                id.clear();
-                for (auto i: this->currentToken.getModInfo()) {
-                    id.append(i + "::");
-                }
-                id.append(this->currentToken.getValue().any_cast<string>());
-                ty = struct_types.find(id);
-            }
-
-            // try external, relative path
-            if (ty == struct_types.end()) {
-                id.clear();
-                for (auto i: module_path) {
-                    id.append(i + "::");
-                }
-                for (auto i: this->currentToken.getModInfo()) {
-                    id.append(i + "::");
-                }
-                id.append(this->currentToken.getValue().any_cast<string>());
-                ty = struct_types.find(id);
-            }
-
-            if (ty == struct_types.end()) {
+            if (ty.first == struct_types.end()) {
                 throw ExceptionFactory<MissingException>(
                         "missing type '" + id + "'",
                         this->currentToken.line,
@@ -1331,7 +1294,7 @@ namespace AVSI {
                 );
             }
 
-            Type Ty = Type(ty->second->Ty, id);
+            Type Ty = Type(ty.first->second->Ty, ty.second);
             eat(ID);
             return Ty;
         } else {

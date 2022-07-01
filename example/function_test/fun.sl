@@ -1,4 +1,4 @@
-mod com::avsi::function_test::fun
+mod function_test::fun
 
 export function foo_p_i64_r_f64(x: i64) -> f64{
     ret = x as f64

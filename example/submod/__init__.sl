@@ -1,3 +1,3 @@
-mod com::avsi::submod
+mod submod
 
-import com::avsi::submod::submod
+import root::submod::submod

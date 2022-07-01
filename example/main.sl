@@ -1,22 +1,26 @@
-# package name is "com::avsi"
-# "main" is the name of this module
 # the module name must be the same as the file name
-mod com::avsi::main
+mod main
 
 import std::io as io
 
-import com::avsi::function_test::fun
-import com::avsi::if_test::if
-import com::avsi::interface_test as it
-import com::avsi::loop_test
-import com::avsi::object_test::object
-import com::avsi::type_test
-import submod as sub
+import function_test::fun as ft
+import if_test::if
+import interface_test as it
+import loop_test
+import object_test::object
+import type_test
+import root::submod as sub
 
 export no_mangle function main(argc: i32, argv: vec[vec[char;0];0]) -> i32 {
     std::io::printStr("\n=============== test begin ===============\n")
 
+    # call with relative path
     a = function_test::fun::foo_p_i64_r_f64(1 as i64)
+    # call with absulote path
+    a = root::function_test::fun::foo_p_i64_r_f64(1 as i64)
+    # call with alias
+    a = ft::foo_p_i64_r_f64(1 as i64)
+
     b = function_test::fun::foo_p_i8ptr_i32_r_i8({'a', 'b', 46 as i8}, 2)
 
     c = if_test::if::foo_iftest(0 as i8)
@@ -33,7 +37,7 @@ export no_mangle function main(argc: i32, argv: vec[vec[char;0];0]) -> i32 {
     object_test::object::obj_test()
     size = sizeof(typename object_test::object::S)
     size = sizeof(typename NS)
-    s = object_test::object::S(1 as i8, 1.2 as f32, {'H', 'E', 'L', 'L', 'O'})
+    s = root::object_test::object::S(1 as i8, 1.2 as f32, {'H', 'E', 'L', 'L', 'O'})
     s = s.a
     t = VS({1,2})
 
@@ -47,7 +51,7 @@ export no_mangle function main(argc: i32, argv: vec[vec[char;0];0]) -> i32 {
     io::printReal(type_test::global::global_variable)
     io::printStr("\n")
     type_test::global::global_variable = 5678
-    io::printReal(com::avsi::type_test::global::global_variable)
+    io::printReal(type_test::global::global_variable)
     std::io::printStr("\n================ test end ================\n")
     std::io::printStr("num args: ")
     std::io::printReal(argc as real)

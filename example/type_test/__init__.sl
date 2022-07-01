@@ -1,5 +1,5 @@
-mod com::avsi::type_test
+mod type_test
 
-import com::avsi::type_test::cast
-import com::avsi::type_test::expr
-import com::avsi::type_test::global
+import cast
+import expr
+import root::type_test::global

@@ -54,8 +54,8 @@ namespace AVSI {
      *******************************************************/
     string module_name;
     string module_name_nopath;
-    vector<string> module_path = vector<string>();
-    vector<string> module_path_with_module_name = vector<string>();
+    vector <string> module_path = vector<string>();
+    vector <string> module_path_with_module_name = vector<string>();
 
     llvm::LLVMContext *the_context;
     llvm::Module *the_module;
@@ -101,7 +101,7 @@ namespace AVSI {
     map<llvm::Type *, uint32_t> type_size;
 
     // map a relative or renamed module path to absolute
-    map<string, string> module_name_alias;
+    map <string, string> module_name_alias;
 
     extern void debug_type(llvm::Value *v);
 
@@ -221,52 +221,51 @@ namespace AVSI {
 
         // remember that all value token from symbol table is address
         llvm::Value *v = symbol_table->find(var->id);
-
-        string mod_path = getpathListToUnresolved(var->getToken().getModInfo());
-        if (module_name_alias.find(mod_path) != module_name_alias.end()) {
-            mod_path = module_name_alias[mod_path];
-        }
+        auto modinfo = var->getToken().getModInfo();
 
         if (!v) {
-            v = the_module->getGlobalVariable(
-                    getFunctionNameMangling(getpathUnresolvedToList(mod_path), var->id));
-        }
-
-        if (!v) {
-            v = the_module->getGlobalVariable(var->id);
-        }
-
-        // may be alias
-        if (!v && !var->getToken().getModInfo().empty()) {
-            string head = var->getToken().getModInfo()[0];
-            if (module_name_alias.find(head) != module_name_alias.end()) {
-                auto path_cut = var->getToken().getModInfo();
-                path_cut.erase(path_cut.begin());
-                head = module_name_alias[head];
-                auto head_to_origin = getpathUnresolvedToList(head);
-                for (auto i: path_cut) {
-                    head_to_origin.push_back(i);
-                }
+            if (modinfo.empty()) {
+                // function in currnet module
                 v = the_module->getGlobalVariable(
-                        getFunctionNameMangling(head_to_origin, var->id));
-            }
-        }
+                        getFunctionNameMangling(module_path_with_module_name, var->id)
+                );
+            } else if (modinfo[0] == "root") {
+                // absolute path
+                vector<string> p;
+                modinfo.erase(modinfo.begin());
+                p.insert(p.end(), package_path.begin(), package_path.end());
+                p.insert(p.end(), modinfo.begin(), modinfo.end());
+                v = the_module->getGlobalVariable(
+                        getFunctionNameMangling(p, var->id));
+            } else {
+                // may be relative path
+                auto fun_path = module_path;
+                fun_path.insert(fun_path.end(), modinfo.begin(), modinfo.end());
+                v = the_module->getGlobalVariable(
+                        getFunctionNameMangling(fun_path, var->id));
 
-        // may be relative path
-        if (!v) {
-            auto global_path = module_path;
-            for (auto i: var->getToken().getModInfo()) {
-                global_path.push_back(i);
+                // may be alias
+                if (!v) {
+                    string head = modinfo[0];
+                    if (module_name_alias.find(head) != module_name_alias.end()) {
+                        auto path_cut = modinfo;
+                        path_cut.erase(path_cut.begin());
+                        head = module_name_alias[head];
+                        auto head_to_origin = getpathUnresolvedToList(head);
+                        for (auto i: path_cut) {
+                            head_to_origin.push_back(i);
+                        }
+                        v = the_module->getGlobalVariable(
+                                getFunctionNameMangling(head_to_origin, var->id));
+                    }
+                }
             }
-            mod_path = getpathListToUnresolved(global_path);
-            v = the_module->getGlobalVariable(
-                    getFunctionNameMangling(getpathUnresolvedToList(mod_path), var->id));
         }
 
         if (v && !var->offset.empty()) {
             for (auto i: var->offset) {
                 auto current_ty = v->getType()->getPointerElementType();
-                vector<llvm::Value *> offset_list;
+                vector < llvm::Value * > offset_list;
                 offset_list.push_back(llvm::ConstantInt::get(I32_TY, 0));
                 if (
                         current_ty->isArrayTy()
@@ -296,7 +295,7 @@ namespace AVSI {
                             var->id);
                 } else if (current_ty->isStructTy()) {
                     // structure
-                    string member_name = ((Variable *) (i.second))->id;
+                    string member_name = ((Variable * )(i.second))->id;
 
                     bool find_flag = false;
                     for (auto iter: struct_types) {
@@ -392,7 +391,7 @@ namespace AVSI {
 
         llvm::Type *l_alloca_content_type = l_alloca_addr ? l_alloca_addr->getType()->getPointerElementType() : nullptr;
         llvm::Type *l_except_type =
-                assignment ? ((Variable *) (((Assign *) ast)->left))->Ty.first : nullptr;
+                assignment ? ((Variable * )(((Assign *) ast)->left))->Ty.first : nullptr;
 
         bool l_is_single_value;
         bool l_except_type_is_offered;
@@ -401,8 +400,8 @@ namespace AVSI {
             l_is_single_value = true;
             l_except_type_is_offered = false;
         } else {
-            l_is_single_value = ((Variable *) (((Assign *) ast)->left))->offset.empty();
-            l_except_type_is_offered = ((Variable *) (((Assign *) ast)->left))->Ty.second != "none";
+            l_is_single_value = ((Variable * )(((Assign *) ast)->left))->offset.empty();
+            l_except_type_is_offered = ((Variable * )(((Assign *) ast)->left))->Ty.second != "none";
         }
 
         if (r_type == VOID_TY) {
@@ -730,8 +729,11 @@ namespace AVSI {
     llvm::Value *Assign::codeGen() {
         llvm::Value *r_value = this->right->codeGen();
 
-        string l_base_name = ((Variable *) this->left)->id;
-        auto l_alloca_addr = getAlloca((Variable *) this->left);
+        string
+                l_base_name = ((Variable * )
+        this->left)->id;
+        auto l_alloca_addr = getAlloca((Variable * )
+        this->left);
 
         store(this, l_alloca_addr, r_value, true, l_base_name);
         return llvm::ConstantFP::getNaN(F64_TY);
@@ -1044,7 +1046,7 @@ namespace AVSI {
         symbol_table->setLoopEntry(adjBB);
 
         llvm::Value *start = this->initList->codeGen();
-        if (!(((Compound *) (this->initList))->child.empty()) && (!start)) {
+        if (!(((Compound * )(this->initList))->child.empty()) && (!start)) {
             return nullptr;
         }
 
@@ -1088,7 +1090,7 @@ namespace AVSI {
         // variable defined at body in adjustment
         symbol_table->push(headBB);
         llvm::Value *body = this->compound->codeGen();
-        if (!(((Compound *) (this->compound))->child.empty()) && (!body)) {
+        if (!(((Compound * )(this->compound))->child.empty()) && (!body)) {
             return nullptr;
         }
         symbol_table->pop();
@@ -1101,7 +1103,7 @@ namespace AVSI {
         builder->SetInsertPoint(adjBB);
 
         llvm::Value *adjust = this->adjustment->codeGen();
-        if (!(((Compound *) (this->adjustment))->child.empty()) && (!adjust)) {
+        if (!(((Compound * )(this->adjustment))->child.empty()) && (!adjust)) {
             return nullptr;
         }
         symbol_table->pop();
@@ -1131,7 +1133,7 @@ namespace AVSI {
 
         // create function parameters' type
         std::vector<llvm::Type *> Tys;
-        for (Variable *i: ((Param *) (this->paramList))->paramList) {
+        for (Variable *i: ((Param * )(this->paramList))->paramList) {
             /* Passing array pointers between functions
              *
              * To be able to call external functions. Passing
@@ -1191,8 +1193,8 @@ namespace AVSI {
 
             uint8_t param_index = 0;
             for (auto &arg: the_function->args()) {
-                Variable *var = ((Param *)
-                        this->paramList)->paramList[param_index++];
+                Variable *var = ((Param * )
+                this->paramList)->paramList[param_index++];
                 arg.setName(var->id);
             }
 
@@ -1287,43 +1289,47 @@ namespace AVSI {
     }
 
     llvm::Value *FunctionCall::codeGen() {
-        string mod_path = getpathListToUnresolved(this->getToken().getModInfo());
-        if (module_name_alias.find(mod_path) != module_name_alias.end()) {
-            mod_path = module_name_alias[mod_path];
-        }
-        // get function with mangled name. if module get null function, try with non-mangled name again
-        // may be absolute path or aliased
-        llvm::Function *fun = the_module->getFunction(
-                getFunctionNameMangling(getpathUnresolvedToList(mod_path), this->id));
+        vector<string> modinfo = this->getToken().getModInfo();
+        llvm::Function *fun = the_module->getFunction(this->id);;
 
-        // may be alias
-        if (!fun && !this->getToken().getModInfo().empty()) {
-            string head = this->getToken().getModInfo()[0];
-            if (module_name_alias.find(head) != module_name_alias.end()) {
-                auto path_cut = this->getToken().getModInfo();
-                path_cut.erase(path_cut.begin());
-                head = module_name_alias[head];
-                auto head_to_origin = getpathUnresolvedToList(head);
-                for (auto i: path_cut) {
-                    head_to_origin.push_back(i);
-                }
-                fun = the_module->getFunction(
-                        getFunctionNameMangling(head_to_origin, this->id));
-            }
-        }
-
-        // may be relative path
         if (!fun) {
-            auto fun_path = module_path;
-            for (auto i: this->getToken().getModInfo()) {
-                fun_path.push_back(i);
+            if (modinfo.empty()) {
+                // function in currnet module
+                fun = the_module->getFunction(
+                        getFunctionNameMangling(module_path_with_module_name, this->id)
+                );
+            } else if (modinfo[0] == "root") {
+                // absolute path
+                vector<string> p;
+                modinfo.erase(modinfo.begin());
+                p.insert(p.end(), package_path.begin(), package_path.end());
+                p.insert(p.end(), modinfo.begin(), modinfo.end());
+                fun = the_module->getFunction(
+                        getFunctionNameMangling(p, this->id));
+            } else {
+                // may be relative path
+                auto fun_path = module_path;
+                fun_path.insert(fun_path.end(), modinfo.begin(), modinfo.end());
+                fun = the_module->getFunction(
+                        getFunctionNameMangling(fun_path, this->id));
+
+                // may be alias
+                if (!fun) {
+                    string head = modinfo[0];
+                    if (module_name_alias.find(head) != module_name_alias.end()) {
+                        auto path_cut = modinfo;
+                        path_cut.erase(path_cut.begin());
+                        head = module_name_alias[head];
+                        auto head_to_origin = getpathUnresolvedToList(head);
+                        for (auto i: path_cut) {
+                            head_to_origin.push_back(i);
+                        }
+                        fun = the_module->getFunction(
+                                getFunctionNameMangling(head_to_origin, this->id));
+                    }
+                }
             }
-            mod_path = getpathListToUnresolved(fun_path);
-            fun = the_module->getFunction(
-                    getFunctionNameMangling(getpathUnresolvedToList(mod_path), this->id));
         }
-        // or non-mangled
-        if (!fun) fun = the_module->getFunction(this->id);
 
         if (!fun) {
             throw ExceptionFactory<MissingException>(
@@ -1542,7 +1548,7 @@ namespace AVSI {
                 element_num += 1;
             } else {
                 if (const__number_array_type == DataType::Integer) {
-                    vector<int32_t> data;
+                    vector <int32_t> data;
                     for (auto i: this->paramList) {
                         data.push_back(((Num *) i)->getToken().getValue().any_cast<int>());
                     }
@@ -1565,7 +1571,7 @@ namespace AVSI {
             type_size[arr->getType()] = tsize * element_num;
 
             string global_var_name = "__constant." + string(builder->GetInsertBlock()->getParent()->getName()) + ".arr";
-            llvm::function_ref<llvm::GlobalVariable *()> global_var_callback = [&] {
+            llvm::function_ref < llvm::GlobalVariable * () > global_var_callback = [&] {
                 return new llvm::GlobalVariable(
                         *the_module,
                         arr->getType(),
@@ -1641,8 +1647,8 @@ namespace AVSI {
     }
 
     llvm::Value *Global::codeGen() {
-        auto *v = (Variable *)
-                this->var;
+        auto *v = (Variable * )
+        this->var;
         string id = v->id;
 
         if (v->Ty.first == VOID_TY) {
@@ -1889,12 +1895,12 @@ namespace AVSI {
 
     llvm::Value *Sizeof::codeGen() {
         if (this->id != nullptr) {
-            llvm::Value *v = getAlloca((Variable *)
-                                               this->id);
+            llvm::Value *v = getAlloca((Variable * )
+            this->id);
 
             if (!v) {
                 throw ExceptionFactory<MissingException>(
-                        "variable '" + ((Variable *) (this->id))->id + "' is not defined",
+                        "variable '" + ((Variable * )(this->id))->id + "' is not defined",
                         this->token.line, this->token.column);
             }
 

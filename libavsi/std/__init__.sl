@@ -1,3 +1,3 @@
 mod std
 
-import std::io
+import io

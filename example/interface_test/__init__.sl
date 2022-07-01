@@ -1,4 +1,4 @@
-mod com::avsi::interface_test
+mod interface_test
 
-import com::avsi::interface_test::mangle
-import com::avsi::interface_test::private
+import mangle
+import root::interface_test::private

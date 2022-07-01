@@ -1,4 +1,4 @@
-mod com::avsi::type_test::cast
+mod type_test::cast
 
 export function cast_test() {
     a = 1

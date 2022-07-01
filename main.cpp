@@ -65,6 +65,7 @@ static struct option long_options[] = {
         {"include", required_argument, NULL, 'I'},
         {"warning", no_argument, NULL, 'W'},
         {"optimize", no_argument, NULL, 'O'},
+        {"package-name", required_argument, NULL, 100},
         {0, 0, 0, 0}
 };
 
@@ -94,7 +95,9 @@ void printHelp(void) {
     "    -v             --verbose   Display more details during building.\n"
     "    -I             --include   Add include path.\n"
     "    -W             --warning   Show all warnings.\n"
-    "    -O             --optimize  optimize code\n";
+    "    -O             --optimize  Optimize code\n\n"
+    "long options:\n"
+    "    --package-name <name>      Set package name split by '.', e.g.  std.io.file\n";
 
     printf("%s\n\n%s", version.c_str(), msg.c_str());
 }
@@ -106,6 +109,7 @@ void getOption(int argc, char **argv) {
         }
         filesystem::path path = output_root_path;
         filesystem::path t;
+        string arg_string;
         switch (opt) {
             case 'l':
                 opt_ir = true;
@@ -140,6 +144,21 @@ void getOption(int argc, char **argv) {
             case 'O':
                 opt_optimize = true;
                 break;
+            case 100:
+                if(!package_path.empty()) {
+                    cout << "redefined package name" << endl;
+                    exit(-1);
+                }
+
+                arg_string = optarg;
+                ::size_t index;
+                while((index = arg_string.find('.')) != std::string::npos) {
+                    string p = arg_string.substr(0,index);
+                    package_path.push_back(p);
+                    arg_string.erase(0, index + 1);
+                }
+                package_path.push_back(arg_string);
+                break;
             default:
                 printf("error: unsupported option");
                 break;
@@ -152,6 +171,9 @@ void getOption(int argc, char **argv) {
  *******************************************************/
 int main(int argc, char **argv) {
     compiler_command_line = string(argv[0]);
+
+    // add default search path
+    include_path.emplace_back("/usr/include/avsi");
 
     getOption(argc, argv);
 

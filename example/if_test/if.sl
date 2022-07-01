@@ -1,4 +1,4 @@
-mod com::avsi::if_test::if
+mod if_test::if
 
 import std::io
 

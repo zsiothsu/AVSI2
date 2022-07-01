@@ -1,4 +1,4 @@
-mod com::avsi::interface_test::mangle
+mod interface_test::mangle
 
 export function fun_mangled() {
 

@@ -1,4 +1,4 @@
-mod com::avsi::type_test::expr
+mod type_test::expr
 
 export function expr_test() {
     x = 1

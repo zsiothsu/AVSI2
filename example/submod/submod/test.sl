@@ -1,4 +1,4 @@
-mod com::avsi::submod::submod::test
+mod submod::submod::test
 
 export function test() {
 
