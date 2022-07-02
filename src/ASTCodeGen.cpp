@@ -1571,7 +1571,7 @@ namespace AVSI {
             type_size[arr->getType()] = tsize * element_num;
 
             string global_var_name = "__constant." + string(builder->GetInsertBlock()->getParent()->getName()) + ".arr";
-            llvm::function_ref < llvm::GlobalVariable * () > global_var_callback = [&] {
+            llvm::function_ref < llvm::GlobalVariable * () > global_var_callback = [arr, global_var_name] {
                 return new llvm::GlobalVariable(
                         *the_module,
                         arr->getType(),
@@ -1596,7 +1596,7 @@ namespace AVSI {
             // else initialize an array by store action
             llvm::Value *head_rv = this->paramList[0]->codeGen();
             auto eleTy = head_rv->getType();
-            auto arr_type = llvm::ArrayType::get(eleTy, element_num);
+            auto arr_type = llvm::ArrayType::get(eleTy, element_num + 1);
 
             if (type_size.find(eleTy) == type_size.end()) {
                 registerType(eleTy);
@@ -1642,6 +1642,18 @@ namespace AVSI {
 
                 builder->CreateStore(rv, element_addr);
             }
+
+            // add NULL to tail
+            auto element_addr = builder->CreateGEP(
+                    llvm::cast<llvm::PointerType>(array_alloca->getType()->getScalarType())->getElementType(),
+                    array_alloca,
+                    {
+                            llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), 0),
+                            llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), element_num),
+                    },
+                    "ArrayInit.element.tail");
+            builder->CreateStore(llvm::Constant::getNullValue(eleTy), element_addr);
+
             return builder->CreateLoad(arr_type, array_alloca);
         }
     }

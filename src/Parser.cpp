@@ -509,7 +509,9 @@ namespace AVSI {
         if (this->currentToken.getType() == ID) {
             vector<string> path;
             vector<string> modinfo = this->currentToken.getModInfo();
-            path.insert(path.end(), package_path.begin(), package_path.end());
+            for(auto &p: package_path) {
+                path.push_back(p);
+            }
             if (!modinfo.empty() && modinfo[0] == "root") {
                 modinfo.erase(modinfo.begin());
             }
@@ -593,7 +595,7 @@ namespace AVSI {
 
         eat(OBJ);
         if (is_mangle) {
-            for (auto i: module_path_with_module_name) {
+            for (auto &i: module_path_with_module_name) {
                 id.append(i + "::");
             }
         }

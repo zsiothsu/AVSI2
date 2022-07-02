@@ -42,8 +42,8 @@ clean:
 .PHONY: install
 install:
 	@if [ ! -d $(SYS_INCLUDE)/avsi ]; then mkdir $(SYS_INCLUDE)/avsi; fi
-	@cp -rf $(STDDIR_OUT)/std $(SYS_INCLUDE)/avsi/std
-	@cp -f $(LIBAVSI) $(SYS_LIB)/libavsi.a
+	@install -d $(STDDIR_OUT)/std $(SYS_INCLUDE)/avsi/std
+	@install $(LIBAVSI) $(SYS_LIB)/libavsi.a
 
 .PHONY: uninstall
 uninstall:

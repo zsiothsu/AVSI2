@@ -1,6 +1,6 @@
 #!/usr/bin/make
 
-PROJECT_NAME	:= avsi
+PROJECT_NAME	:= cart
 
 export ECHO		:= echo
 export RM		:= rm
@@ -11,6 +11,7 @@ export LS		:= ls
 export CP		:= cp
 export INSTALL	:= install
 
+
 # compiler
 CXX			:= clang
 
@@ -20,26 +21,22 @@ DIR_INC		:= $(DIR_ROOT)/inc
 DIR_SRC		:= $(DIR_ROOT)/src
 DIR_LIB		:= $(DIR_ROOT)/lib
 DIR_OUTPUT	:= $(DIR_ROOT)/build
-DIR_LIBAVSI	:= $(DIR_ROOT)/libavsi
-DIR_CART	:= $(DIR_ROOT)/cart
 DIR_SYSEXEC := /usr/bin
 
 # compiler flags
 CXXFLAGS 	:= -Wall -g --std=c++17 -I$(DIR_INC)
-LDFLAGS		:= -lstdc++ -lLLVM -lm -L/usr/lib
+LDFLAGS		:= -L/usr/lib -L $(DIR_LIB) -lstdc++ -lLLVM -lm
 
 # important file
 TARGET		:= $(PROJECT_NAME)
 SRCS		:= $(wildcard $(DIR_SRC)/*.cpp)
 OBJS		:= $(patsubst $(DIR_SRC)/%.cpp, $(DIR_OUTPUT)/%.o, $(SRCS))
 BIN			:= $(TARGET)
-LIBAVSI		:= $(DIR_LIBAVSI)/C/libavsi.a $(DIR_LIBAVSI)/std/build/std/std.bc
-CART		:= $(DIR_CART)/build/cart
 
 MAIN := $(DIR_ROOT)/main.cpp
 
 all: CXXFLAGS += -O2
-all: $(DIR_OUTPUT)/$(BIN) $(LIBAVSI) $(CART)
+all: $(DIR_OUTPUT)/$(BIN)
 
 release: CXXFLAGS += -O2
 release: $(DIR_OUTPUT)/$(BIN)
@@ -47,19 +44,9 @@ release: $(DIR_OUTPUT)/$(BIN)
 debug: CXXFLAGS += -O0
 debug: $(DIR_OUTPUT)/$(BIN)
 
-library: $(LIBAVSI)
-
-cart: $(CART)
-
-$(CART): $(DIR_CART)/main.cpp
-	@$(CD) $(DIR_CART) && make all
-
-$(LIBAVSI): $(DIR_LIBAVSI)/C/avsi.c $(DIR_LIBAVSI)/std/__init__.sl $(DIR_OUTPUT)/$(BIN)
-	@$(CD) $(DIR_LIBAVSI) && make all
-
 $(DIR_OUTPUT)/$(BIN): $(DIR_OUTPUT)/main.o $(OBJS)
 	@$(ECHO) "CXX    $<"
-	@$(CXX) $(LDFLAGS) $^ -o $@
+	@$(CXX) $(LDFLAGS) $^  $(DIR_LIB)/libtomlcpp.a -o $@
 
 $(DIR_OUTPUT)/main.o: $(MAIN)
 	@$(ECHO) "CXX    $<"
@@ -85,25 +72,11 @@ $(DIR_OUTPUT)/%.d: $(DIR_ROOT)/%.cpp
 .PHONY: clean
 clean:
 	$(CD) $(DIR_OUTPUT) && $(LS) | $(GREP) -v ".gitkeep" | $(XARGS) $(RM)
-	@$(CD) $(DIR_LIBAVSI) && make clean
-	@$(CD) $(DIR_CART) && make clean
-
-.PHONY: libclean
-libclean:
-	@$(CD) $(DIR_LIBAVSI) && make clean
-
-.PHONY: cartclean
-cartclean:
-	@$(CD) $(DIR_CART) && make clean
 
 .PHONY: install
 install:
 	@$(INSTALL) $(DIR_OUTPUT)/$(TARGET) $(DIR_SYSEXEC)/
-	@$(CD) $(DIR_LIBAVSI) && make install
-	@$(CD) $(DIR_CART) && make install
 
 .PHONY: uninstall
 uninstall:
-	@$(RM) $(DIR_SYSEXEC)/$(TARGET)
-	@$(CD) $(DIR_LIBAVSI) && make uninstall
-	@$(CD) $(DIR_CART) && make uninstall
+	@$(RM) -f $(DIR_SYSEXEC)/$(TARGET)

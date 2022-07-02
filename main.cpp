@@ -150,6 +150,7 @@ void getOption(int argc, char **argv) {
                     exit(-1);
                 }
 
+                arg_string.clear();
                 arg_string = optarg;
                 ::size_t index;
                 while((index = arg_string.find('.')) != std::string::npos) {
@@ -157,7 +158,7 @@ void getOption(int argc, char **argv) {
                     package_path.push_back(p);
                     arg_string.erase(0, index + 1);
                 }
-                package_path.push_back(arg_string);
+                package_path.push_back(string(arg_string));
                 break;
             default:
                 printf("error: unsupported option");

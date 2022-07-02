@@ -1,0 +1,13 @@
+[project]
+name = "test_project"
+version = "0.0.1"
+entry = "main.sl"
+target = "a.out"
+ccflags = ["-O", "-W", "-v"]
+ldflags = []
+nostd = false
+
+[path]
+#include_path = ["/usr/include/avsi"]
+#library_path = ["/usr/lib"]
+#gcc_toolchain = ""

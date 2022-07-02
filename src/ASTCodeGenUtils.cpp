@@ -249,8 +249,8 @@ namespace AVSI {
                 }
 
                 // package name
+                string p;
                 if(!package_path.empty()) {
-                    string p;
                     bool first_flag = true;
                     for(auto i : package_path) {
                         if(!first_flag) {
