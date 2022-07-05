@@ -24,7 +24,7 @@ DIR_OUTPUT	:= $(DIR_ROOT)/build
 DIR_SYSEXEC := /usr/bin
 
 # compiler flags
-CXXFLAGS 	:= -Wall -g --std=c++17 -I$(DIR_INC)
+CXXFLAGS 	:= -Wall --std=c++17 -I$(DIR_INC)
 LDFLAGS		:= -L/usr/lib -L $(DIR_LIB) -lstdc++ -lLLVM -lm
 
 # important file
@@ -41,7 +41,7 @@ all: $(DIR_OUTPUT)/$(BIN)
 release: CXXFLAGS += -O2
 release: $(DIR_OUTPUT)/$(BIN)
 
-debug: CXXFLAGS += -O0
+debug: CXXFLAGS += -O0 -g
 debug: $(DIR_OUTPUT)/$(BIN)
 
 $(DIR_OUTPUT)/$(BIN): $(DIR_OUTPUT)/main.o $(OBJS)

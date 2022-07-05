@@ -240,10 +240,12 @@ namespace cart {
                 args.push_back(i.c_str());
             }
 
-            for (auto i: args) {
-                cout << i << " ";
+            if(opt_verbose) {
+                for (auto i: args) {
+                    cout << i << " ";
+                }
+                cout << endl << endl;
             }
-            cout << endl << endl;
 
             args.push_back((char const *) 0);
             execvp("avsi", (char *const *) args.data());
@@ -299,11 +301,11 @@ namespace cart {
             cout << __COLOR_GREEN "link objs" __COLOR_RESET << endl;
 
             args.push_back("ld");
-            args.push_back("-v");
 
             for (auto &i: ldargs) {
                 args.push_back(i.c_str());
             }
+            args.push_back((char const *)0);
 
             if (opt_verbose) {
                 cout << "ld ";

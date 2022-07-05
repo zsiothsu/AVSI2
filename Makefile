@@ -25,7 +25,10 @@ DIR_CART	:= $(DIR_ROOT)/cart
 DIR_SYSEXEC := /usr/bin
 
 # compiler flags
-CXXFLAGS 	:= -Wall -g --std=c++17 -I$(DIR_INC)
+CXXFLAGS 	:= -Wall --std=c++17 -I$(DIR_INC) \
+-ffunction-sections \
+-fdata-sections
+
 LDFLAGS		:= -lstdc++ -lLLVM -lm -L/usr/lib
 
 # important file
@@ -38,13 +41,13 @@ CART		:= $(DIR_CART)/build/cart
 
 MAIN := $(DIR_ROOT)/main.cpp
 
-all: CXXFLAGS += -O2
+all: CXXFLAGS += -Os
 all: $(DIR_OUTPUT)/$(BIN) $(LIBAVSI) $(CART)
 
-release: CXXFLAGS += -O2
+release: CXXFLAGS += -Os
 release: $(DIR_OUTPUT)/$(BIN)
 
-debug: CXXFLAGS += -O0
+debug: CXXFLAGS += -O0 -g
 debug: $(DIR_OUTPUT)/$(BIN)
 
 library: $(LIBAVSI)
