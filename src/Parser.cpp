@@ -1002,6 +1002,8 @@ namespace AVSI {
             case MINUS:
             case NOT:
             case BITCPL:
+            case BITAND:
+            case STAR:
                 eat(ty);
                 ret = new UnaryOp(token, factor());
                 break;
@@ -1233,11 +1235,13 @@ namespace AVSI {
     Type Parser::eatType() {
         PARSE_LOG(INNERTYPE);
 
+        Type ret;
+
         if (token_to_simple_types.find(this->currentToken.getType()) != token_to_simple_types.end()) {
             TokenType token = this->currentToken.getType();
             eat(token);
             auto ty = token_to_simple_types[token];
-            return Type(ty, type_name[ty]);
+            ret =  Type(ty, type_name[ty]);
         } else if (this->currentToken.getType() == VEC) {
             eat(VEC);
             eat(LSQB);
@@ -1267,14 +1271,14 @@ namespace AVSI {
                     type_name[Ty->getPointerTo()] = type_name[Ty] + "*";
                     type_size[Ty] = type_size[nest.first] * array_size;
                     type_name[Ty->getPointerTo()] = PTR_SIZE;
-                    return Type(Ty, "vec");
+                    ret = Type(Ty, "vec");
                 } else {
                     llvm::Type *Ty = nest.first->getPointerTo();
                     type_name[Ty] = type_name[nest.first] + "*";
                     type_name[Ty->getPointerTo()] = type_name[Ty] + "*";
                     type_size[Ty] = PTR_SIZE;
                     type_name[Ty->getPointerTo()] = PTR_SIZE;
-                    return Type(Ty, "vec");
+                    ret = Type(Ty, "vec");
                 }
             }
             throw ExceptionFactory<SyntaxException>(
@@ -1298,7 +1302,7 @@ namespace AVSI {
 
             Type Ty = Type(ty.first->second->Ty, ty.second);
             eat(ID);
-            return Ty;
+            ret = Ty;
         } else {
             throw ExceptionFactory<SyntaxException>(
                     "type is unrecognized",
@@ -1306,5 +1310,15 @@ namespace AVSI {
                     this->currentToken.column
             );
         }
+
+        while(this->currentToken.getType() == STAR) {
+            eat(STAR);
+            llvm::Type* ty = ret.first->getPointerTo();
+            string name = ret.second + "*";
+            ret.first = ty;
+            ret.second = name;
+        }
+
+        return ret;
     }
 } // namespace AVSI

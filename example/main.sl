@@ -11,7 +11,7 @@ import object_test::object
 import type_test
 import root::submod as sub
 
-export no_mangle function main(argc: i32, argv: vec[vec[char;0];0]) -> i32 {
+export no_mangle function main(argc: i32, argv: char**) -> i32 {
     std::io::printStr("\n=============== test begin ===============\n")
 
     # call with relative path

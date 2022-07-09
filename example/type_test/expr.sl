@@ -7,6 +7,8 @@ export function expr_test() {
     z = ~x
     z = -x
     z = !x
+    z = &x
+    z = *z
     z = x * y
     z = x / y
     z = x % y
@@ -50,4 +52,15 @@ export function select_test() -> i32{
 export function block_expr_test() -> i32{
     b = 22.4
     b as i32
+}
+
+export function arr_test_1(arr: vec[i32;0]) {
+    b = &arr
+    c = b[0]
+}
+
+export function arr_test_2() {
+    a = {1 as i32, 2,3,4}
+    b = &a
+    c = b[0]
 }
