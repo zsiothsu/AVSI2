@@ -27,7 +27,31 @@ $ make all -j
 $ sudo make install
 ```
 
-## Usage
+## Usage (using cart)
+`cart` is a package manager for use with avsi. Type the following command to create a sl project:
+
+```shell
+$ cart new test_project
+```
+
+It will create a project folder with a configure file(Cart.toml) and a main file(main.sl).
+Then, use `cart build` to build the project:
+
+```
+$ cd test_project
+
+$ ls
+Cart.toml  main.sl
+
+$ cart build
+compile source files
+link objs
+
+$ ./build/test_project
+Hello World!
+```
+
+## Usage (using avsi)
 For example, your project folder tree looks like this:
 
 ```
@@ -83,6 +107,18 @@ $ clang $objs -lavsi -no-pie -o ./a.out
 
 ## Grammar
 refer to `./example`
+
+## Planned features
+
+- AVSI
+  - object methods
+  - macro system (probably not)
+- libavsi
+  - core library
+  - file I/O
+- cart
+  - dynamic library
+
 
 ## License
 AVSI2 is licensed under the MIT license

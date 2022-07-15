@@ -23,7 +23,31 @@ $ make all -j
 $ sudo make install
 ```
 
-## 用法
+## 用法（使用cart）
+cart是搭配avsi使用的包管理器。使用以下命令來創建一個sl項目：
+
+```shell
+$ cart new test_project
+```
+
+這將會創建一個項目檔案夾，其中包含配置文件（Cart.toml）和一個原始碼文件（main.sl）。
+然後可以使用 `cart build` 進行構建：
+
+```
+$ cd test_project
+
+$ ls
+Cart.toml  main.sl
+
+$ cart build
+compile source files
+link objs
+
+$ ./build/test_project
+Hello World!
+```
+
+## 用法（使用avsi）
 例如一個項目檔案樹如下所示：
 
 ```
