@@ -36,7 +36,6 @@
 #include "../inc/SymbolTable.h"
 #include "../inc/FileName.h"
 #include <filesystem>
-#include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/Host.h>
 #include <llvm/Support/TargetSelect.h>
@@ -49,6 +48,11 @@
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
+#if (LLVM_VERSION_MAJOR >= 14)
+#include <llvm/MC/TargetRegistry.h>
+#else
+#include <llvm/Support/TargetRegistry.h>
+#endif
 
 extern bool opt_ir;
 extern bool opt_module;
@@ -562,7 +566,13 @@ namespace AVSI {
 
     void llvm_emit_obj() {
         std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
-        string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
+        string file_basename;
+        if (input_file_name_no_suffix == MODULE_INIT_NAME)
+            file_basename = dir.string();
+        else if (input_file_name_no_suffix == MODULE_LIB_NAME)
+            file_basename = module_name_nopath;
+        else
+            file_basename = input_file_name_no_suffix;
 
         auto Filename =
                 output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
@@ -598,7 +608,13 @@ namespace AVSI {
 
     void llvm_emit_asm() {
         std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
-        string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
+        string file_basename;
+        if (input_file_name_no_suffix == MODULE_INIT_NAME)
+            file_basename = dir.string();
+        else if (input_file_name_no_suffix == MODULE_LIB_NAME)
+            file_basename = module_name_nopath;
+        else
+            file_basename = input_file_name_no_suffix;
 
         auto Filename =
                 output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
@@ -629,7 +645,13 @@ namespace AVSI {
 
     void llvm_emit_bitcode() {
         std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
-        string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
+        string file_basename;
+        if (input_file_name_no_suffix == MODULE_INIT_NAME)
+            file_basename = dir.string();
+        else if (input_file_name_no_suffix == MODULE_LIB_NAME)
+            file_basename = module_name_nopath;
+        else
+            file_basename = input_file_name_no_suffix;
 
         auto Filename =
                 output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
@@ -685,7 +707,13 @@ namespace AVSI {
 
     void llvm_emit_ir() {
         std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
-        string file_basename = input_file_name_no_suffix == MODULE_INIT_NAME ? dir.string() : input_file_name_no_suffix;
+        string file_basename;
+        if (input_file_name_no_suffix == MODULE_INIT_NAME)
+            file_basename = dir.string();
+        else if (input_file_name_no_suffix == MODULE_LIB_NAME)
+            file_basename = module_name_nopath;
+        else
+            file_basename = input_file_name_no_suffix;
 
         auto Filename =
                 output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +

@@ -28,12 +28,27 @@
 #define AVSI2_CMD_H
 
 #include "Gnu.h"
+#include "../inc/tomlcpp.hpp"
 
 extern bool opt_help;
 extern bool opt_verbose;
 
-
 namespace cart {
+    void build_objs(
+            string entry_file,
+            string name,
+            toml::Array *ccflags,
+            toml::Array *ldflags,
+            bool nostd);
+
+    void build_bin(
+            shared_ptr<toml::Table> table,
+            int argc = -1,
+            char **argv = nullptr,
+            int ind = -1);
+
+    void build_lib(shared_ptr<toml::Table> table, bool dynamic);
+
     void exec_new(int argc, char **argv, int ind);
 
     void exec_build(int argc, char **argv, int ind);
@@ -41,4 +56,4 @@ namespace cart {
     void exec_clean(int argc, char **argv, int ind);
 }
 
-#endif //AVSI2_CMD_H
+#endif // AVSI2_CMD_H

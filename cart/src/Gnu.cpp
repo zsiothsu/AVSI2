@@ -39,8 +39,15 @@
 #include <iostream>
 #include <filesystem>
 #include <set>
-#include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/Host.h>
+
+#if (LLVM_VERSION_MAJOR >= 14)
+
+#include <llvm/MC/TargetRegistry.h>
+
+#else
+#include <llvm/Support/TargetRegistry.h>
+#endif
 
 /* Directory where gcc is installed. */
 #define GCC_INSTALL_PREFIX ""
@@ -56,7 +63,6 @@ namespace cart {
     string GCCLibraryPath;
     vector<string> LibraryPaths;
     string ELFM;
-    bool nostd;
     string GCCToolchainDir;
     GCCVersion Version;
 
@@ -293,7 +299,7 @@ namespace cart {
         }
         // Always append the drivers target triple to the end, in case it doesn't
         // match any of our aliases.
-        if(std::find(begin(TripleAliases), end(TripleAliases), TargetTriple.str()) == end(TripleAliases))
+        if (std::find(begin(TripleAliases), end(TripleAliases), TargetTriple.str()) == end(TripleAliases))
             TripleAliases.push_back(TargetTriple.str());
         // Also include the multiarch variant if it's different.
         if (TargetTriple.str() != BiarchTriple.str())
@@ -320,11 +326,16 @@ namespace cart {
             vector<string> &ldflags,
             vector<string> &libpaths,
             vector<string> &objs,
-            char const *elf_name) {
+            bool nostd = false,
+            char const *elf_name = "./a.out") {
         const string TargetTriple = llvm::sys::getDefaultTargetTriple();
         const llvm::Triple Triple = llvm::Triple(TargetTriple);
 
-        GetPaths(Triple);
+        static bool found_gcc = false;
+        if (!found_gcc) {
+            GetPaths(Triple);
+            found_gcc = true;
+        }
 
         // -m option
         if (const char *LDMOption = getLDMOption(Triple)) {
@@ -336,7 +347,7 @@ namespace cart {
 
         // -o option
         args.push_back("-o");
-        args.push_back(elf_name);
+        args.push_back(string("build" SYSTEM_PATH_DIVIDER) + elf_name);
 
         if (!nostd) {
             auto target_lib = Triple.isArch32Bit() ? "lib" : "lib64";
@@ -354,12 +365,15 @@ namespace cart {
             args.push_back(crtbegin.c_str());
         }
 
+        LibraryPaths.push_back("build");
+
         for (auto lib_path: LibraryPaths) {
             args.push_back("-L");
             args.push_back(lib_path.c_str());
         }
 
         for (auto libp: libpaths) {
+            args.push_back("-L");
             args.push_back(libp);
         }
 

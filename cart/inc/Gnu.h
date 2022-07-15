@@ -115,7 +115,8 @@ namespace cart {
             vector<string> &ldflags,
             vector<string> &libpaths,
             vector<string> &objs,
-            char const *elf_name = "./a.out");
+            bool nostd,
+            char const *elf_name);
 }
 
 #endif //CART_GNU_H

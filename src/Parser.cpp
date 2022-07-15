@@ -1280,12 +1280,13 @@ namespace AVSI {
                     type_name[Ty->getPointerTo()] = PTR_SIZE;
                     ret = Type(Ty, "vec");
                 }
-            }
-            throw ExceptionFactory<SyntaxException>(
+            } else {
+                throw ExceptionFactory<SyntaxException>(
                     "array type and size must be provided",
                     this->currentToken.line,
                     this->currentToken.column
-            );
+                );
+            }
         } else if (this->currentToken.getType() == ID) {
             string id = this->currentToken.getValue().any_cast<string>();
             auto modinfo = this->currentToken.getModInfo();

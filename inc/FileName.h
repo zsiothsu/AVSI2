@@ -45,6 +45,7 @@
 #endif
 
 #define MODULE_INIT_NAME    "__init__"
+#define MODULE_LIB_NAME     "lib"
 
 extern std::string compiler_command_line;
 

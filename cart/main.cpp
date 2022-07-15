@@ -56,11 +56,17 @@ static int opt = 0, lopt = 0, loidx = 0;
 static struct option long_options[] = {
         {"help",    no_argument, NULL, 'h'},
         {"verbose", no_argument, NULL, 'v'},
+        {"lib", no_argument, NULL, 100},
+        {"bin", no_argument, NULL, 110},
+        {"bins", no_argument, NULL, 120},
         {0, 0, 0,                      0}
 };
 
 bool opt_help = false;
 bool opt_verbose = false;
+bool opt_lib = false;
+bool opt_bin = false;
+bool opt_bins = false;
 
 void printHelp(void) {
     string version = "cart " "0.0.1";
@@ -90,6 +96,15 @@ void getOption(int argc, char **argv) {
                 break;
             case 'v':
                 opt_verbose = true;
+                break;
+            case 100:
+                opt_lib = true;
+                break;
+            case 110:
+                opt_bin = true;
+                break;
+            case 120:
+                opt_bins = true;
                 break;
             default:
                 printf("error: unsupported option");

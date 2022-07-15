@@ -33,7 +33,6 @@
 #include "../inc/AST.h"
 #include "../inc/SymbolTable.h"
 #include <filesystem>
-#include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/Host.h>
 #include <llvm/Support/raw_ostream.h>
@@ -41,6 +40,11 @@
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
+#if (LLVM_VERSION_MAJOR >= 14)
+#include <llvm/MC/TargetRegistry.h>
+#else
+#include <llvm/Support/TargetRegistry.h>
+#endif
 
 #define UNUSED(x) ((void)(x))
 

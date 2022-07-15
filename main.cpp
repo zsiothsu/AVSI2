@@ -273,7 +273,7 @@ int main(int argc, char **argv) {
 
         if (opt_ir) llvm_emit_ir();
         if (opt_asm) llvm_emit_asm();
-        if (opt_module) llvm_emit_bitcode();
+        if (opt_module || input_file_name_no_suffix == MODULE_LIB_NAME) llvm_emit_bitcode();
         if (!(opt_ir || opt_asm))llvm_emit_obj();
     } catch (Exception &e) {
         if (e.type() == __ErrReport) {

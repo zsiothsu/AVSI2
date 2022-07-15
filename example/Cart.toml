@@ -1,13 +1,36 @@
 [project]
 name = "test_project"
 version = "0.0.1"
-entry = "main.sl"
-target = "a.out"
-ccflags = ["-O", "-W", "-v"]
-ldflags = []
-nostd = false
 
 [path]
 #include_path = ["/usr/include/avsi"]
 #library_path = ["/usr/lib"]
 #gcc_toolchain = ""
+
+[lib]
+############################################################
+## building type. typelist:
+## bin          Executable file
+## staticlib    Static library. Create a lib*.a file
+## dylib        Dynamic library. Create a lib*.so file
+############################################################
+type = ["bin","staticlib"]
+
+[[lib.bin]]
+name = "test_project"
+entry = "main.sl"
+ccflags = ["-O", "-W"]
+ldflags = []
+nostd = false
+
+[lib.lib]
+############################################################
+## name will be used as library name. example name = "hello"
+## in lib.sl :
+## mod hello
+## and target will be libhello.a or libhello.so
+############################################################
+name = "test_project"
+ccflags = ["-O", "-W"]
+nostd = false
+
