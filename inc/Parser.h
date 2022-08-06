@@ -126,9 +126,9 @@ namespace AVSI {
         Type eatType();
 
         vector<string> eatModule();
-
-        pair<map<string, StructDef *>::iterator, string> find_struct(vector<string> modinfo, string &name);
     };
+
+    pair<map<string, StructDef *>::iterator, string> find_struct(vector<string> modinfo, string &name);
 } // namespace AVSI
 
 #endif

@@ -65,6 +65,7 @@ static struct option long_options[] = {
         {"include", required_argument, NULL, 'I'},
         {"warning", no_argument, NULL, 'W'},
         {"optimize", no_argument, NULL, 'O'},
+        {"dump", no_argument, NULL, 'D'},
         {"package-name", required_argument, NULL, 100},
         {0, 0, 0, 0}
 };
@@ -77,6 +78,7 @@ bool opt_reliance = false;
 bool opt_verbose = false;
 bool opt_warning = false;
 bool opt_optimize = false;
+bool opt_dump = false;
 
 void printHelp(void) {
     string version = \
@@ -95,7 +97,8 @@ void printHelp(void) {
     "    -v             --verbose   Display more details during building.\n"
     "    -I             --include   Add include path.\n"
     "    -W             --warning   Show all warnings.\n"
-    "    -O             --optimize  Optimize code\n\n"
+    "    -O             --optimize  Optimize code\n"
+    "    -D             --dump      AST dump\n\n"
     "long options:\n"
     "    --package-name <name>      Set package name split by '.', e.g.  std.io.file\n";
 
@@ -103,7 +106,7 @@ void printHelp(void) {
 }
 
 void getOption(int argc, char **argv) {
-    while ((opt = getopt_long(argc, argv, "lSmro:hvI:WO", long_options, &loidx)) != -1) {
+    while ((opt = getopt_long(argc, argv, "lSmro:hvI:WOD", long_options, &loidx)) != -1) {
         if (opt == 0) {
             opt = lopt;
         }
@@ -143,6 +146,9 @@ void getOption(int argc, char **argv) {
                 break;
             case 'O':
                 opt_optimize = true;
+                break;
+            case 'D':
+                opt_dump = true;
                 break;
             case 100:
                 if(!package_path.empty()) {
@@ -258,6 +264,7 @@ int main(int argc, char **argv) {
         Lexer *lexer = new Lexer(&file);
         Parser *parser = new Parser(lexer);
         AST *tree = parser->parse();
+        if(opt_dump) tree->dump(0);
         if (opt_reliance) return 0;
         tree->codeGen();
 

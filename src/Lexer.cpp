@@ -45,8 +45,6 @@ namespace AVSI {
     }
 
     Lexer::Lexer(ifstream *file) {
-        this->backup = new Lexer();
-
         this->file = file;
         this->linenum = 1;
         this->cur = 0;
@@ -240,9 +238,11 @@ namespace AVSI {
     }
 
     Token Lexer::peekNextToken() {
-        stash();
+        Lexer *backup = new Lexer();
+        stash(backup);
         Token token = getNextToken();
-        restore();
+        restore(backup);
+        delete backup;
         return token;
     }
 
@@ -325,7 +325,7 @@ namespace AVSI {
      * @return:         None
      */
     void Lexer::skipWhiteSpace() {
-        while ((this->currentChar != EOF) && (this->currentChar == ' ')) {
+        while ((this->currentChar != EOF) && (this->currentChar == ' ' || this->currentChar == '\t')) {
             advance();
         }
     }
@@ -504,20 +504,20 @@ namespace AVSI {
         }
     }
 
-    void Lexer::stash() {
-        this->backup->linenum = this->linenum;
-        this->backup->cur = this->cur;
-        this->backup->line = this->line;
-        this->backup->currentChar = this->currentChar;
-        file_state_backup = file->tellg();
+    void Lexer::stash(Lexer *backup) {
+        backup->linenum = this->linenum;
+        backup->cur = this->cur;
+        backup->line = this->line;
+        backup->currentChar = this->currentChar;
+        backup->file_state_backup = file->tellg();
     }
 
-    void Lexer::restore() {
-        this->linenum = this->backup->linenum;
-        this->cur = this->backup->cur;
-        this->line = this->backup->line;
-        this->currentChar = this->backup->currentChar;
-        file->seekg(file_state_backup);
+    void Lexer::restore(Lexer *backup) {
+        this->linenum = backup->linenum;
+        this->cur = backup->cur;
+        this->line = backup->line;
+        this->currentChar = backup->currentChar;
+        file->seekg(backup->file_state_backup);
     }
 
 } // namespace AVSI

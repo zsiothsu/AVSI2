@@ -52,6 +52,7 @@
 
 #include "Exception.h"
 #include "Token.h"
+#include "SymbolTable.h"
 #include <typeinfo>
 #include <utility>
 #include <vector>
@@ -96,6 +97,20 @@ namespace AVSI {
     extern llvm::Type *VOID_TY;
 
     /*******************************************************
+     *                      structure                      *
+     *******************************************************/
+    struct StructDef {
+        llvm::StructType *Ty;
+        map<string, int> members;
+
+        StructDef() = default;
+
+        StructDef(llvm::StructType *Ty) : Ty(Ty), members(map<string, int>()) {}
+
+        ~StructDef() = default;
+    };
+
+    /*******************************************************
      *                       AST base                      *
      *******************************************************/
     class AST {
@@ -114,6 +129,8 @@ namespace AVSI {
         virtual ~AST() {};
 
         virtual llvm::Value *codeGen();
+
+        virtual void dump(int depth);
 
         Token getToken(void);
     };
@@ -137,6 +154,8 @@ namespace AVSI {
         virtual ~Assign();
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class BinOp : public AST {
@@ -161,6 +180,8 @@ namespace AVSI {
         TokenType getOp(void);
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class BlockExpr : public AST {
@@ -178,6 +199,8 @@ namespace AVSI {
         virtual ~BlockExpr() {};
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class Boolean : public AST {
@@ -194,6 +217,8 @@ namespace AVSI {
         any getValue(void);
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class Compound : public AST {
@@ -204,9 +229,15 @@ namespace AVSI {
                 : AST(__COMPOUND_NAME, Token(COMPOUND, 0)),
                   child(vector<AST *>()) {};
 
+        Compound(Token token)
+                : AST(__COMPOUND_NAME, token),
+                  child(vector<AST *>()) {};
+
         virtual ~Compound();
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class For : public AST {
@@ -228,6 +259,8 @@ namespace AVSI {
         virtual ~For();
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class FunctionDecl : public AST {
@@ -259,22 +292,28 @@ namespace AVSI {
         virtual ~FunctionDecl();
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class FunctionCall : public AST {
     public:
         string id;
         vector<AST *> paramList;
+        llvm::Value *param_this;
 
         FunctionCall(void)
-                : AST(__FUNCTIONCALL_NAME), paramList(vector<AST *>()) {};
+                : AST(__FUNCTIONCALL_NAME), paramList(vector<AST *>()), param_this(nullptr) {};
 
         FunctionCall(string id, vector<AST *> paramList, const Token &token)
-                : AST(__FUNCTIONCALL_NAME, token), id(std::move(id)), paramList(std::move(paramList)) {};
+                : AST(__FUNCTIONCALL_NAME, token), id(std::move(id)), paramList(std::move(paramList)),
+                  param_this(nullptr) {};
 
         virtual ~FunctionCall();
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class Global : public AST {
@@ -297,6 +336,8 @@ namespace AVSI {
         virtual ~Global();
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class If : public AST {
@@ -315,6 +356,8 @@ namespace AVSI {
         virtual ~If();
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class LoopCtrl : public AST {
@@ -331,6 +374,8 @@ namespace AVSI {
         LoopCtrl(LoopCtrlType type, Token token) : AST(__LOOPCTRL_NAME, token), type(type) {}
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class Num : public AST {
@@ -347,6 +392,8 @@ namespace AVSI {
         any getValue(void);
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class Sizeof : public AST {
@@ -363,6 +410,8 @@ namespace AVSI {
         virtual ~Sizeof() {};
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class Variable : public AST {
@@ -373,7 +422,8 @@ namespace AVSI {
 
         enum offsetType {
             ARRAY = 0,
-            MEMBER = 1
+            MEMBER = 1,
+            FUNCTION = 2
         };
 
         vector<pair<offsetType, AST *>> offset;
@@ -405,6 +455,8 @@ namespace AVSI {
         ~Variable() {};
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class Object : public AST {
@@ -436,6 +488,8 @@ namespace AVSI {
         virtual ~Object() {}
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class Param : public AST {
@@ -443,6 +497,10 @@ namespace AVSI {
         vector<Variable *> paramList;
 
         Param(void) : AST(__PARAM_NAME), paramList(vector<Variable *>()) {};
+
+        Param(Token token) : AST(__PARAM_NAME, token), paramList(vector<Variable *>()) {};
+
+        void dump(int depth) override;
     };
 
     class Return : public AST {
@@ -454,6 +512,8 @@ namespace AVSI {
         Return(const Token &token, AST *ret) : AST(__RETURN_NAME, token), ret(ret) {};
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class String : public AST {
@@ -468,6 +528,8 @@ namespace AVSI {
         any getValue(void);
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class StructInit : public AST {
@@ -484,6 +546,8 @@ namespace AVSI {
         virtual ~StructInit();
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class TypeTrans : public AST {
@@ -500,6 +564,8 @@ namespace AVSI {
         virtual ~TypeTrans();
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class ArrayInit : public AST {
@@ -525,6 +591,8 @@ namespace AVSI {
         virtual ~ArrayInit();
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class UnaryOp : public AST {
@@ -544,6 +612,8 @@ namespace AVSI {
         TokenType getOp(void);
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class While : public AST {
@@ -560,6 +630,8 @@ namespace AVSI {
         virtual ~While();
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     class NoneAST : public AST {
@@ -569,10 +641,14 @@ namespace AVSI {
         virtual ~NoneAST() {};
 
         llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
     };
 
     extern AST *ASTEmpty;
     extern AST *ASTEmptyNotEnd;
+
+    pair<map<string, StructDef *>::iterator, string> find_struct(vector<string> modinfo, string &name);
 
     void llvm_import_module(vector<string> path, string mod, int line, int col, string as = string());
 

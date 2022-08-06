@@ -9,6 +9,11 @@ obj S {
     d: subobject::subS
 }
 
+export function S::member_function(a: i32) -> i32 {
+  this.a = a as i8
+  return a
+}
+
 no_mangle obj NS {
     a: i8
     b: f32
@@ -26,6 +31,6 @@ export function obj_test() {
     s.b = s.a as f32
     s.c[0] = 'h'
 
-    size = sizeof(s)
     c_len = sizeof(s.c) / sizeof(typename i8)
 }
+

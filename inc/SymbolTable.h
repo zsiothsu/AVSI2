@@ -117,17 +117,6 @@ namespace AVSI {
         void insert(string name, llvm::AllocaInst *addr);
     };
 
-    struct StructDef {
-        llvm::StructType *Ty;
-        map<string, int> members;
-
-        StructDef() = default;
-
-        StructDef(llvm::StructType *Ty) : Ty(Ty), members(map<string, int>()) {}
-
-        ~StructDef() = default;
-    };
-
     string __getModuleNameByPath(vector<string> path);
 
     string getFunctionNameMangling(vector<string> path, string fun);

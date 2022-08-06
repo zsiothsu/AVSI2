@@ -45,14 +45,14 @@ namespace AVSI {
     class Lexer {
     private:
         ifstream *file;
-        unsigned int linenum;
-        unsigned int cur;
+//        unsigned int linenum;
+//        unsigned int cur;
         std::string line;
-
-        Lexer *backup;
         decltype(file->tellg()) file_state_backup;
 
     public:
+        unsigned int linenum;
+        unsigned int cur;
         char currentChar;
 
         Lexer(void);
@@ -83,9 +83,9 @@ namespace AVSI {
 
         Token Id();
 
-        void stash();
+        void stash(Lexer *backup);
 
-        void restore();
+        void restore(Lexer *backup);
     };
 
     static map<char, TokenType> TokenMap = {

@@ -113,7 +113,7 @@ namespace AVSI {
     /*******************************************************
      *                         parser                      *
      *******************************************************/
-    pair<map<string, StructDef *>::iterator, string> Parser::find_struct(vector<string> modinfo, string &name) {
+    pair<map<string, StructDef *>::iterator, string> find_struct(vector<string> modinfo, string &name) {
         string id = name;
         // try no mangle
         auto ty = struct_types.find(id);
@@ -232,7 +232,7 @@ namespace AVSI {
     AST *Parser::statementList() {
         PARSE_LOG(COMPOUND);
 
-        Compound *root = new Compound();
+        Compound *root = new Compound(this->lastToken);
         AST *node;
         while (this->currentToken.getType() != END) {
             try {
@@ -416,6 +416,8 @@ namespace AVSI {
         Token token = this->currentToken;
         eat(FUNCTION);
         string id = this->currentToken.getValue().any_cast<string>();
+        auto struct_info = this->currentToken.getModInfo();
+        token.setModInfo(struct_info);
         eat(ID);
 
         eat(LPAR);
@@ -509,7 +511,7 @@ namespace AVSI {
         if (this->currentToken.getType() == ID) {
             vector<string> path;
             vector<string> modinfo = this->currentToken.getModInfo();
-            for(auto &p: package_path) {
+            for (auto &p: package_path) {
                 path.push_back(p);
             }
             if (!modinfo.empty() && modinfo[0] == "root") {
@@ -755,7 +757,7 @@ namespace AVSI {
     AST *Parser::param() {
         PARSE_LOG(PARAM);
 
-        Param *param = new Param();
+        Param *param = new Param(this->lastToken);
         set<string> paramSet;
         while (this->currentToken.getType() == ID) {
             Variable *var = new Variable(this->currentToken);
@@ -1137,22 +1139,45 @@ namespace AVSI {
         }
 
         // process [expr] and .ID
-        vector<pair<Variable::offsetType, AST *>>
-                offset;
-        TokenType current_type = this->currentToken.getType();
-        while (current_type == LSQB || current_type == DOT) {
-            if (current_type == LSQB) {
-                eat(LSQB);
-                AST *val = expr();
-                eat(RSQB);
-                offset.push_back(pair<Variable::offsetType, AST *>(Variable::ARRAY, val));
-            } else {
+        vector<pair<Variable::offsetType, AST *>> offset;
+
+        TokenType ty = this->currentToken.getType();
+        Token token;
+        AST* right = nullptr;
+        Variable::offsetType offset_ty;
+        while (ty == DOT || ty == LSQB) {
+            while (ty == DOT) {
+                token = this->currentToken;
                 eat(DOT);
-                Token id = this->currentToken;
-                eat(ID);
-                offset.push_back(pair<Variable::offsetType, AST *>(Variable::MEMBER, new Variable(id)));
+
+                ty = this->currentToken.getType();
+                if (ty == ID) {
+                    if (this->lexer->peekNextToken().getType() == LPAR) {
+                        right = functionCall();
+                        offset_ty = Variable::offsetType::FUNCTION;
+                    } else {
+                        right = new Variable(this->currentToken);
+                        eat(this->currentToken.getType());
+                        offset_ty = Variable::offsetType::MEMBER;
+                    }
+                } else if (ty == INTEGER) {
+                    right = new Num(this->currentToken);
+                    eat(INTEGER);
+                }
+
+                offset.push_back({offset_ty, right});
+                ty = this->currentToken.getType();
             }
-            current_type = this->currentToken.getType();
+
+            while (ty == LSQB) {
+                token = this->currentToken;
+                eat(LSQB);
+                right = expr();
+                eat(RSQB);
+
+                offset.push_back({Variable::offsetType::ARRAY, right});
+                ty = this->currentToken.getType();
+            }
         }
 
 
@@ -1209,17 +1234,19 @@ namespace AVSI {
         } else {
             /*
              * assignment or expression
-             * it' hard for LL parser to differentiate them
+             * it's hard for LL parser to differentiate them
              * so stash Lexer and try to find EQUAL
              */
             Token token_stashed = this->currentToken;
             Token last_token_stashed = this->lastToken;
-            this->lexer->stash();
+            Lexer *backup = new Lexer();
+            this->lexer->stash(backup);
 
             variable();
             Token next_token = this->currentToken;
 
-            this->lexer->restore();
+            this->lexer->restore(backup);
+            delete backup;
             this->currentToken = token_stashed;
             this->lastToken = last_token_stashed;
 
@@ -1241,7 +1268,7 @@ namespace AVSI {
             TokenType token = this->currentToken.getType();
             eat(token);
             auto ty = token_to_simple_types[token];
-            ret =  Type(ty, type_name[ty]);
+            ret = Type(ty, type_name[ty]);
         } else if (this->currentToken.getType() == VEC) {
             eat(VEC);
             eat(LSQB);
@@ -1282,9 +1309,9 @@ namespace AVSI {
                 }
             } else {
                 throw ExceptionFactory<SyntaxException>(
-                    "array type and size must be provided",
-                    this->currentToken.line,
-                    this->currentToken.column
+                        "array type and size must be provided",
+                        this->currentToken.line,
+                        this->currentToken.column
                 );
             }
         } else if (this->currentToken.getType() == ID) {
@@ -1312,9 +1339,9 @@ namespace AVSI {
             );
         }
 
-        while(this->currentToken.getType() == STAR) {
+        while (this->currentToken.getType() == STAR) {
             eat(STAR);
-            llvm::Type* ty = ret.first->getPointerTo();
+            llvm::Type *ty = ret.first->getPointerTo();
             string name = ret.second + "*";
             ret.first = ty;
             ret.second = name;

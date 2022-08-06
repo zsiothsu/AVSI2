@@ -40,8 +40,11 @@
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
+
 #if (LLVM_VERSION_MAJOR >= 14)
+
 #include <llvm/MC/TargetRegistry.h>
+
 #else
 #include <llvm/Support/TargetRegistry.h>
 #endif
@@ -207,22 +210,138 @@ namespace AVSI {
     }
 
     /**
+     * @description:    get offset address of variable
+     * @param:          base: base address
+     * @return:         a pointer to target address
+     */
+    llvm::Value *getOffset(llvm::Value *base, AST *offset) {
+        auto current_ty = base->getType()->getPointerElementType();
+        vector<llvm::Value *> offset_list;
+        offset_list.push_back(llvm::ConstantInt::get(I32_TY, 0));
+        if (
+                current_ty->isArrayTy()
+                || (
+                        current_ty->isPtrOrPtrVectorTy()
+                        && current_ty->getPointerElementType()->isArrayTy()
+                )
+                ) {
+            // array
+            llvm::Value *index = offset->codeGen();
+
+            if (current_ty->isPtrOrPtrVectorTy()) {
+                base = builder->CreateLoad(current_ty, base, "arraydecay");
+            }
+
+            if (index->getType()->isFloatingPointTy()) {
+                index = builder->CreateFPToSI(index, I32_TY);
+            } else {
+                index = builder->CreateSExtOrTrunc(index, I32_TY);
+            }
+            offset_list.push_back(index);
+
+            base = builder->CreateGEP(
+                    base->getType()->getScalarType()->getPointerElementType(),
+                    base,
+                    offset_list,
+                    "idx");
+        } else if (
+                current_ty->isStructTy()
+                || (
+                        current_ty->isPtrOrPtrVectorTy()
+                        && current_ty->getPointerElementType()->isStructTy()
+                )
+                ) {
+            // structure
+            if (offset->__AST_name == __VARIABLE_NAME) {
+                string member_name = ((Variable *) offset)->id;
+                bool find_flag = false;
+
+                auto struct_ty = current_ty;
+                if (current_ty->isPtrOrPtrVectorTy()) struct_ty = current_ty->getPointerElementType();
+
+                for (auto iter: struct_types) {
+                    if (iter.second->Ty == struct_ty) {
+                        if (iter.second->members.find(member_name) == iter.second->members.end()) {
+                            break;
+                        }
+
+                        auto index = iter.second->members[member_name];
+                        offset_list.push_back(llvm::ConstantInt::get(
+                                I32_TY,
+                                index,
+                                true));
+                        find_flag = true;
+                        break;
+                    }
+                }
+
+                if (current_ty->isPtrOrPtrVectorTy()) {
+                    base = builder->CreateLoad(current_ty, base, "struct");
+                }
+
+                if (find_flag) {
+                    base = builder->CreateGEP(
+                            llvm::cast<llvm::PointerType>(base->getType()->getScalarType())->getElementType(),
+                            base,
+                            offset_list,
+                            "idx");
+                } else {
+                    throw ExceptionFactory<MissingException>(
+                            "unrecognized member '" + member_name + "'",
+                            offset->getToken().line, offset->getToken().column);
+                }
+            } else if (offset->__AST_name == __NUM_NAME) {
+                offset_list.push_back(llvm::ConstantInt::get(
+                        I32_TY,
+                        ((Num *) offset)->getValue().any_cast<int>(),
+                        true));
+                base = builder->CreateGEP(
+                        llvm::cast<llvm::PointerType>(base->getType()->getScalarType())->getElementType(),
+                        base,
+                        offset_list,
+                        "idx");
+            }
+        } else if (current_ty->isPtrOrPtrVectorTy()) {
+            // raw pointer
+            llvm::Value *index = offset->codeGen();
+
+            if (index->getType()->isFloatingPointTy()) {
+                index = builder->CreateFPToSI(index, MACHINE_WIDTH_TY);
+            } else {
+                index = builder->CreateSExtOrTrunc(index, MACHINE_WIDTH_TY);
+            }
+
+            index = builder->CreateMul(
+                    index,
+                    llvm::ConstantInt::get(
+                            MACHINE_WIDTH_TY,
+                            current_ty->getPointerElementType()->isPtrOrPtrVectorTy()
+                            ? PTR_SIZE
+                            : type_size[current_ty->getPointerElementType()]
+                    )
+
+            );
+
+            base = builder->CreateLoad(current_ty, base);
+            llvm::Type *v_Ty = base->getType();
+            base = builder->CreatePtrToInt(base, ISIZE_TY);
+            base = builder->CreateAdd(base, index);
+            base = builder->CreateIntToPtr(base, v_Ty);
+        } else {
+            throw ExceptionFactory<TypeException>(
+                    "subscripted value is not an array, pointer, or structure",
+                    offset->getToken().line, offset->getToken().column);
+        }
+
+        return base;
+    }
+
+    /**
      * @description:    get address of variable
      * @param:          var: variable AST
      * @return:         a pointer to target address
      */
     llvm::Value *getAlloca(Variable *var) {
-        /* get address of variable
-         * -------------------------------------------------------------------
-         *  variable                processing                  result
-         * -------------------------------------------------------------------
-         *  a:real                  &real                       real *
-         *  b:vec[real;2]           &(vec[real;2]*)             real* *
-         *  b[0]                    &(*&(vec[real;2]*)))[0]     real *
-         *  c:vec[vec[real;2];0]    the same as b
-         *  d = {:vec[real;2];0}    the same as b
-         */
-
         // remember that all value token from symbol table is address
         llvm::Value *v = symbol_table->find(var->id);
         auto modinfo = var->getToken().getModInfo();
@@ -268,97 +387,64 @@ namespace AVSI {
 
         if (v && !var->offset.empty()) {
             for (auto i: var->offset) {
-                auto current_ty = v->getType()->getPointerElementType();
-                vector<llvm::Value *> offset_list;
-                offset_list.push_back(llvm::ConstantInt::get(I32_TY, 0));
-                if (
-                        current_ty->isArrayTy()
-                        || (
-                                current_ty->isPtrOrPtrVectorTy()
-                                && current_ty->getPointerElementType()->isArrayTy()
-                        )
-                        ) {
-                    // array
-                    llvm::Value *index = i.second->codeGen();
+                if (llvm::dyn_cast<llvm::Constant>(v) && llvm::dyn_cast<llvm::Constant>(v)->isNaN()) {
+                    throw ExceptionFactory<LogicException>(
+                            "cannot get element of null type",
+                            i.second->getToken().line, i.second->getToken().column);
+                }
 
-                    if (current_ty->isPtrOrPtrVectorTy()) {
-                        v = builder->CreateLoad(current_ty, v, "arraydecay");
-                    }
+                if (i.first == Variable::offsetType::MEMBER || i.first == Variable::offsetType::ARRAY) {
+                    v = getOffset(v, i.second);
+                } else {
+                    auto left_ty = v->getType()->getPointerElementType();
+                    if (
+                            left_ty->isStructTy()
+                            || (
+                                    left_ty->isPtrOrPtrVectorTy()
+                                    && left_ty->getPointerElementType()->isStructTy()
+                            )
+                            ) {
+                        // get struct path to locate function
+                        auto struct_name = type_name[left_ty->isPtrOrPtrVectorTy() ? left_ty->getPointerElementType()
+                                                                                   : left_ty];
+                        auto index = struct_name.find('{');
+                        string part = struct_name.substr(0, index);
+                        auto struct_path = getpathUnresolvedToList(part);
+                        FunctionCall *function_call_ast = (FunctionCall *) i.second;
+                        auto old_function_token = function_call_ast->getToken();
+                        auto old_param_list = function_call_ast->paramList;
 
-                    if (index->getType()->isFloatingPointTy()) {
-                        index = builder->CreateFPToSI(index, I32_TY);
-                    } else {
-                        index = builder->CreateSExtOrTrunc(index, I32_TY);
-                    }
-                    offset_list.push_back(index);
+                        // add param "this"
+                        llvm::Value *param_this = v;
+                        if (left_ty->isPtrOrPtrVectorTy()) {
+                            param_this = builder->CreateLoad(left_ty, v, "this");
+                        }
 
-                    v = builder->CreateGEP(
-                            v->getType()->getScalarType()->getPointerElementType(),
-                            v,
-                            offset_list,
-                            var->id);
-                } else if (current_ty->isStructTy()) {
-                    // structure
-                    string member_name = ((Variable *) (i.second))->id;
+                        // create a new function call
+                        Token casted_function_token = Token(ID, function_call_ast->id, old_function_token.line,
+                                                            old_function_token.column);
+                        casted_function_token.setModInfo(struct_path);
+                        FunctionCall *new_function = new FunctionCall(function_call_ast->id,
+                                                                      function_call_ast->paramList,
+                                                                      casted_function_token);
+                        new_function->param_this = param_this;
+                        auto ret = new_function->codeGen();
 
-                    bool find_flag = false;
-                    for (auto iter: struct_types) {
-                        if (iter.second->Ty == current_ty) {
-                            if (iter.second->members.find(member_name) == iter.second->members.end()) {
-                                break;
-                            }
-
-                            auto index = iter.second->members[member_name];
-                            offset_list.push_back(llvm::ConstantInt::get(
-                                    I32_TY,
-                                    index,
-                                    true));
-                            find_flag = true;
-                            break;
+                        // store return value
+                        if (
+                                !llvm::dyn_cast<llvm::Constant>(ret)
+                                || (
+                                        llvm::dyn_cast<llvm::Constant>(ret)
+                                        && !llvm::dyn_cast<llvm::Constant>(ret)->isNaN()
+                                )) {
+                            llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
+                            auto addr = allocaBlockEntry(the_scope, "call", ret->getType());
+                            builder->CreateStore(ret, addr);
+                            v = addr;
+                        } else {
+                            v = llvm::ConstantFP::getNaN(F64_TY);;
                         }
                     }
-
-                    if (find_flag) {
-                        v = builder->CreateGEP(
-                                llvm::cast<llvm::PointerType>(v->getType()->getScalarType())->getElementType(),
-                                v,
-                                offset_list,
-                                var->id);
-                    } else {
-                        throw ExceptionFactory<MissingException>(
-                                "unrecognized member '" + member_name + "'",
-                                i.second->getToken().line, i.second->getToken().column);
-                    }
-                } else if (current_ty->isPtrOrPtrVectorTy()) {
-                    // raw pointer
-                    llvm::Value *index = i.second->codeGen();
-
-                    if (index->getType()->isFloatingPointTy()) {
-                        index = builder->CreateFPToSI(index, MACHINE_WIDTH_TY);
-                    } else {
-                        index = builder->CreateSExtOrTrunc(index, MACHINE_WIDTH_TY);
-                    }
-
-                    index = builder->CreateMul(
-                            index,
-                            llvm::ConstantInt::get(
-                                    MACHINE_WIDTH_TY,
-                                    current_ty->getPointerElementType()->isPtrOrPtrVectorTy()
-                                    ? PTR_SIZE
-                                    : type_size[current_ty->getPointerElementType()]
-                            )
-
-                    );
-
-                    v = builder->CreateLoad(current_ty, v);
-                    llvm::Type *v_Ty = v->getType();
-                    v = builder->CreatePtrToInt(v, ISIZE_TY);
-                    v = builder->CreateAdd(v, index);
-                    v = builder->CreateIntToPtr(v, v_Ty);
-                } else {
-                    throw ExceptionFactory<TypeException>(
-                            "subscripted value is not an array, pointer, or structure",
-                            i.second->getToken().line, i.second->getToken().column);
                 }
             }
         }
@@ -728,6 +814,10 @@ namespace AVSI {
 
     llvm::Value *AST::codeGen() {
         return llvm::ConstantFP::getNaN(F64_TY);
+    }
+
+    void AST::dump(int depth) {
+
     }
 
     llvm::Value *Assign::codeGen() {
@@ -1132,8 +1222,45 @@ namespace AVSI {
             last_pt = builder->GetInsertPoint();
         }
 
+        bool is_a_member_funtion = !this->token.getModInfo().empty();
+
+        string func_name =
+                (this->id == ENTRY_NAME || !this->is_mangle)
+                ? this->id
+                : NAME_MANGLING(this->id);
+
+        // redirect to member function
+        llvm::Type *struct_type = nullptr;
+        if (is_a_member_funtion) {
+            auto modinfo = this->token.getModInfo();
+            auto struct_id = string(modinfo.back());
+            vector<string> struct_path = modinfo;
+            struct_path.pop_back();
+
+            auto ty = find_struct(struct_path, struct_id);
+
+            if (ty.first == struct_types.end()) {
+                throw ExceptionFactory<MissingException>(
+                        "missing type '" + id + "'",
+                        this->token.line,
+                        this->token.column
+                );
+            }
+
+            struct_type = ty.first->second->Ty;
+            auto struct_name = type_name[struct_type];
+            auto index = struct_name.find('{');
+            string part = struct_name.substr(0, index);
+            struct_path = getpathUnresolvedToList(part);
+
+            func_name = getFunctionNameMangling(struct_path, this->id);
+        }
+
         // create function parameters' type
         std::vector<llvm::Type *> Tys;
+        if (is_a_member_funtion) {
+            Tys.push_back(struct_type->getPointerTo());
+        }
         for (Variable *i: ((Param *) (this->paramList))->paramList) {
             /* Passing array pointers between functions
              *
@@ -1163,11 +1290,6 @@ namespace AVSI {
                 Tys,
                 false);
 
-        string func_name =
-                (this->id == ENTRY_NAME || !this->is_mangle)
-                ? this->id
-                : NAME_MANGLING(this->id);
-
         if (the_module->getFunction(this->id) == nullptr) {
             builder->ClearInsertionPoint();
             // check is re-definition
@@ -1193,10 +1315,16 @@ namespace AVSI {
             function_protos[this->id] = FT;
 
             uint8_t param_index = 0;
-            for (auto &arg: the_function->args()) {
+            auto args_iter = the_function->args().begin();
+
+            if (is_a_member_funtion) {
+                args_iter->setName("this");
+                args_iter++;
+            }
+            for (auto arg = args_iter; arg != the_function->args().end(); arg++) {
                 Variable *var = ((Param *)
                         this->paramList)->paramList[param_index++];
-                arg.setName(var->id);
+                arg->setName(var->id);
             }
 
             if (last_BB != nullptr) {
@@ -1291,7 +1419,7 @@ namespace AVSI {
 
     llvm::Value *FunctionCall::codeGen() {
         vector<string> modinfo = this->getToken().getModInfo();
-        llvm::Function *fun = the_module->getFunction(this->id);;
+        llvm::Function *fun = the_module->getFunction(this->id);
 
         if (!fun) {
             if (modinfo.empty()) {
@@ -1329,6 +1457,12 @@ namespace AVSI {
                                 getFunctionNameMangling(head_to_origin, this->id));
                     }
                 }
+
+                // may be absolute
+                if (!fun) {
+                    fun = the_module->getFunction(
+                            getFunctionNameMangling(modinfo, this->id));
+                }
             }
         }
 
@@ -1338,19 +1472,32 @@ namespace AVSI {
                     this->getToken().line, this->getToken().column);
         }
 
-        if (fun->arg_size() != this->paramList.size()) {
+        if (fun->arg_size() != this->paramList.size() + (this->param_this ? 1 : 0)) {
             // if function has declared, check parameters' size
             throw ExceptionFactory<LogicException>(
                     "candidate function not viable: requires " +
                     to_string(fun->arg_size()) +
                     " arguments, but " +
-                    to_string(this->paramList.size()) +
+                    to_string(this->paramList.size() + (this->param_this ? 1 : 0)) +
                     " were provided",
                     this->token.line, this->token.column);
         }
 
         vector<llvm::Value *> args;
         auto callee_arg_iter = fun->args().begin();
+
+        if (this->param_this) {
+            if (callee_arg_iter->getType() != this->param_this->getType()) {
+                throw ExceptionFactory<MissingException>(
+                        this->id + "is not a matched member function for type"
+                        + type_name[this->param_this->getType()->getPointerElementType()],
+                        this->token.line, this->token.column);
+            }
+
+            args.push_back(this->param_this);
+            callee_arg_iter++;
+        }
+
         for (int i = 0; i < this->paramList.size(); i++) {
             AST *arg = paramList[i];
             llvm::Value *v = arg->codeGen();
@@ -1412,7 +1559,8 @@ namespace AVSI {
         if (fun->getFunctionType()->getReturnType() != VOID_TY) {
             return builder->CreateCall(fun, args, "callLocal");
         } else {
-            return builder->CreateCall(fun, args);
+            builder->CreateCall(fun, args);
+            return llvm::ConstantFP::getNaN(F64_TY);
         }
     }
 
@@ -1973,7 +2121,11 @@ namespace AVSI {
                     this->token.line, this->token.column);
         }
 
-        return builder->CreateLoad(v->getType()->getPointerElementType(), v, this->id.c_str());
+        if (llvm::dyn_cast<llvm::Constant>(v) && llvm::dyn_cast<llvm::Constant>(v)->isNaN()) {
+            return llvm::ConstantFP::getNaN(F64_TY);
+        } else {
+            return builder->CreateLoad(v->getType()->getPointerElementType(), v, this->id.c_str());
+        }
     }
 
     llvm::Value *Compound::codeGen() {
@@ -1999,6 +2151,7 @@ namespace AVSI {
                 if (
                         cnt != child_size
                         && ast->__AST_name != __FUNCTIONDECL_NAME
+                        && ast->__AST_name != __OBJECT_NAME
                         && (
                                 (
                                         builder->GetInsertBlock()

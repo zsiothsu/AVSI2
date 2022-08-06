@@ -111,7 +111,6 @@ refer to `./example`
 ## Planned features
 
 - AVSI
-  - object methods
   - macro system (probably not)
 - libavsi
   - core library

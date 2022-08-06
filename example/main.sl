@@ -38,7 +38,8 @@ export no_mangle function main(argc: i32, argv: char**) -> i32 {
     size = sizeof(typename object_test::object::S)
     size = sizeof(typename NS)
     s = root::object_test::object::S(1 as i8, 1.2 as f32, {'H', 'E', 'L', 'L', 'O'})
-    s = s.a
+    s.a = s.member_function(1) as i8
+    object_test::object::S::member_function(&s, 1)
     t = VS({1,2})
 
     type_test::cast::cast_test()
