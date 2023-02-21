@@ -79,6 +79,7 @@ bool opt_verbose = false;
 bool opt_warning = false;
 bool opt_optimize = false;
 bool opt_dump = false;
+bool opt_pic = false;
 
 void printHelp(void) {
     string version = \
@@ -99,6 +100,8 @@ void printHelp(void) {
     "    -W             --warning   Show all warnings.\n"
     "    -O             --optimize  Optimize code\n"
     "    -D             --dump      AST dump\n\n"
+    "short options:\n"
+    "    -fpic                      generate Position-Independent-Code"
     "long options:\n"
     "    --package-name <name>      Set package name split by '.', e.g.  std.io.file\n";
 
@@ -106,13 +109,14 @@ void printHelp(void) {
 }
 
 void getOption(int argc, char **argv) {
-    while ((opt = getopt_long(argc, argv, "lSmro:hvI:WOD", long_options, &loidx)) != -1) {
+    while ((opt = getopt_long(argc, argv, "lSmro:hvI:WODf:", long_options, &loidx)) != -1) {
         if (opt == 0) {
             opt = lopt;
         }
         filesystem::path path = output_root_path;
         filesystem::path t;
         string arg_string;
+        string reloc_mode;
         switch (opt) {
             case 'l':
                 opt_ir = true;
@@ -149,6 +153,12 @@ void getOption(int argc, char **argv) {
                 break;
             case 'D':
                 opt_dump = true;
+                break;
+            case 'f':
+                reloc_mode = string(optarg);
+                if(reloc_mode == "pic") {
+                    opt_pic = true;
+                }
                 break;
             case 100:
                 if(!package_path.empty()) {
@@ -281,7 +291,8 @@ int main(int argc, char **argv) {
         if (opt_ir) llvm_emit_ir();
         if (opt_asm) llvm_emit_asm();
         if (opt_module || input_file_name_no_suffix == MODULE_LIB_NAME) llvm_emit_bitcode();
-        if (!(opt_ir || opt_asm))llvm_emit_obj();
+        //if (!(opt_ir || opt_asm))
+        llvm_emit_obj();
     } catch (Exception &e) {
         if (e.type() == __ErrReport) {
             std::cerr << __COLOR_RED

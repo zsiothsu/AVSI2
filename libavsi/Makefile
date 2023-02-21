@@ -20,7 +20,7 @@ CC				:= $(ROOT)/../build/avsi
 SYS_INCLUDE		:= /usr/include
 SYS_LIB			:= /usr/lib
 
-all:  $(LIBAVSI)
+all: $(STDDIR_OUT)/$(STDBC) $(LIBAVSI)
 
 $(LIBAVSI): $(CDIR)/avsi.c $(STDDIR_OUT)/$(STDBC) $(OBJS)
 	@echo "building libavsi"
@@ -42,7 +42,7 @@ clean:
 .PHONY: install
 install:
 	@if [ ! -d $(SYS_INCLUDE)/avsi ]; then mkdir $(SYS_INCLUDE)/avsi; fi
-	@install -d $(STDDIR_OUT)/std $(SYS_INCLUDE)/avsi/std
+	@cp -r $(STDDIR_OUT)/std $(SYS_INCLUDE)/avsi/
 	@install $(LIBAVSI) $(SYS_LIB)/libavsi.a
 
 .PHONY: uninstall

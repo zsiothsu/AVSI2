@@ -1,6 +1,14 @@
 # data
-INTEGER
-FLOAT
+F64             f64
+F32             f32
+I128            i128
+I64             i64
+I32             i32
+I16             i16
+I8              i8, char
+BOOL            bool
+ISIZE           isize
+VOID            void
 STRING
 CHAR
 ID
@@ -30,26 +38,36 @@ VEC             vec
 OBJ             obj
 BREAK           break
 CONTINUE        continue
+NOMANGLE        no_mangle
+AS              as
+
 
 # structure
 COMPOUND
 
 # operator                              priority
 NOT             '!'                         1
-
+BITCPL          '~'                         1
 STAR            '*'                         2
 SLASH           '/'                         2
+REM             '%'                         2
 PLUS            '+'                         3
 MINUS           '-'                         3
-GT              '>'         '-gt'           4
-LT              '<'         '-lt'           4
-GE              '>='        '-ge'           4
-LE              '<='        '-le'           4
-EQ              '=='        '-eq'           5
-NE              '!='        '-ne'           5
-AND             '&&'        '-a'            6
-OR              '||'        '-o'            6
-EQUAL           '='                         7
+SHL             '<<'                        4
+SHR             '>>'                        4
+SHRU            '>>>'                       4
+GT              '>'         '-gt'           5
+LT              '<'         '-lt'           5
+GE              '>='        '-ge'           5
+LE              '<='        '-le'           5
+EQ              '=='        '-eq'           6
+NE              '!='        '-ne'           6
+BITAND          '&'                         7
+BITOR           '|'                         8
+AND             '&&'        '-a'            9
+OR              '||'        '-o'            10
+EQUAL           '='                         11
+
 
 # symbol
 LPAR            '('

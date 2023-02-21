@@ -358,11 +358,11 @@ namespace cart {
         if (!nostd) {
             auto crt1 = GCCLibraryPath + SYSTEM_PATH_DIVIDER + "crt1.o";
             auto crti = GCCLibraryPath + SYSTEM_PATH_DIVIDER + "crti.o";
-            auto crtbegin = GCCInstallPath + SYSTEM_PATH_DIVIDER + "crtbegin.o";
+            //auto crtbegin = GCCInstallPath + SYSTEM_PATH_DIVIDER + "crtbegin.o";
 
             args.push_back(crt1.c_str());
             args.push_back(crti.c_str());
-            args.push_back(crtbegin.c_str());
+            //args.push_back(crtbegin.c_str());
         }
 
         LibraryPaths.push_back("build");
@@ -399,10 +399,10 @@ namespace cart {
         }
 
         if (!nostd) {
-            auto crtend = GCCInstallPath + SYSTEM_PATH_DIVIDER + "crtend.o";
+            //auto crtend = GCCInstallPath + SYSTEM_PATH_DIVIDER + "crtend.o";
             auto crtn = GCCLibraryPath + SYSTEM_PATH_DIVIDER + "crtn.o";
 
-            args.push_back(crtend.c_str());
+            //args.push_back(crtend.c_str());
             args.push_back(crtn.c_str());
         }
     }

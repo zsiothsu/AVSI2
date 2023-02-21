@@ -3,8 +3,7 @@
 ![Github repo size](https://img.shields.io/github/repo-size/zsiothsu/AVSI2)
 ![Github license](https://img.shields.io/github/license/zsiothsu/AVSI2)
 ![platform](https://img.shields.io/badge/platform-linux-green)
-
-[大陆简体](README.zh_cn.md) · [臺灣正體](README.zh_tw.md)
+![llvm](https://img.shields.io/badge/LLVM%20version-%3C=14-green)
 
 ## Introduce
 ### AVSI
@@ -100,9 +99,9 @@ Since AVSI does not have the function of automatic linking, you have to use gcc 
 
 ```shell
 $ objs=($(find . -name "*.o"))
-$ gcc $objs -lavsi -no-pie -o ./a.out 
+$ gcc $objs -lavsi -no-pie -o ./a.out
 # or clang
-$ clang $objs -lavsi -no-pie -o ./a.out 
+$ clang $objs -lavsi -no-pie -o ./a.out
 ```
 
 ## Grammar

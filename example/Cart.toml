@@ -1,5 +1,5 @@
 [project]
-name = "test_project"
+name = "T"
 version = "0.0.1"
 
 [path]
@@ -17,9 +17,9 @@ version = "0.0.1"
 type = ["bin","staticlib"]
 
 [[lib.bin]]
-name = "test_project"
+name = "T"
 entry = "main.sl"
-ccflags = ["-O", "-W"]
+ccflags = ["-O", "-W","-l"]
 ldflags = []
 nostd = false
 
@@ -30,7 +30,7 @@ nostd = false
 ## mod hello
 ## and target will be libhello.a or libhello.so
 ############################################################
-name = "test_project"
+name = "T"
 ccflags = ["-O", "-W"]
 nostd = false
 

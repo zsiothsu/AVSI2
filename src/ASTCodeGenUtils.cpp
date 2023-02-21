@@ -5,7 +5,7 @@
  *
  * MIT License
  *
- * Copyright (c) 2022 Chipen Hsiaoman
+ * Copyright (c) 2022 Chipen Hsiao
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -60,6 +60,7 @@ extern bool opt_reliance;
 extern bool opt_verbose;
 extern bool opt_warning;
 extern bool opt_optimize;
+extern bool opt_pic;
 
 namespace AVSI {
     using namespace std;
@@ -245,6 +246,9 @@ namespace AVSI {
                 if (opt_verbose) args.push_back("-v");
                 if (opt_warning) args.push_back("-W");
                 if (opt_optimize) args.push_back("-O");
+                if (opt_ir) args.push_back("-l");
+
+                if (opt_pic) args.push_back("-fpic");
 
                 // include path
                 for(int i = 1; i < include_path.size(); i++) {
@@ -557,7 +561,7 @@ namespace AVSI {
         auto Features = "";
 
         llvm::TargetOptions opt;
-        auto RM = llvm::Optional<llvm::Reloc::Model>();
+        auto RM = llvm::Optional<llvm::Reloc::Model>(opt_pic ? llvm::Reloc::PIC_ : llvm::Reloc::Static);
         TheTargetMachine =
                 Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
 
