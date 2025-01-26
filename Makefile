@@ -27,9 +27,10 @@ DIR_SYSEXEC := /usr/bin
 # compiler flags
 CXXFLAGS 	:= -Wall --std=c++17 -I$(DIR_INC) \
 -ffunction-sections \
--fdata-sections
+-fdata-sections \
+-I /usr/lib/llvm14/include
 
-LDFLAGS		:= -lstdc++ -lLLVM -lm -L/usr/lib
+LDFLAGS		:= -lstdc++ -lm -L/usr/lib -L /usr/lib/llvm14/lib -lLLVM-14
 
 # important file
 TARGET		:= $(PROJECT_NAME)

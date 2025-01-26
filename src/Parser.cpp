@@ -1279,7 +1279,7 @@ namespace AVSI {
                     nest.first = I8_TY;
                 }
 
-                eat(SEMI);
+                eat(COLON);
                 int array_size = 0;
                 if (this->currentToken.getType() == INTEGER) {
                     array_size = this->currentToken.getValue().any_cast<int>();
@@ -1294,7 +1294,7 @@ namespace AVSI {
                 eat(RSQB);
                 if (array_size != 0) {
                     llvm::Type *Ty = llvm::ArrayType::get(nest.first, array_size);
-                    type_name[Ty] = "vec[" + type_name[nest.first] + ";" + to_string(array_size) + "]";
+                    type_name[Ty] = "vec[" + type_name[nest.first] + ":" + to_string(array_size) + "]";
                     type_name[Ty->getPointerTo()] = type_name[Ty] + "*";
                     type_size[Ty] = type_size[nest.first] * array_size;
                     type_name[Ty->getPointerTo()] = PTR_SIZE;

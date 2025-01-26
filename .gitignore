@@ -1,0 +1,13 @@
+build/*
+!build/.gitkeep
+cart/build/*
+!cart/build/.gitkeep
+example/build/*
+!example/build/.gitkeep
+*.o
+*.a
+*.d
+*.ll
+*.bc
+
+.vscode

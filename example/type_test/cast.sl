@@ -9,12 +9,12 @@ export function cast_test() {
     f: bool = true
 
     arr = {:i32:2}
-    i8_ptr = arr as vec[i8;0]
+    i8_ptr = arr as vec[i8:0]
     addr = i8_ptr as i64 + 4
-    i8_ptr = addr as vec[i32;0]
-    void_ptr = arr as vec[void;0]
+    i8_ptr = addr as vec[i32:0]
+    void_ptr = arr as vec[void:0]
 
-    x: vec[i32;0] = {1, 2, 3}
+    x: vec[i32:3] = {1, 2, 3}
     y = x
-    y:vec[i32;3] = x
+    y:vec[i32:3] = x
 }

@@ -39,14 +39,14 @@
 #include <iostream>
 #include <filesystem>
 #include <set>
-#include <llvm/Support/Host.h>
+#include "llvm/Support/Host.h"
 
 #if (LLVM_VERSION_MAJOR >= 14)
 
-#include <llvm/MC/TargetRegistry.h>
+#include "llvm/MC/TargetRegistry.h"
 
 #else
-#include <llvm/Support/TargetRegistry.h>
+#include "llvm/Support/TargetRegistry.h"
 #endif
 
 /* Directory where gcc is installed. */

@@ -33,20 +33,20 @@
 #include "../inc/AST.h"
 #include "../inc/SymbolTable.h"
 #include <filesystem>
-#include <llvm/Support/FileSystem.h>
-#include <llvm/Support/Host.h>
-#include <llvm/Support/raw_ostream.h>
-#include <llvm/Support/SourceMgr.h>
-#include <llvm/Target/TargetMachine.h>
-#include <llvm/Support/MemoryBuffer.h>
-#include <llvm/Bitcode/BitcodeWriter.h>
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/Host.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/SourceMgr.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
 
 #if (LLVM_VERSION_MAJOR >= 14)
 
-#include <llvm/MC/TargetRegistry.h>
+#include "llvm/MC/TargetRegistry.h"
 
 #else
-#include <llvm/Support/TargetRegistry.h>
+#include "llvm/Support/TargetRegistry.h"
 #endif
 
 #define UNUSED(x) ((void)(x))
@@ -214,23 +214,13 @@ namespace AVSI {
      * @param:          base: base address
      * @return:         a pointer to target address
      */
-    llvm::Value *getOffset(llvm::Value *base, AST *offset) {
+    llvm::Value *getOffset(llvm::Value *base, AST *offset) {        
         auto current_ty = base->getType()->getPointerElementType();
         vector<llvm::Value *> offset_list;
         offset_list.push_back(llvm::ConstantInt::get(I32_TY, 0));
-        if (
-                current_ty->isArrayTy()
-                || (
-                        current_ty->isPtrOrPtrVectorTy()
-                        && current_ty->getPointerElementType()->isArrayTy()
-                )
-                ) {
+        if (current_ty->isArrayTy()) {
             // array
             llvm::Value *index = offset->codeGen();
-
-            if (current_ty->isPtrOrPtrVectorTy()) {
-                base = builder->CreateLoad(current_ty, base, "arraydecay");
-            }
 
             if (index->getType()->isFloatingPointTy()) {
                 index = builder->CreateFPToSI(index, I32_TY);
@@ -243,7 +233,7 @@ namespace AVSI {
                     base->getType()->getScalarType()->getPointerElementType(),
                     base,
                     offset_list,
-                    "idx");
+                    "idx_arr");
         } else if (
                 current_ty->isStructTy()
                 || (
@@ -284,7 +274,7 @@ namespace AVSI {
                             llvm::cast<llvm::PointerType>(base->getType()->getScalarType())->getElementType(),
                             base,
                             offset_list,
-                            "idx");
+                            "idx_obj");
                 } else {
                     throw ExceptionFactory<MissingException>(
                             "unrecognized member '" + member_name + "'",
@@ -299,7 +289,7 @@ namespace AVSI {
                         llvm::cast<llvm::PointerType>(base->getType()->getScalarType())->getElementType(),
                         base,
                         offset_list,
-                        "idx");
+                        "idx_obj");
             }
         } else if (current_ty->isPtrOrPtrVectorTy()) {
             // raw pointer
@@ -324,9 +314,9 @@ namespace AVSI {
 
             base = builder->CreateLoad(current_ty, base);
             llvm::Type *v_Ty = base->getType();
-            base = builder->CreatePtrToInt(base, ISIZE_TY);
-            base = builder->CreateAdd(base, index);
-            base = builder->CreateIntToPtr(base, v_Ty);
+            base = builder->CreatePtrToInt(base, ISIZE_TY, "idx_ptr_conv");
+            base = builder->CreateAdd(base, index, "idx_ptr_conv");
+            base = builder->CreateIntToPtr(base, current_ty, "idx_ptr_conv");
         } else {
             throw ExceptionFactory<TypeException>(
                     "subscripted value is not an array, pointer, or structure",
@@ -504,6 +494,9 @@ namespace AVSI {
         llvm::Type *store_type = r_type;
         bool create_new_space = true;
 
+        /**
+         * function definition
+         */
         auto assign_err = [&](llvm::Type *l, llvm::Type *r) -> void {
             registerType(l);
             registerType(r);
@@ -515,6 +508,7 @@ namespace AVSI {
                     ast->getToken().line, ast->getToken().column);
         };
 
+        /* v -> ptr -> symtab */
         auto assign = [&](llvm::Value *v, llvm::Value *ptr, llvm::Type *Ty) -> bool {
             llvm::AllocaInst *addr = (llvm::AllocaInst *) ptr;
             if (create_new_space) {
@@ -533,7 +527,7 @@ namespace AVSI {
                 if (l_is_single_value && assignment) {
                     symbol_table->insert(l_base_name, addr);
                 } else {
-                    registerType(l_alloca_content_type);
+                    if (l_alloca_content_type) registerType(l_alloca_content_type);
                     registerType(v->getType());
 
                     throw ExceptionFactory<SysErrException>(
@@ -547,6 +541,14 @@ namespace AVSI {
             return !create_new_space;
         };
 
+        /* ptr -> symtab */
+        auto bind = [&](llvm::Value *ptr) -> void {
+            if (l_is_single_value && assignment) {
+                llvm::AllocaInst *addr = (llvm::AllocaInst *) ptr;
+                symbol_table->insert(l_base_name, addr);
+            }
+        };
+
         auto memcp = [&](llvm::Value *l_addr, llvm::Value *r_addr, llvm::Type *l_type, llvm::Type *r_type) -> void {
             if (type_size.find(l_type) != type_size.end()) registerType(l_type);
             if (type_size.find(r_type) != type_size.end()) registerType(r_type);
@@ -554,6 +556,7 @@ namespace AVSI {
             auto size = min(type_size[l_type], type_size[r_type]);
             builder->CreateMemCpy(l_addr, llvm::MaybeAlign(), r_addr, llvm::MaybeAlign(), size);
         };
+
 
         if (simple_types.find(r_type) != simple_types.end()) {
             if (l_alloca_content_type && simple_types.find(l_alloca_content_type) != simple_types.end() &&
@@ -587,33 +590,7 @@ namespace AVSI {
 
             return assign(r_value, create_new_space ? nullptr : l_alloca_addr, store_type);
         } else if (r_type->isArrayTy()) {
-            if (l_alloca_addr) {
-                if (l_alloca_content_type->isArrayTy() &&
-                    l_alloca_content_type->getArrayElementType() == r_type->getArrayElementType()) {
-
-                    if (!r_alloca_addr) {
-                        llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
-                        r_alloca_addr = allocaBlockEntry(the_scope, "array.init", r_type);
-                        builder->CreateStore(r_value, r_alloca_addr);
-                    }
-
-                    if (!r_alloca_addr) {
-                        throw ExceptionFactory<MissingException>(
-                                "failed to store value, right value, type '" +
-                                type_name[r_type] + "', is missing",
-                                ast->getToken().line, ast->getToken().column);
-                    }
-
-                    memcp(l_alloca_addr, r_alloca_addr, l_alloca_content_type, r_type);
-                    return true;
-                } else if (!l_is_single_value) {
-                    assign_err(l_alloca_content_type, r_type);
-                } else {
-                    store_type = r_type;
-                    create_new_space = true;
-                    return assign(r_value, nullptr, store_type);
-                }
-            } else if (l_except_type_is_offered && l_except_type->isArrayTy() &&
+            if (l_except_type_is_offered && l_except_type->isArrayTy() &&
                        l_except_type->getArrayElementType() == r_type->getArrayElementType()) {
                 llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
                 if (!r_alloca_addr) {
@@ -621,78 +598,22 @@ namespace AVSI {
                     builder->CreateStore(r_value, r_alloca_addr);
                 }
 
-                if (l_alloca_addr) {
-                    memcp(l_alloca_addr, r_alloca_addr, l_except_type, r_type);
+                if (l_is_single_value) {
+                    bind(r_alloca_addr);
                     return true;
+                } else if (l_except_type->getArrayNumElements() == r_type->getArrayNumElements()) {
+                    bind(r_alloca_addr);
+                    return false;
                 } else {
-                    if (l_is_single_value) {
-                        symbol_table->insert(l_base_name, (llvm::AllocaInst *) r_alloca_addr);
-                        return true;
-                    } else {
-                        throw ExceptionFactory<TypeException>(
-                                "left value is not allowed to be rebind",
-                                ast->getToken().column, ast->getToken().column);
-                    }
-                }
-            } else if (l_except_type_is_offered && l_except_type->isPtrOrPtrVectorTy() &&
-                       l_except_type->getPointerElementType() == r_type->getArrayElementType()) {
-                llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
-                if (!r_alloca_addr) {
-                    r_alloca_addr = allocaBlockEntry(the_scope, "array.init", r_type);
-                    builder->CreateStore(r_value, r_alloca_addr);
-                }
-
-                if (l_alloca_addr) {
-                    builder->CreateStore(r_alloca_addr, l_alloca_addr);
-                    return true;
-                } else {
-                    if (l_is_single_value) {
-                        store_type = r_type;
-                        create_new_space = true;
-                        auto cast = builder->CreatePointerCast(r_alloca_addr, l_except_type);
-                        return assign(cast, nullptr, l_except_type);
-                        return false;
-                    } else {
-                        throw ExceptionFactory<TypeException>(
-                                "left value is not allowed to be rebind",
-                                ast->getToken().column, ast->getToken().column);
-                    }
+                    store_type = l_except_type;
+                    create_new_space = true;
+                    return assign(r_value, nullptr, l_except_type);
                 }
             } else if (!l_except_type_is_offered) {
-                store_type = r_type;
-                create_new_space = true;
-                return assign(r_value, nullptr, store_type);
+                bind(r_alloca_addr);
+                return false;
             } else {
                 assign_err(l_except_type, r_type);
-            }
-        } else if (r_type->isPtrOrPtrVectorTy() && r_type->getPointerElementType()->isArrayTy()) {
-            if (l_alloca_content_type && l_alloca_content_type->isPtrOrPtrVectorTy() &&
-                l_alloca_content_type->getPointerElementType()->isArrayTy() &&
-                l_alloca_content_type->getPointerElementType()->getArrayElementType() ==
-                r_type->getPointerElementType()->getPointerElementType()) {
-                auto l_dest = builder->CreateLoad(l_alloca_content_type, l_alloca_addr);
-                memcp(l_dest, r_value, l_alloca_content_type->getPointerElementType(), r_type->getPointerElementType());
-                return true;
-            } else if (l_alloca_content_type && l_alloca_content_type->isArrayTy() &&
-                       l_alloca_content_type->getArrayElementType() ==
-                       r_type->getPointerElementType()->getArrayElementType()) {
-                memcp(l_alloca_addr, r_value, l_alloca_content_type, r_type->getPointerElementType());
-                return true;
-            } else if (l_except_type_is_offered && l_except_type->isPtrOrPtrVectorTy() &&
-                       l_except_type->getPointerElementType() ==
-                       r_type->getPointerElementType()->getArrayElementType()) {
-                r_value = builder->CreatePointerCast(r_value, l_except_type);
-                store_type = l_except_type;
-                create_new_space = true;
-                return assign(r_value, nullptr, store_type);
-            } else if (l_except_type_is_offered && l_except_type != r_type) {
-                assign_err(l_except_type, r_type);
-            } else if (!assignment) {
-                assign_err(l_alloca_content_type, r_type);
-            } else {
-                store_type = r_type;
-                create_new_space = true;
-                return assign(r_value, nullptr, store_type);
             }
         } else if (r_type->isPtrOrPtrVectorTy()) {
             if (l_alloca_content_type && l_alloca_content_type == r_type) {
@@ -824,9 +745,18 @@ namespace AVSI {
         llvm::Value *r_value = this->right->codeGen();
 
         string l_base_name = ((Variable *) this->left)->id;
-        auto l_alloca_addr = getAlloca((Variable *) this->left);
-
-        store(this, l_alloca_addr, r_value, true, l_base_name);
+        if (r_value->getType()->isArrayTy()) {
+            store(this, nullptr, r_value, true, l_base_name);
+        } else {
+            auto l_alloca_addr = getAlloca((Variable *) this->left);
+            if (!l_alloca_addr && !(((Variable *)(this->left))->offset.empty())) {
+                throw ExceptionFactory<MissingException>(
+                        "missing variable '" + l_base_name + "'",
+                        this->left->getToken().column, this->left->getToken().column
+                );
+            }
+            store(this, l_alloca_addr, r_value, true, l_base_name);
+        }
         return llvm::ConstantFP::getNaN(F64_TY);
     }
 
@@ -1272,6 +1202,8 @@ namespace AVSI {
              */
             if (i->Ty.first->isArrayTy()) {
                 Tys.push_back(i->Ty.first->getArrayElementType()->getPointerTo());
+            } else if (i->Ty.first->isStructTy()) {
+                Tys.push_back(i->Ty.first->getPointerTo());
             } else {
                 Tys.push_back(i->Ty.first);
             }
@@ -1359,7 +1291,9 @@ namespace AVSI {
                     endbb->eraseFromParent();
                 } else if (!t) {
                     auto ret_const = llvm::dyn_cast<llvm::Constant>(ret);
-                    if (!ret_const || (ret_const && !ret_const->isNaN())) {
+                    if (the_function->getReturnType() == VOID_TY) {
+                        builder->CreateRetVoid();
+                    } else if (!ret_const || (ret_const && !ret_const->isNaN())) {
                         // expr without "return" keyword
                         auto ret_alloca_addr = allocaBlockEntry(the_function, "ret", the_function->getReturnType());
                         bool state = store(this, ret_alloca_addr, ret, false, "ret");
@@ -1387,9 +1321,7 @@ namespace AVSI {
 
                         ret = builder->CreateLoad(the_function->getReturnType(), ret_alloca_addr);
                         builder->CreateRet(ret);
-                    } else if (the_function->getReturnType() == VOID_TY) {
-                        builder->CreateRetVoid();
-                    } else if (the_function->getReturnType()->isFloatingPointTy()) {
+                    }  else if (the_function->getReturnType()->isFloatingPointTy()) {
                         builder->CreateRet(llvm::ConstantFP::get(the_function->getReturnType(), 0.0));
                     } else {
                         builder->CreateRet(llvm::ConstantInt::get(the_function->getReturnType(), 0));
@@ -1520,7 +1452,7 @@ namespace AVSI {
                     builder->CreateStore(v, addr);
                 }
 
-                v = builder->CreateGEP(
+                v = builder->CreateInBoundsGEP(
                         caller_type,
                         addr,
                         {
@@ -1531,15 +1463,30 @@ namespace AVSI {
                 );
                 caller_type = v->getType();
                 if (type_size.find(caller_type) == type_size.end()) registerType(caller_type);
-            }
+            } else if (
+                caller_type->isStructTy() &&
+                ((llvm::PointerType*)(callee_type))->getElementType()->isStructTy() && 
+                ((llvm::StructType*)(((llvm::PointerType*)callee_type)->getElementType()))->isLayoutIdentical((llvm::StructType *) caller_type)
+            ) {
+                llvm::AllocaInst *addr = (llvm::AllocaInst *) llvm::getLoadStorePointerOperand(v);
+                if (!addr) {
+                    llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
+                    addr = allocaBlockEntry(the_scope, "struct.init", caller_type);
+                    builder->CreateStore(v, addr);
+                }
 
-            if (
-                    caller_type->isStructTy() &&
-                    caller_type->isStructTy() &&
-                    ((llvm::StructType *) caller_type)->isLayoutIdentical((llvm::StructType *) callee_type)) {
-                v = getLoadStorePointerOperand(v);
-                v = builder->CreatePointerCast(v, callee_type->getPointerTo());
-                v = builder->CreateLoad(callee_type, v);
+                v = builder->CreateInBoundsGEP(
+                        caller_type,
+                        addr,
+                        {
+                                llvm::ConstantInt::get(I32_TY, 0),
+                                llvm::ConstantInt::get(I32_TY, 0)
+                        },
+                        "structdecay"
+                );
+                v = builder->CreatePointerCast(v, callee_type);                
+                caller_type = v->getType();
+                if (type_size.find(caller_type) == type_size.end()) registerType(caller_type);
             } else if (callee_type != caller_type) {
                 try {
                     v = type_conv(arg, v, caller_type, callee_type, false);
@@ -1643,9 +1590,9 @@ namespace AVSI {
          */
         if (this->Ty.first != VOID_TY) {
             auto arr_type = llvm::ArrayType::get(this->Ty.first, element_num);
-            type_name[arr_type] = "vec[" + type_name[this->Ty.first] + ";" + to_string(element_num) + "]";
+            type_name[arr_type] = "vec[" + type_name[this->Ty.first] + ":" + to_string(element_num) + "]";
             type_name[arr_type->getPointerTo()] =
-                    "vec[" + type_name[this->Ty.first] + ";" + to_string(element_num) + "]*";
+                    "vec[" + type_name[this->Ty.first] + ":" + to_string(element_num) + "]*";
             type_size[arr_type] = type_size[this->Ty.first] * element_num;
             type_size[arr_type->getPointerTo()] = PTR_SIZE;
             llvm::AllocaInst *array_alloca = allocaBlockEntry(the_scope, "array.init.by.type", arr_type);
@@ -1715,8 +1662,8 @@ namespace AVSI {
                 }
             }
 
-            type_name[arr->getType()] = "vec[" + type_name[tname] + ";" + to_string(element_num) + "]";
-            type_name[arr->getType()->getPointerTo()] = "vec[" + type_name[tname] + ";" + to_string(element_num) + "]*";
+            type_name[arr->getType()] = "vec[" + type_name[tname] + ":" + to_string(element_num) + "]";
+            type_name[arr->getType()->getPointerTo()] = "vec[" + type_name[tname] + ":" + to_string(element_num) + "]*";
             type_size[arr->getType()] = tsize * element_num;
 
             string global_var_name = "__constant." + string(builder->GetInsertBlock()->getParent()->getName()) + ".arr";
@@ -1735,12 +1682,12 @@ namespace AVSI {
                     global_var_callback
             );
 
-            llvm::AllocaInst *alloca_addr = allocaBlockEntry(builder->GetInsertBlock()->getParent(), "",
-                                                             arr->getType());
+            // llvm::AllocaInst *alloca_addr = allocaBlockEntry(builder->GetInsertBlock()->getParent(), "",
+            //                                                  arr->getType());
 
-            builder->CreateMemCpy(alloca_addr, llvm::MaybeAlign(), ptr, llvm::MaybeAlign(), type_size[arr->getType()]);
+            // builder->CreateMemCpy(alloca_addr, llvm::MaybeAlign(), ptr, llvm::MaybeAlign(), type_size[arr->getType()]);
 
-            return alloca_addr;
+            return builder->CreateLoad(arr->getType(), ptr);
         } else {
             // else initialize an array by store action
             llvm::Value *head_rv = this->paramList[0]->codeGen();
@@ -1751,8 +1698,8 @@ namespace AVSI {
                 registerType(eleTy);
             }
 
-            type_name[arr_type] = "vec[" + type_name[eleTy] + ";" + to_string(element_num) + "]";
-            type_name[arr_type->getPointerTo()] = "vec[" + type_name[eleTy] + ";" + to_string(element_num) + "]*";
+            type_name[arr_type] = "vec[" + type_name[eleTy] + ":" + to_string(element_num) + "]";
+            type_name[arr_type->getPointerTo()] = "vec[" + type_name[eleTy] + ":" + to_string(element_num) + "]*";
             type_size[arr_type] = (eleTy->isPointerTy() ? PTR_SIZE : type_size[eleTy]) * element_num;
             // initialize array
             llvm::AllocaInst *array_alloca = allocaBlockEntry(the_scope, "array.init.by.value", arr_type);
@@ -2018,15 +1965,6 @@ namespace AVSI {
     }
 
     llvm::Value *UnaryOp::codeGen() {
-        if (this->op.getType() == BITAND) {
-            if (this->right->__AST_name == __VARIABLE_NAME) {
-                return getAlloca((Variable *) (this->right));
-            } else
-                throw ExceptionFactory<MathException>(
-                        "cannot get the address of unsupported type",
-                        this->token.line, this->token.column);
-        }
-
         llvm::Value *rv = this->right->codeGen();
         if (!rv) {
             throw ExceptionFactory<LogicException>(
@@ -2036,6 +1974,17 @@ namespace AVSI {
 
         llvm::Type *ty = rv->getType();
         bool float_point = rv->getType()->isFloatingPointTy();
+
+        if (this->op.getType() == BITAND) {
+            if (ty->isArrayTy()) {
+                return rv;
+            } else if (this->right->__AST_name == __VARIABLE_NAME) {
+                return getAlloca((Variable *) (this->right));
+            } else
+                throw ExceptionFactory<MathException>(
+                        "cannot get the address of unsupported type",
+                        this->token.line, this->token.column);
+        }
 
         if (this->op.getType() == STAR) {
             if (!ty->isPtrOrPtrVectorTy()) {
@@ -2091,13 +2040,7 @@ namespace AVSI {
             llvm::Type *type = v->getType()->getPointerElementType();
 
             if (type->isPtrOrPtrVectorTy()) {
-                if (type->getPointerElementType()->isArrayTy()) {
-                    // array type
-                    return llvm::ConstantInt::get(I32_TY, type_size[type->getPointerElementType()]);
-                } else {
-                    // raw pointer
-                    return llvm::ConstantInt::get(I32_TY, PTR_SIZE);
-                }
+                return llvm::ConstantInt::get(I32_TY, PTR_SIZE);
             } else {
                 // non-pointer type
                 return llvm::ConstantInt::get(I32_TY, type_size[type]);

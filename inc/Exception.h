@@ -33,6 +33,7 @@
 
 #include <string>
 #include <iostream>
+#include <stdint.h>
 #include "FileName.h"
 
 #define __SyntaxException   "SyntaxException"

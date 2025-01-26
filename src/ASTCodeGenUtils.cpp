@@ -36,22 +36,22 @@
 #include "../inc/SymbolTable.h"
 #include "../inc/FileName.h"
 #include <filesystem>
-#include <llvm/Support/FileSystem.h>
-#include <llvm/Support/Host.h>
-#include <llvm/Support/TargetSelect.h>
-#include <llvm/Support/raw_ostream.h>
-#include <llvm/Support/SourceMgr.h>
-#include <llvm/Target/TargetMachine.h>
-#include <llvm/Target/TargetOptions.h>
-#include <llvm/Support/MemoryBuffer.h>
-#include <llvm/IRReader/IRReader.h>
-#include <llvm/Bitcode/BitcodeWriter.h>
-#include <llvm/Transforms/Utils/Cloning.h>
-#include <llvm/Transforms/Utils/ValueMapper.h>
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/Host.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/SourceMgr.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
+#include "llvm/Support/MemoryBuffer.h"
+#include "llvm/IRReader/IRReader.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/Transforms/Utils/Cloning.h"
+#include "llvm/Transforms/Utils/ValueMapper.h"
 #if (LLVM_VERSION_MAJOR >= 14)
-#include <llvm/MC/TargetRegistry.h>
+#include "llvm/MC/TargetRegistry.h"
 #else
-#include <llvm/Support/TargetRegistry.h>
+#include "llvm/Support/TargetRegistry.h"
 #endif
 
 extern bool opt_ir;

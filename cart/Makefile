@@ -24,8 +24,8 @@ DIR_OUTPUT	:= $(DIR_ROOT)/build
 DIR_SYSEXEC := /usr/bin
 
 # compiler flags
-CXXFLAGS 	:= -Wall --std=c++17 -I$(DIR_INC)
-LDFLAGS		:= -L/usr/lib -L $(DIR_LIB) -lstdc++ -lLLVM -lm
+CXXFLAGS 	:= -Wall --std=c++17 -I$(DIR_INC) -I /usr/lib/llvm14/include
+LDFLAGS		:= -L/usr/lib -L $(DIR_LIB) -lstdc++ -lm -L /usr/lib/llvm14/lib -lLLVM-14
 
 # important file
 TARGET		:= $(PROJECT_NAME)
