@@ -93,6 +93,8 @@ namespace AVSI {
     SymbolTable *symbol_table;
     // store structure definitions. including members' name and type.
     map<string, StructDef *> struct_types;
+    // store generic definitions. including function name and type.
+    map<string, GenericDef *> generic_function;
     // store function defined in the context.
     map<std::string, llvm::FunctionType *> function_protos;
 
@@ -271,7 +273,7 @@ namespace AVSI {
 
                 if (find_flag) {
                     base = builder->CreateGEP(
-                            llvm::cast<llvm::PointerType>(base->getType()->getScalarType())->getElementType(),
+                            llvm::cast<llvm::PointerType>(base->getType()->getScalarType())->getPointerElementType(),
                             base,
                             offset_list,
                             "idx_obj");
@@ -286,7 +288,7 @@ namespace AVSI {
                         ((Num *) offset)->getValue().any_cast<int>(),
                         true));
                 base = builder->CreateGEP(
-                        llvm::cast<llvm::PointerType>(base->getType()->getScalarType())->getElementType(),
+                        llvm::cast<llvm::PointerType>(base->getType()->getScalarType())->getPointerElementType(),
                         base,
                         offset_list,
                         "idx_obj");
@@ -313,7 +315,6 @@ namespace AVSI {
             );
 
             base = builder->CreateLoad(current_ty, base);
-            llvm::Type *v_Ty = base->getType();
             base = builder->CreatePtrToInt(base, ISIZE_TY, "idx_ptr_conv");
             base = builder->CreateAdd(base, index, "idx_ptr_conv");
             base = builder->CreateIntToPtr(base, current_ty, "idx_ptr_conv");
@@ -577,15 +578,25 @@ namespace AVSI {
             bool is_r_fp = r_type->isFloatingPointTy();
             if (simple_types_map[r_type] <= simple_types_map[store_type]) {
                 if (is_r_fp && is_l_fp) {
-                    r_value = builder->CreateFPExt(r_value, store_type, "conv");
+                    r_value = builder->CreateFPExt(r_value, store_type, "conv.fp.ext");
                 } else if (!is_r_fp && is_l_fp) {
-                    r_value = builder->CreateSIToFP(r_value, store_type, "conv");
+                    r_value = builder->CreateSIToFP(r_value, store_type, "conv.si.fp");
                 } else {
-                    r_value = builder->CreateSExt(r_value, store_type, "conv");
+                    r_value = builder->CreateSExt(r_value, store_type, "conv.si.ext");
                 }
             } else {
-                store_type = r_type;
-                create_new_space = true;
+                if (is_r_fp && is_l_fp) {
+                    r_value = builder->CreateFPTrunc(r_value, store_type, "conv.fp.trunc");
+                } else if (is_r_fp && !is_l_fp) {
+                    r_value = builder->CreateFPToSI(r_value, store_type, "conv.fp.si");
+                } else {
+                    r_value = builder->CreateTrunc(r_value, store_type, "conv.si.trunc");
+                }
+                Warning(
+                    "implicit conversion from '" + type_name[r_type] + "' to '" + type_name[store_type] + "'",
+                    ast->getToken().line,
+                    ast->getToken().column
+                );
             }
 
             return assign(r_value, create_new_space ? nullptr : l_alloca_addr, store_type);
@@ -632,13 +643,13 @@ namespace AVSI {
                 ((llvm::StructType *) l_alloca_content_type)->isLayoutIdentical((llvm::StructType *) r_type)) {
                 store_type = l_alloca_content_type;
                 create_new_space = false;
-                r_value = builder->CreateBitCast(r_value, l_alloca_content_type, "conv");
+                r_value = builder->CreateBitCast(r_value, l_alloca_content_type, "conv.bitcast");
                 return assign(r_value, l_alloca_addr, store_type);
             } else if (l_except_type_is_offered && l_except_type->isStructTy() &&
                        ((llvm::StructType *) l_except_type)->isLayoutIdentical((llvm::StructType *) r_type)) {
                 store_type = l_except_type;
                 create_new_space = true;
-                r_value = builder->CreateBitCast(r_value, l_alloca_content_type, "conv");
+                r_value = builder->CreateBitCast(r_value, l_alloca_content_type, "conv.bitcast");
                 return assign(r_value, nullptr, store_type);
             } else if (l_except_type_is_offered && l_except_type != r_type) {
                 assign_err(l_except_type, r_type);
@@ -669,19 +680,19 @@ namespace AVSI {
             bool is_e_fp = etype->isFloatingPointTy();
             if (simple_types_map[vtype] < simple_types_map[etype]) {
                 if (is_v_fp && is_e_fp) {
-                    return builder->CreateFPExt(v, etype, "conv");
+                    return builder->CreateFPExt(v, etype, "conv.fp.ext");
                 } else if (!is_v_fp && is_e_fp) {
-                    return builder->CreateSIToFP(v, etype, "conv");
+                    return builder->CreateSIToFP(v, etype, "conv.si.fp");
                 } else {
-                    return builder->CreateSExt(v, etype, "conv");
+                    return builder->CreateSExt(v, etype, "conv.si.ext");
                 }
             } else {
                 if (is_v_fp && is_e_fp) {
-                    return builder->CreateFPTrunc(v, etype, "conv");
+                    return builder->CreateFPTrunc(v, etype, "conv.fp.trunc");
                 } else if (is_v_fp && !is_e_fp) {
-                    return builder->CreateFPToSI(v, etype, "conv");
+                    return builder->CreateFPToSI(v, etype, "conv.fp.si");
                 } else {
-                    return builder->CreateTrunc(v, etype, "conv");
+                    return builder->CreateTrunc(v, etype, "conv.si.trunc");
                 }
             }
         } else if (!(is_v_simple ^ is_e_simple)) {
@@ -691,7 +702,7 @@ namespace AVSI {
             bool is_e_arr = etype->isArrayTy();
 
             if (is_v_ptr && is_e_ptr && AllowPtrConv) {
-                return builder->CreatePointerBitCastOrAddrSpaceCast(v, etype, "conv");
+                return builder->CreatePointerBitCastOrAddrSpaceCast(v, etype, "conv.ptr");
             } else if (is_v_ptr && is_e_arr) {
                 throw ExceptionFactory<SyntaxException>(
                         "undefined C-like cast '" + type_name[vtype] + "' to '" + type_name[etype] +
@@ -820,14 +831,14 @@ namespace AVSI {
 
             if (float_point) {
                 lv_real = l_type->isFloatingPointTy()
-                          ? builder->CreateFPExt(lv, cast_to, "conv")
-                          : builder->CreateSIToFP(lv, cast_to, "conv");
+                          ? builder->CreateFPExt(lv, cast_to, "conv.fp.ext")
+                          : builder->CreateSIToFP(lv, cast_to, "conv.si.fp");
                 rv_real = r_type->isFloatingPointTy()
-                          ? builder->CreateFPExt(rv, cast_to, "conv")
-                          : builder->CreateSIToFP(rv, cast_to, "conv");
+                          ? builder->CreateFPExt(rv, cast_to, "conv.fp.ext")
+                          : builder->CreateSIToFP(rv, cast_to, "conv.si.fp");
             } else {
-                lv = builder->CreateSExt(lv, cast_to, "conv");
-                rv = builder->CreateSExt(rv, cast_to, "conv");
+                lv = builder->CreateSExt(lv, cast_to, "conv.si.ext");
+                rv = builder->CreateSExt(rv, cast_to, "conv.si.ext");
             }
 
             switch (this->op.getType()) {
@@ -1157,7 +1168,7 @@ namespace AVSI {
         string func_name =
                 (this->id == ENTRY_NAME || !this->is_mangle)
                 ? this->id
-                : NAME_MANGLING(this->id);
+                : getFunctionNameMangling(module_path_with_module_name, this->id);
 
         // redirect to member function
         llvm::Type *struct_type = nullptr;
@@ -1233,6 +1244,12 @@ namespace AVSI {
                         this->token.line, this->token.column);
             }
 
+            if (generic_function.find(this->id) != generic_function.end()) {
+                throw ExceptionFactory<LogicException>(
+                        "function name " + this->id + " is conflict with generic function",
+                        this->token.line, this->token.column);
+            }
+
             auto link_type =
                     this->is_export
                     ? llvm::Function::ExternalLinkage
@@ -1295,8 +1312,8 @@ namespace AVSI {
                         builder->CreateRetVoid();
                     } else if (!ret_const || (ret_const && !ret_const->isNaN())) {
                         // expr without "return" keyword
-                        auto ret_alloca_addr = allocaBlockEntry(the_function, "ret", the_function->getReturnType());
-                        bool state = store(this, ret_alloca_addr, ret, false, "ret");
+                        auto ret_alloca_addr = allocaBlockEntry(the_function, "this.function.ret", the_function->getReturnType());
+                        bool state = store(this, ret_alloca_addr, ret, false, "this.function.ret");
 
                         if (!state) {
                             // rebind variable
@@ -1352,48 +1369,70 @@ namespace AVSI {
     llvm::Value *FunctionCall::codeGen() {
         vector<string> modinfo = this->getToken().getModInfo();
         llvm::Function *fun = the_module->getFunction(this->id);
+        vector<llvm::Value *> caller_args;
 
+        for (int i = 0; i < this->paramList.size(); i++) {
+            AST *arg = paramList[i];
+            llvm::Value *v = arg->codeGen();
+            caller_args.push_back(v);
+        }
+
+        /* generate function names */
+        vector<string> func_names;
         if (!fun) {
             if (modinfo.empty()) {
                 // function in currnet module
-                fun = the_module->getFunction(
-                        getFunctionNameMangling(module_path_with_module_name, this->id)
-                );
+                func_names.push_back(getFunctionNameMangling(module_path_with_module_name, this->id));
             } else if (modinfo[0] == "root") {
                 // absolute path
                 vector<string> p;
                 modinfo.erase(modinfo.begin());
                 p.insert(p.end(), package_path.begin(), package_path.end());
                 p.insert(p.end(), modinfo.begin(), modinfo.end());
-                fun = the_module->getFunction(
-                        getFunctionNameMangling(p, this->id));
+                func_names.push_back(getFunctionNameMangling(p, this->id));
             } else {
                 // may be relative path
                 auto fun_path = module_path;
                 fun_path.insert(fun_path.end(), modinfo.begin(), modinfo.end());
-                fun = the_module->getFunction(
-                        getFunctionNameMangling(fun_path, this->id));
-
+                func_names.push_back(getFunctionNameMangling(fun_path, this->id));
                 // may be alias
-                if (!fun) {
-                    string head = modinfo[0];
-                    if (module_name_alias.find(head) != module_name_alias.end()) {
-                        auto path_cut = modinfo;
-                        path_cut.erase(path_cut.begin());
-                        head = module_name_alias[head];
-                        auto head_to_origin = getpathUnresolvedToList(head);
-                        for (auto i: path_cut) {
-                            head_to_origin.push_back(i);
-                        }
-                        fun = the_module->getFunction(
-                                getFunctionNameMangling(head_to_origin, this->id));
+                string head = modinfo[0];
+                if (module_name_alias.find(head) != module_name_alias.end()) {
+                    auto path_cut = modinfo;
+                    path_cut.erase(path_cut.begin());
+                    head = module_name_alias[head];
+                    auto head_to_origin = getpathUnresolvedToList(head);
+                    for (auto i: path_cut) {
+                        head_to_origin.push_back(i);
                     }
+                    func_names.push_back(getFunctionNameMangling(head_to_origin, this->id));
                 }
-
                 // may be absolute
-                if (!fun) {
-                    fun = the_module->getFunction(
-                            getFunctionNameMangling(modinfo, this->id));
+                func_names.push_back(getFunctionNameMangling(modinfo, this->id));
+            }
+        }
+
+        for (auto i: func_names) {
+            fun = the_module->getFunction(i);
+            if (fun) {
+                break;
+            }
+        }
+
+        if (!fun) {
+            for (auto i: func_names) {
+                if (generic_function.find(i) != generic_function.end()) {
+                    int idx = generic_function[i]->idx;
+                    auto arg_type_name = type_name[caller_args[idx]->getType()];
+
+                    if (generic_function[i]->function_map.find(arg_type_name) != generic_function[i]->function_map.end()) {
+                        fun = the_module->getFunction(generic_function[i]->function_map[arg_type_name]);
+                        break;
+                    } else {
+                        throw ExceptionFactory<MissingException>(
+                                "function '" + this->id + "' is not declared for type '" + arg_type_name + "'",
+                                this->getToken().line, this->getToken().column);
+                    }
                 }
             }
         }
@@ -1415,7 +1454,6 @@ namespace AVSI {
                     this->token.line, this->token.column);
         }
 
-        vector<llvm::Value *> args;
         auto callee_arg_iter = fun->args().begin();
 
         if (this->param_this) {
@@ -1426,13 +1464,14 @@ namespace AVSI {
                         this->token.line, this->token.column);
             }
 
-            args.push_back(this->param_this);
+            caller_args.push_back(this->param_this);
             callee_arg_iter++;
         }
 
+
         for (int i = 0; i < this->paramList.size(); i++) {
             AST *arg = paramList[i];
-            llvm::Value *v = arg->codeGen();
+            llvm::Value *v = caller_args[i];
             if (!v) {
                 return nullptr;
             }
@@ -1465,8 +1504,8 @@ namespace AVSI {
                 if (type_size.find(caller_type) == type_size.end()) registerType(caller_type);
             } else if (
                 caller_type->isStructTy() &&
-                ((llvm::PointerType*)(callee_type))->getElementType()->isStructTy() && 
-                ((llvm::StructType*)(((llvm::PointerType*)callee_type)->getElementType()))->isLayoutIdentical((llvm::StructType *) caller_type)
+                ((llvm::PointerType*)(callee_type))->getPointerElementType()->isStructTy() && 
+                ((llvm::StructType*)(((llvm::PointerType*)callee_type)->getPointerElementType()))->isLayoutIdentical((llvm::StructType *) caller_type)
             ) {
                 llvm::AllocaInst *addr = (llvm::AllocaInst *) llvm::getLoadStorePointerOperand(v);
                 if (!addr) {
@@ -1499,16 +1538,95 @@ namespace AVSI {
                 }
             }
 
-            args.push_back(v);
+            caller_args[i] = v;
             callee_arg_iter++;
         }
 
         if (fun->getFunctionType()->getReturnType() != VOID_TY) {
-            return builder->CreateCall(fun, args, "callLocal");
+            return builder->CreateCall(fun, caller_args, "callLocal");
         } else {
-            builder->CreateCall(fun, args);
+            builder->CreateCall(fun, caller_args);
             return llvm::ConstantFP::getNaN(F64_TY);
         }
+    }
+
+    llvm::Value *Generic::codeGen() {
+        bool is_a_member_funtion = !this->token.getModInfo().empty();
+        auto parent_modinfo = this->token.getModInfo();
+
+        auto get_func_name = [&](string id, vector<string> modinfo, Token token) -> string {
+            string func_name =
+                (id == ENTRY_NAME || !this->is_mangle)
+                ? id
+                : getFunctionNameMangling(module_path_with_module_name, id);  
+            
+            // redirect to member function
+            llvm::Type *struct_type = nullptr;
+            if (is_a_member_funtion) {
+                auto struct_id = string(modinfo.back());
+                vector<string> struct_path = modinfo;
+                struct_path.pop_back();
+
+                auto ty = find_struct(struct_path, struct_id);
+
+                if (ty.first == struct_types.end()) {
+                    throw ExceptionFactory<MissingException>(
+                            "missing type '" + id + "'",
+                            token.line,
+                            token.column
+                    );
+                }
+
+                struct_type = ty.first->second->Ty;
+                auto struct_name = type_name[struct_type];
+                auto index = struct_name.find('{');
+                string part = struct_name.substr(0, index);
+                struct_path = getpathUnresolvedToList(part);
+
+                func_name = getFunctionNameMangling(struct_path, this->id);
+            }
+
+            return func_name;
+        };
+
+        string mapper_func_name = get_func_name(this->id, parent_modinfo, this->token);
+
+        if (function_protos.find(mapper_func_name) != function_protos.end()) {
+            throw ExceptionFactory<LogicException>(
+                    "generic function '" + this->id + "' is conflict with function",
+                    this->token.line, this->token.column);
+        }
+
+        llvm::NamedMDNode *meta = the_module->getOrInsertNamedMetadata("generic." + mapper_func_name);
+        meta->addOperand(llvm::MDNode::get(*the_context, {llvm::MDString::get(*the_context, to_string(this->idx))}));
+
+        GenericDef *gd = new GenericDef();
+        gd->idx = this->idx;
+
+        for (Variable *i: ((Param*)this->paramList)->paramList) {
+            string mapped_func_name = get_func_name(i->id, parent_modinfo, i->getToken());
+            if (!i->getToken().getModInfo().empty()) {
+                throw ExceptionFactory<SyntaxException>(
+                        "mod path is no needed",
+                        token.line,
+                        token.column
+                );
+            }
+
+            string ty_name = type_name[i->Ty.first];
+
+            llvm::Metadata *md_args[] = {
+                    llvm::MDString::get(*the_context, mapped_func_name),
+                    llvm::MDString::get(*the_context, ty_name)
+            };            
+
+            meta->addOperand(llvm::MDNode::get(*the_context, md_args));
+            gd->function_map[ty_name] = mapped_func_name;
+        }
+
+        generic_function[mapper_func_name] = gd;
+
+        return nullptr;
     }
 
     llvm::Value *StructInit::codeGen() {
@@ -1536,7 +1654,7 @@ namespace AVSI {
             llvm::Value *rv = param->codeGen();
 
             auto member_addr = builder->CreateGEP(
-                    llvm::cast<llvm::PointerType>(new_var_alloca->getType()->getScalarType())->getElementType(),
+                    llvm::cast<llvm::PointerType>(new_var_alloca->getType()->getScalarType())->getPointerElementType(),
                     new_var_alloca,
                     {
                             llvm::ConstantInt::get(I32_TY, 0),
@@ -1706,7 +1824,7 @@ namespace AVSI {
 
             // store first element
             auto first_element_addr = builder->CreateGEP(
-                    llvm::cast<llvm::PointerType>(array_alloca->getType()->getScalarType())->getElementType(),
+                    llvm::cast<llvm::PointerType>(array_alloca->getType()->getScalarType())->getPointerElementType(),
                     array_alloca,
                     {
                             llvm::ConstantInt::get(ISIZE_TY, 0),
@@ -1720,7 +1838,7 @@ namespace AVSI {
                 AST *param = this->paramList[i];
                 llvm::Value *rv = param->codeGen();
                 auto element_addr = builder->CreateGEP(
-                        llvm::cast<llvm::PointerType>(array_alloca->getType()->getScalarType())->getElementType(),
+                        llvm::cast<llvm::PointerType>(array_alloca->getType()->getScalarType())->getPointerElementType(),
                         array_alloca,
                         {
                                 llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), 0),
@@ -1745,7 +1863,7 @@ namespace AVSI {
 
             // add NULL to tail
             auto element_addr = builder->CreateGEP(
-                    llvm::cast<llvm::PointerType>(array_alloca->getType()->getScalarType())->getElementType(),
+                    llvm::cast<llvm::PointerType>(array_alloca->getType()->getScalarType())->getPointerElementType(),
                     array_alloca,
                     {
                             llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), 0),
@@ -1775,7 +1893,7 @@ namespace AVSI {
                 : llvm::GlobalVariable::PrivateLinkage;
 
         the_module->getOrInsertGlobal(
-                this->is_mangle ? NAME_MANGLING(id) : id, v->Ty.first,
+                this->is_mangle ? getFunctionNameMangling(module_path_with_module_name, id) : id, v->Ty.first,
                 [v, link_type, id] {
                     return new llvm::GlobalVariable(
                             *the_module,
@@ -1783,7 +1901,7 @@ namespace AVSI {
                             false,
                             link_type,
                             llvm::Constant::getNullValue(v->Ty.first),
-                            NAME_MANGLING(id));
+                            getFunctionNameMangling(module_path_with_module_name, id));
                 });
 
         return llvm::ConstantFP::getNaN(F64_TY);
@@ -2095,6 +2213,7 @@ namespace AVSI {
                         cnt != child_size
                         && ast->__AST_name != __FUNCTIONDECL_NAME
                         && ast->__AST_name != __OBJECT_NAME
+                        && ast->__AST_name != __GENERIC_NAME
                         && (
                                 (
                                         builder->GetInsertBlock()

@@ -153,6 +153,16 @@ namespace AVSI {
         }
     }
 
+    void Generic::dump(int depth) {
+        printBlank(depth);
+        PRINT_LINE_COLUNM();
+        printBlank(depth + 1);
+        cout << "- id: " << id << endl;
+        printBlank(depth + 1);
+        cout << "- function list:" << endl;
+        if (paramList) this->paramList->dump(depth + 1);
+    }
+
     void Global::dump(int depth) {
         printBlank(depth);
         PRINT_LINE_COLUNM();

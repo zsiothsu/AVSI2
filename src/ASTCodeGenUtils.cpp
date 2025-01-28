@@ -100,6 +100,7 @@ namespace AVSI {
     extern SymbolTable *symbol_table;
 
     extern map<string, StructDef *> struct_types;
+    extern map<string, GenericDef *> generic_function;
     extern map<std::string, llvm::FunctionType *> function_protos;
     extern set<llvm::Type *> simple_types;
     extern map<llvm::Type *, uint8_t> simple_types_map;
@@ -358,9 +359,9 @@ namespace AVSI {
         // create and import module
         llvm::SMDiagnostic smd = llvm::SMDiagnostic();
         auto ir = llvm::parseIR(*mbuf.get(), smd, *the_context);
-        auto ptr = ir.release();
+        auto imported_module = ir.release();
 
-        if (ptr == nullptr) {
+        if (imported_module == nullptr) {
             string unparsed_name;
             for (string i: path) {
                 unparsed_name += i + "::";
@@ -376,23 +377,24 @@ namespace AVSI {
 
         // import symbols
         // import function
-        auto function_iter = ptr->getFunctionList().begin();
-        while (function_iter != ptr->getFunctionList().end()) {
+        auto function_iter = imported_module->getFunctionList().begin();
+        while (function_iter != imported_module->getFunctionList().end()) {
             auto fun = &(*function_iter);
             the_module->getOrInsertFunction(fun->getName(), fun->getFunctionType());
             function_iter++;
         }
 
         // import global
-        auto global_iter = ptr->getGlobalList().begin();
-        while (global_iter != ptr->getGlobalList().end()) {
+        auto global_iter = imported_module->getGlobalList().begin();
+        while (global_iter != imported_module->getGlobalList().end()) {
             auto glb = &(*global_iter);
             the_module->getOrInsertGlobal(glb->getName(), glb->getValueType());
             global_iter++;
         }
 
-        auto md_iter = ptr->getNamedMDList().begin();
-        while (md_iter != ptr->getNamedMDList().end()) {
+        // import named metadata
+        auto md_iter = imported_module->getNamedMDList().begin();
+        while (md_iter != imported_module->getNamedMDList().end()) {
             auto md = &(*md_iter);
             auto new_md = the_module->getOrInsertNamedMetadata(md->getName());
             for (auto node: md->operands()) {
@@ -401,11 +403,12 @@ namespace AVSI {
             md_iter++;
         }
 
-        auto struct_iter = ptr->getIdentifiedStructTypes();
+        // import struct
+        auto struct_iter = imported_module->getIdentifiedStructTypes();
         for (auto i: struct_iter) {
             ::size_t size = i->getNumElements();
             string id = string(i->getName());
-            auto md = ptr->getOrInsertNamedMetadata("struct." + id);
+            auto md = imported_module->getOrInsertNamedMetadata("struct." + id);
 
             StructDef *sd = new StructDef(i);
             for (int j = 0; j < size; j++) {
@@ -423,6 +426,29 @@ namespace AVSI {
             )->getString();
             type_name[i] = struct_type_name;
             struct_types[id] = sd;
+        }
+
+        // import gereric
+        for (auto i = imported_module->named_metadata_begin() ; i != imported_module->named_metadata_end(); i++) {
+            GenericDef *gd = new GenericDef();
+            if(i->getName().find("generic.") != string::npos) {
+                int idx = atoi(
+                    llvm::dyn_cast<llvm::MDString>(
+                            llvm::dyn_cast<llvm::MDNode>(i->getOperand(0))->getOperand(0)
+                    )->getString().str().c_str()
+                );
+
+                gd->idx = idx;
+
+                for (int j = 1; j < i->getNumOperands(); j++) {
+                    auto node = llvm::dyn_cast<llvm::MDNode>(i->getOperand(j));
+                    auto mapped_func_name = llvm::dyn_cast<llvm::MDString>(node->getOperand(0))->getString().str();
+                    auto ty_name = llvm::dyn_cast<llvm::MDString>(node->getOperand(1))->getString().str();
+                    gd->function_map[ty_name] = mapped_func_name;
+                }
+            }
+
+            generic_function[i->getName().substr(8).str()] = gd;
         }
     }
 

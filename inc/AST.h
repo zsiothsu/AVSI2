@@ -66,6 +66,7 @@
 #define __FOR_NAME              "For"
 #define __FUNCTIONCALL_NAME     "FunctionCall"
 #define __FUNCTIONDECL_NAME     "FunctionDecl"
+#define __GENERIC_NAME          "Generic"
 #define __GLOBAL_NAME           "Global"
 #define __IF_NAME               "If"
 #define __INPUT_NAME            "Input"
@@ -108,6 +109,18 @@ namespace AVSI {
         StructDef(llvm::StructType *Ty) : Ty(Ty), members(map<string, int>()) {}
 
         ~StructDef() = default;
+    };
+
+    struct GenericDef {
+        int idx;
+        // map type string to function name
+        map<string, string> function_map;
+
+        GenericDef() = default;
+
+        GenericDef(int idx) : idx(idx), function_map(map<string, string>()) {}
+
+        ~GenericDef() = default;
     };
 
     /*******************************************************
@@ -303,13 +316,40 @@ namespace AVSI {
         llvm::Value *param_this;
 
         FunctionCall(void)
-                : AST(__FUNCTIONCALL_NAME), paramList(vector<AST *>()), param_this(nullptr) {};
+                : AST(__FUNCTIONCALL_NAME),paramList(vector<AST *>()), param_this(nullptr) {};
 
         FunctionCall(string id, vector<AST *> paramList, const Token &token)
                 : AST(__FUNCTIONCALL_NAME, token), id(std::move(id)), paramList(std::move(paramList)),
                   param_this(nullptr) {};
 
         virtual ~FunctionCall();
+
+        llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
+    };
+
+    class Generic : public AST {
+    public:
+        std::string id;
+        AST *paramList;
+        bool is_mangle;
+        int idx;
+
+        Generic(void)
+                : AST(__GENERIC_NAME), id(""),
+                  paramList(nullptr),
+                  is_mangle(true),
+                  idx(0) {};
+
+        Generic(string id, AST *paramList, int idx, Token token)
+                : AST(__GENERIC_NAME, token),
+                  id(id),
+                  paramList(paramList),
+                  is_mangle(true),
+                  idx(idx) {};
+
+        virtual ~Generic();
 
         llvm::Value *codeGen() override;
 

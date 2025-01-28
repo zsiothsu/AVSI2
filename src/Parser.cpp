@@ -305,6 +305,11 @@ namespace AVSI {
         } else if (token_type == WHILE) {
             PARSE_LOG(STATEMENT);
             return WhileStatement();
+        } else if (token_type == GENERIC) {
+            PARSE_LOG(STATEMENT);
+            Generic *gen = (Generic *) generic();
+            gen->is_mangle = is_mangle;
+            return gen;
         } else if (token_type == GLOBAL) {
             PARSE_LOG(STATEMENT);
             Global *glb = (Global *) global();
@@ -482,6 +487,42 @@ namespace AVSI {
 
         FunctionCall *fun = new FunctionCall(id, paramList, token);
         return fun;
+    }
+
+    AST *Parser::generic() {
+        PARSE_LOG(GENERIC);
+
+        Token token = this->currentToken;
+        eat(GENERIC);
+
+        string id = this->currentToken.getValue().any_cast<string>();
+        auto struct_info = this->currentToken.getModInfo();
+        token.setModInfo(struct_info);
+
+        eat(ID);
+
+        int idx = 0;
+        if (currentToken.getType() == LT) {
+            eat(LT);
+            idx = this->currentToken.getValue().any_cast<int>();
+            eat(INTEGER);
+            eat(GT);
+        }
+
+        eat(LBRACE);
+        Param *paramList = (Param *) param();
+        // check types
+        for (Variable *i: paramList->paramList) {
+            if (i->Ty.first == nullptr) {
+                throw ExceptionFactory<SyntaxException>(
+                        "missing type of function '" + i->id + "'",
+                        i->getToken().line, i->getToken().column
+                );
+            }
+        }
+        eat(RBRACE);
+
+        return new Generic(id, paramList, idx, token);
     }
 
     AST *Parser::global() {

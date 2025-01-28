@@ -36,10 +36,6 @@
 #include <deque>
 #include <vector>
 
-#define NAME_MANGLING(x)    ("_ZN" + \
-to_string(module_name.size()) + module_name + \
-to_string(string(x).size()) + string(x))
-
 #if (__SIZEOF_POINTER__ == 4)
 #define PTR_SIZE 4
 #define MACHINE_WIDTH_TY (llvm::Type::getInt32Ty((*the_context)))

@@ -22,7 +22,7 @@ SYS_LIB			:= /usr/lib
 
 all: $(STDDIR_OUT)/$(STDBC) $(LIBAVSI)
 
-$(LIBAVSI): $(CDIR)/avsi.c $(STDDIR_OUT)/$(STDBC) $(OBJS)
+$(LIBAVSI): $(CDIR)/avsi.c $(STDDIR_OUT)/$(STDBC)
 	@echo "building libavsi"
 	@make all -C $(CDIR)
 	@echo "find objs: $(OBJS) "

@@ -69,6 +69,10 @@ namespace AVSI {
         for (auto param: this->paramList) { delete param; }
     }
 
+    Generic::~Generic() {
+        if (this->paramList != nullptr) { delete this->paramList; }
+    }
+
     Global::~Global() {
         if (this->var != nullptr) delete this->var;
     }

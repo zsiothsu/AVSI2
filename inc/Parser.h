@@ -73,6 +73,8 @@ namespace AVSI {
 
         AST *functionCall();
 
+        AST *generic();
+
         AST *global();
 
         AST *moduleDef();

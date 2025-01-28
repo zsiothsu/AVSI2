@@ -108,6 +108,7 @@ namespace AVSI {
         CONTINUE,
         NOMANGLE,
         AS,
+        GENERIC,
         // types,
         F64,
         F32,
@@ -137,7 +138,7 @@ namespace AVSI {
 
         Token(TokenType type, any var, int line, int col)
                 : value(var), type(type), line(line), column(col) {};
-
+    
         ~Token() {};
 
         static Token empty();

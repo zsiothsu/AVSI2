@@ -183,11 +183,16 @@ namespace AVSI {
      * @param:          fun: function name
      * @return:         resolved name
      * @example:
-     *      a::b::foo -> _ZN3a_b3foo
+     *      a::b::foo -> _ZN1a1b3foo
      */
+    
     string getFunctionNameMangling(vector<string> path, string fun) {
-        string mn = __getModuleNameByPath(path);
-        return "_ZN" + to_string(mn.size()) + mn + to_string(fun.size()) + fun;
+        string mn = "";
+        for (auto i : path) {
+            mn += to_string(i.size()) + i;
+        }
+
+        return "_ZN" + mn + to_string(fun.size()) + fun;
     }
 
     /**
