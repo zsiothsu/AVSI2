@@ -273,7 +273,7 @@ int main(int argc, char **argv) {
 
         Lexer *lexer = new Lexer(&file);
         Parser *parser = new Parser(lexer);
-        AST *tree = parser->parse();
+        shared_ptr<AST> tree = parser->parse();
         if(opt_dump) tree->dump(0);
         if (opt_reliance) return 0;
         tree->codeGen();
@@ -303,6 +303,9 @@ int main(int argc, char **argv) {
                       << warn_count << " warnings"
                       << __COLOR_RESET << std::endl;
         }
+        std::filesystem::remove(lock_file);
+        return 1;
+    } catch(...) {
         std::filesystem::remove(lock_file);
         return 1;
     }

@@ -94,8 +94,8 @@ namespace AVSI {
     extern llvm::Type *VOID_TY;
     extern llvm::Type *ISIZE_TY;
 
-    extern AST *ASTEmpty;
-    extern AST *ASTEmptyNotEnd;
+    extern shared_ptr<AST> ASTEmpty;
+    extern shared_ptr<AST> ASTEmptyNotEnd;
 
     extern SymbolTable *symbol_table;
 

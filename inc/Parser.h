@@ -57,73 +57,73 @@ namespace AVSI {
 
         void eat(TokenType type);
 
-        AST *program();
+        shared_ptr<AST> program();
 
-        AST *statementList();
+        shared_ptr<AST> statementList();
 
-        AST *statement();
+        shared_ptr<AST> statement();
 
-        AST *arraylist();
+        shared_ptr<AST> arraylist();
 
-        AST *assignment();
+        shared_ptr<AST> assignment();
 
-        AST *forStatement();
+        shared_ptr<AST> forStatement();
 
-        AST *functionDecl();
+        shared_ptr<AST> functionDecl();
 
-        AST *functionCall();
+        shared_ptr<AST> functionCall();
 
-        AST *generic();
+        shared_ptr<AST> generic();
 
-        AST *global();
+        shared_ptr<AST> global();
 
-        AST *moduleDef();
+        shared_ptr<AST> moduleDef();
 
-        AST *moduleImport();
+        shared_ptr<AST> moduleImport();
 
-        AST *object(bool is_mangle);
+        shared_ptr<AST> object(bool is_mangle);
 
-        AST *IfStatement();
+        shared_ptr<AST> IfStatement();
 
-        AST *param();
+        shared_ptr<AST> param();
 
-        AST *expr();
+        shared_ptr<AST> expr();
 
-        AST *logic_or_expr();
+        shared_ptr<AST> logic_or_expr();
 
-        AST *logic_and_expr();
+        shared_ptr<AST> logic_and_expr();
 
-        AST *bit_or_expr();
+        shared_ptr<AST> bit_or_expr();
 
-        AST *bit_and_expr();
+        shared_ptr<AST> bit_and_expr();
 
-        AST *equivalence_expr();
+        shared_ptr<AST> equivalence_expr();
 
-        AST *compare_expr();
+        shared_ptr<AST> compare_expr();
 
-        AST *shift_expr();
+        shared_ptr<AST> shift_expr();
 
-        AST *basic_expr();
+        shared_ptr<AST> basic_expr();
 
-        AST *checkedExpr();
+        shared_ptr<AST> checkedExpr();
 
-        AST *factor();
+        shared_ptr<AST> factor();
 
-        AST *parse();
+        shared_ptr<AST> parse();
 
-        AST *returnExpr();
+        shared_ptr<AST> returnExpr();
 
-        AST *term();
+        shared_ptr<AST> term();
 
-        AST *sizeOf();
+        shared_ptr<AST> sizeOf();
 
-        AST *variable();
+        shared_ptr<AST> variable();
 
-        AST *WhileStatement();
+        shared_ptr<AST> WhileStatement();
 
-        AST *loopCtrl();
+        shared_ptr<AST> loopCtrl();
 
-        AST *IDHead();
+        shared_ptr<AST> IDHead();
 
         Type eatType();
 

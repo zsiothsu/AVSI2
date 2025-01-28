@@ -221,7 +221,7 @@ namespace AVSI {
         }
     }
 
-    AST *Parser::program() {
+    shared_ptr<AST> Parser::program() {
         try {
             return statementList();
         } catch (Exception &e) {
@@ -229,11 +229,11 @@ namespace AVSI {
         }
     }
 
-    AST *Parser::statementList() {
+    shared_ptr<AST> Parser::statementList() {
         PARSE_LOG(COMPOUND);
 
-        Compound *root = new Compound(this->lastToken);
-        AST *node;
+        shared_ptr<Compound> root = make_shared<Compound>(Compound(this->lastToken));
+        shared_ptr<AST> node;
         while (this->currentToken.getType() != END) {
             try {
                 node = statement();
@@ -268,7 +268,7 @@ namespace AVSI {
         throw ExceptionFactory<ErrReport>("", 0, 0);
     }
 
-    AST *Parser::statement() {
+    shared_ptr<AST> Parser::statement() {
         bool is_export = false;
         bool is_mangle = true;
 
@@ -286,7 +286,7 @@ namespace AVSI {
 
         if (token_type == FUNCTION) {
             PARSE_LOG(STATEMENT);
-            FunctionDecl *function = (FunctionDecl *) functionDecl();
+            shared_ptr<FunctionDecl> function = static_pointer_cast<FunctionDecl>(functionDecl());
             function->is_export = is_export;
             function->is_mangle = is_mangle;
             return function;
@@ -307,18 +307,18 @@ namespace AVSI {
             return WhileStatement();
         } else if (token_type == GENERIC) {
             PARSE_LOG(STATEMENT);
-            Generic *gen = (Generic *) generic();
+            shared_ptr<Generic> gen = static_pointer_cast<Generic>(generic());
             gen->is_mangle = is_mangle;
             return gen;
         } else if (token_type == GLOBAL) {
             PARSE_LOG(STATEMENT);
-            Global *glb = (Global *) global();
+            shared_ptr<Global> glb = static_pointer_cast<Global>(global());
             glb->is_export = is_export;
             glb->is_mangle = is_mangle;
             return glb;
         } else if (token_type == OBJ) {
             PARSE_LOG(STATEMENT);
-            Object *obj = (Object *) object(is_mangle);
+            shared_ptr<Object> obj = static_pointer_cast<Object>(object(is_mangle));
             obj->is_export = is_export;
             obj->is_mangle = is_mangle;
             return obj;
@@ -336,18 +336,18 @@ namespace AVSI {
         for (auto op: ExprOp) {
             if (token_type == op) {
                 Token token = this->currentToken;
-                AST *ast = checkedExpr();
-                return new BlockExpr(token, ast);
+                shared_ptr<AST> ast = checkedExpr();
+                return make_shared<BlockExpr>(BlockExpr(token, ast));
             }
         }
 
         return ASTEmpty;
     }
 
-    AST *Parser::arraylist() {
+    shared_ptr<AST> Parser::arraylist() {
         PARSE_LOG(ARRAY);
 
-        vector<AST *> elements;
+        vector<shared_ptr<AST>> elements;
         Token token = this->currentToken;
 
         eat(LBRACE);
@@ -359,7 +359,7 @@ namespace AVSI {
             uint32_t num = this->currentToken.getValue().any_cast<int>();
             eat(INTEGER);
             eat(RBRACE);
-            return new ArrayInit(Ty, num, token);
+            return make_shared<ArrayInit>(ArrayInit(Ty, num, token));
         }
 
         while (this->currentToken.getType() != RBRACE) {
@@ -371,28 +371,28 @@ namespace AVSI {
         }
         eat(RBRACE);
 
-        return new ArrayInit(elements, elements.size(), token);
+        return make_shared<ArrayInit>(ArrayInit(elements, elements.size(), token));
     }
 
-    AST *Parser::assignment() {
+    shared_ptr<AST> Parser::assignment() {
         PARSE_LOG(ASSIGNMENT);
 
-        AST *left = variable();
+        shared_ptr<AST> left = variable();
         Token token = this->currentToken;
         eat(EQUAL);
-        AST *right = checkedExpr();
-        return new Assign(token, left, right);
+        shared_ptr<AST> right = checkedExpr();
+        return make_shared<Assign>(Assign(token, left, right));
     }
 
-    AST *Parser::forStatement() {
+    shared_ptr<AST> Parser::forStatement() {
         PARSE_LOG(FORSTATEMENT);
 
         Token token = this->currentToken;
 
-        AST *initList = nullptr;
-        AST *condition = nullptr;
-        AST *adjustment = nullptr;
-        AST *compound = nullptr;
+        shared_ptr<AST> initList = nullptr;
+        shared_ptr<AST> condition = nullptr;
+        shared_ptr<AST> adjustment = nullptr;
+        shared_ptr<AST> compound = nullptr;
         bool noCondition = false;
 
         eat(FOR);
@@ -412,10 +412,10 @@ namespace AVSI {
         compound = statementList();
         eat(DONE);
 
-        return new For(initList, condition, adjustment, compound, noCondition, token);
+        return make_shared<For>(For(initList, condition, adjustment, compound, noCondition, token));
     }
 
-    AST *Parser::functionDecl() {
+    shared_ptr<AST> Parser::functionDecl() {
         PARSE_LOG(FUNCTIONDECL);
 
         Token token = this->currentToken;
@@ -426,7 +426,7 @@ namespace AVSI {
         eat(ID);
 
         eat(LPAR);
-        Param *paramList = (Param *) param();
+        shared_ptr<Param> paramList = static_pointer_cast<Param>(param());
         // check types
         for (Variable *i: paramList->paramList) {
             if (i->Ty.first == nullptr) {
@@ -451,15 +451,15 @@ namespace AVSI {
             PARSE_LOG(FUNCTIONBODY);
 
             eat(LBRACE);
-            AST *compound = statementList();
+            shared_ptr<AST> compound = statementList();
             eat(RBRACE);
-            return new FunctionDecl(id, retTy, paramList, compound, token);
+            return make_shared<FunctionDecl>(FunctionDecl(id, retTy, paramList, compound, token));
         } else {
-            return new FunctionDecl(id, retTy, paramList, nullptr, token);
+            return make_shared<FunctionDecl>(FunctionDecl(id, retTy, paramList, nullptr, token));
         }
     }
 
-    AST *Parser::functionCall() {
+    shared_ptr<AST> Parser::functionCall() {
         PARSE_LOG(FUNCTIONCALL);
 
         Token token = this->currentToken;
@@ -467,7 +467,7 @@ namespace AVSI {
         string id_clone = id;
         eat(ID);
 
-        vector<AST *> paramList;
+        vector<shared_ptr<AST> > paramList;
         eat(LPAR);
         if (this->currentToken.getType() != RPAR) {
             paramList.push_back(checkedExpr());
@@ -481,15 +481,15 @@ namespace AVSI {
         auto ty = find_struct(token.getModInfo(), id_clone);
 
         if (ty.first != struct_types.end()) {
-            StructInit *struct_init_fun = new StructInit(ty.second, paramList, token);
+            shared_ptr<StructInit> struct_init_fun = make_shared<StructInit>(StructInit(ty.second, paramList, token));
             return struct_init_fun;
         }
 
-        FunctionCall *fun = new FunctionCall(id, paramList, token);
+        shared_ptr<FunctionCall> fun = make_shared<FunctionCall>(FunctionCall(id, paramList, token));
         return fun;
     }
 
-    AST *Parser::generic() {
+    shared_ptr<AST> Parser::generic() {
         PARSE_LOG(GENERIC);
 
         Token token = this->currentToken;
@@ -510,7 +510,7 @@ namespace AVSI {
         }
 
         eat(LBRACE);
-        Param *paramList = (Param *) param();
+        shared_ptr<Param> paramList = static_pointer_cast<Param>(param());
         // check types
         for (Variable *i: paramList->paramList) {
             if (i->Ty.first == nullptr) {
@@ -522,21 +522,21 @@ namespace AVSI {
         }
         eat(RBRACE);
 
-        return new Generic(id, paramList, idx, token);
+        return make_shared<Generic>(Generic(id, paramList, idx, token));
     }
 
-    AST *Parser::global() {
+    shared_ptr<AST> Parser::global() {
         PARSE_LOG(GLOBAL);
 
         Token token = this->currentToken;
         eat(GLOBAL);
 
-        AST *var = variable();
+        shared_ptr<AST> var = variable();
 
-        return new Global(var, token);
+        return make_shared<Global>(Global(var, token));
     }
 
-    AST *Parser::moduleDef() {
+    shared_ptr<AST> Parser::moduleDef() {
         PARSE_LOG(MODULEDEF);
 
         static bool mod_named = false;
@@ -603,7 +603,7 @@ namespace AVSI {
         return ASTEmptyNotEnd;
     }
 
-    AST *Parser::moduleImport() {
+    shared_ptr<AST> Parser::moduleImport() {
         PARSE_LOG(MODULEIMPORT);
 
         eat(IMPORT);
@@ -629,7 +629,7 @@ namespace AVSI {
         return ASTEmptyNotEnd;
     }
 
-    AST *Parser::object(bool is_mangle) {
+    shared_ptr<AST> Parser::object(bool is_mangle) {
         PARSE_LOG(OBJECTDEF);
 
         string id;
@@ -646,7 +646,7 @@ namespace AVSI {
         eat(ID);
         eat(LBRACE);
 
-        Param *members_list = (Param *) param();
+        shared_ptr<Param> members_list = static_pointer_cast<Param>(param());
         vector<Variable *> &li = members_list->paramList;
         vector<llvm::Type *> member_types;
         map<string, int> member_index;
@@ -733,13 +733,13 @@ namespace AVSI {
                                                           llvm::MDString::get(*the_context, "struct_name")});
         meta->addOperand(meta_name);
 
-        return new Object(token, id, members_list->paramList);
+        return make_shared<Object>(Object(token, id, members_list->paramList));
     }
 
-    AST *Parser::IfStatement() {
+    shared_ptr<AST> Parser::IfStatement() {
         Token token = this->currentToken;
         TokenType type = this->currentToken.getType();
-        AST *condition = nullptr;
+        shared_ptr<AST> condition = nullptr;
         bool noCondition = false;
 
         if (type == FI) {
@@ -789,16 +789,16 @@ namespace AVSI {
             noCondition = true;
         }
 
-        AST *compound = statementList();
-        AST *next = IfStatement();
+        shared_ptr<AST> compound = statementList();
+        shared_ptr<AST> next = IfStatement();
 
-        return new If(condition, noCondition, compound, next, token);
+        return make_shared<If>(If(condition, noCondition, compound, next, token));
     }
 
-    AST *Parser::param() {
+    shared_ptr<AST> Parser::param() {
         PARSE_LOG(PARAM);
 
-        Param *param = new Param(this->lastToken);
+        shared_ptr<Param> param = make_shared<Param>(Param(this->lastToken));
         set<string> paramSet;
         while (this->currentToken.getType() == ID) {
             Variable *var = new Variable(this->currentToken);
@@ -841,123 +841,123 @@ namespace AVSI {
         return param;
     }
 
-    AST *Parser::expr() {
+    shared_ptr<AST> Parser::expr() {
         return logic_or_expr();
     }
 
-    AST *Parser::logic_or_expr() {
+    shared_ptr<AST> Parser::logic_or_expr() {
         PARSE_LOG(OREXPR);
 
         if (this->currentToken.getType() == SEMI) return ASTEmpty;
 
-        AST *res = logic_and_expr();
+        shared_ptr<AST> res = logic_and_expr();
         auto type = this->currentToken.getType();
         while (type == OR) {
             Token opt = this->currentToken;
             eat(OR);
-            res = new BinOp(res, opt, logic_and_expr());
+            res = make_shared<BinOp>(BinOp(res, opt, logic_and_expr()));
             type = this->currentToken.getType();
         }
 
         return res;
     }
 
-    AST *Parser::logic_and_expr() {
+    shared_ptr<AST> Parser::logic_and_expr() {
         PARSE_LOG(ANDEXPR);
 
         if (this->currentToken.getType() == SEMI) return ASTEmpty;
 
-        AST *res = bit_or_expr();
+        shared_ptr<AST> res = bit_or_expr();
         auto type = this->currentToken.getType();
         while (type == AND) {
             Token opt = this->currentToken;
             eat(AND);
-            res = new BinOp(res, opt, bit_or_expr());
+            res = make_shared<BinOp>(BinOp(res, opt, bit_or_expr()));
             type = this->currentToken.getType();
         }
 
         return res;
     }
 
-    AST *Parser::bit_or_expr() {
+    shared_ptr<AST> Parser::bit_or_expr() {
         PARSE_LOG(BITOREXPR);
 
         if (this->currentToken.getType() == SEMI) return ASTEmpty;
 
-        AST *res = bit_and_expr();
+        shared_ptr<AST> res = bit_and_expr();
         auto type = this->currentToken.getType();
         while (type == BITOR) {
             Token opt = this->currentToken;
             eat(BITOR);
-            res = new BinOp(res, opt, bit_and_expr());
+            res = make_shared<BinOp>(BinOp(res, opt, bit_and_expr()));
             type = this->currentToken.getType();
         }
 
         return res;
     }
 
-    AST *Parser::bit_and_expr() {
+    shared_ptr<AST> Parser::bit_and_expr() {
         PARSE_LOG(BITANDEXPR);
 
         if (this->currentToken.getType() == SEMI) return ASTEmpty;
 
-        AST *res = equivalence_expr();
+        shared_ptr<AST> res = equivalence_expr();
         auto type = this->currentToken.getType();
         while (type == BITAND) {
             Token opt = this->currentToken;
             eat(BITAND);
-            res = new BinOp(res, opt, equivalence_expr());
+            res = make_shared<BinOp>(BinOp(res, opt, equivalence_expr()));
             type = this->currentToken.getType();
         }
 
         return res;
     }
 
-    AST *Parser::equivalence_expr() {
+    shared_ptr<AST> Parser::equivalence_expr() {
         PARSE_LOG(EQEXPR);
 
         if (this->currentToken.getType() == SEMI) return ASTEmpty;
 
-        AST *res = compare_expr();
+        shared_ptr<AST> res = compare_expr();
         auto type = this->currentToken.getType();
         while (type == EQ || type == NE) {
             Token opt = this->currentToken;
             eat(type);
-            res = new BinOp(res, opt, compare_expr());
+            res = make_shared<BinOp>(BinOp(res, opt, compare_expr()));
             type = this->currentToken.getType();
         }
 
         return res;
     }
 
-    AST *Parser::compare_expr() {
+    shared_ptr<AST> Parser::compare_expr() {
         PARSE_LOG(CMPEXPR);
 
         if (this->currentToken.getType() == SEMI) return ASTEmpty;
 
-        AST *res = shift_expr();
+        shared_ptr<AST> res = shift_expr();
         auto type = this->currentToken.getType();
         while (type == GT || type == LT || type == GE || type == LE) {
             Token opt = this->currentToken;
             eat(type);
-            res = new BinOp(res, opt, shift_expr());
+            res = make_shared<BinOp>(BinOp(res, opt, shift_expr()));
             type = this->currentToken.getType();
         }
 
         return res;
     }
 
-    AST *Parser::shift_expr() {
+    shared_ptr<AST> Parser::shift_expr() {
         PARSE_LOG(SHIFYEXPR);
 
         if (this->currentToken.getType() == SEMI) return ASTEmpty;
 
-        AST *res = basic_expr();
+        shared_ptr<AST> res = basic_expr();
         auto type = this->currentToken.getType();
         while (type == SHR || type == SHRU || type == SHL) {
             Token opt = this->currentToken;
             eat(type);
-            res = new BinOp(res, opt, basic_expr());
+            res = make_shared<BinOp>(BinOp(res, opt, basic_expr()));
             type = this->currentToken.getType();
         }
 
@@ -972,24 +972,24 @@ namespace AVSI {
      * @grammar:        expr: term ((ADD | DEC) term)*
      *                  term: Integer;
      */
-    AST *Parser::basic_expr(void) {
+    shared_ptr<AST> Parser::basic_expr(void) {
         PARSE_LOG(EXPR);
 
         if (this->currentToken.getType() == SEMI) return ASTEmpty;
 
-        AST *res = term();
+        shared_ptr<AST> res = term();
         auto type = this->currentToken.getType();
         while (type == PLUS || type == MINUS) {
             Token opt = this->currentToken;
             eat(type);
-            res = new BinOp(res, opt, term());
+            res = make_shared<BinOp>(BinOp(res, opt, term()));
             type = this->currentToken.getType();
         }
 
         return res;
     }
 
-    AST *Parser::checkedExpr() {
+    shared_ptr<AST> Parser::checkedExpr() {
         PARSE_LOG(EXPRCHECK);
 
         if (this->currentToken.getType() == LBRACE) return arraylist();
@@ -1006,7 +1006,7 @@ namespace AVSI {
 
             token = Token(STRING, buffer, token.line, token.column);
 
-            return new class String(token);
+            return shared_ptr<AST>(new class String(token));
         }
 
         return expr();
@@ -1018,13 +1018,13 @@ namespace AVSI {
      * @return:         factor
      * @grammar:        Integer | LPAREN
      */
-    AST *Parser::factor(void) {
+    shared_ptr<AST> Parser::factor(void) {
         PARSE_LOG(FACTOR);
 
         Token token = this->currentToken;
         TokenType ty = token.getType();
 
-        AST *ret = nullptr;
+        shared_ptr<AST> ret;
 
         switch (ty) {
             case SIZEOF:
@@ -1034,12 +1034,12 @@ namespace AVSI {
             case FLOAT:
             case CHAR:
                 eat(ty);
-                ret = new Num(token);
+                ret = make_shared<Num>(Num(token));
                 break;
             case TRUE:
             case FALSE:
                 eat(ty);
-                ret = new Boolean(token);
+                ret = make_shared<Boolean>(Boolean(token));
                 break;
             case PLUS:
             case MINUS:
@@ -1048,7 +1048,7 @@ namespace AVSI {
             case BITAND:
             case STAR:
                 eat(ty);
-                ret = new UnaryOp(token, factor());
+                ret = make_shared<UnaryOp>(UnaryOp(token, factor()));
                 break;
             case ID:
                 if (this->lexer->peekNextToken().getType() == LPAR) {
@@ -1072,12 +1072,12 @@ namespace AVSI {
                 break;
         }
 
-        if (ret != nullptr) {
+        if (ret.get()) {
             if (this->currentToken.getType() == AS) {
                 Token as = this->currentToken;
                 eat(AS);
                 Type Ty = eatType();
-                ret = new TypeTrans(ret, Ty, as);
+                ret = make_shared<TypeTrans>(TypeTrans(ret, Ty, as));
             }
             return ret;
         }
@@ -1088,7 +1088,7 @@ namespace AVSI {
                         "unmatched ')'",
                         token.line, token.column
                 );
-            return new NoneAST();
+            return make_shared<NoneAST>(NoneAST());
         } else
             throw ExceptionFactory<SyntaxException>(
                     "unrecognized factor in expression",
@@ -1101,18 +1101,18 @@ namespace AVSI {
      * @param:          None
      * @return:         root of parse result.
      */
-    AST *Parser::parse(void) { return program(); }
+    shared_ptr<AST> Parser::parse(void) { return program(); }
 
-    AST *Parser::returnExpr(void) {
+    shared_ptr<AST> Parser::returnExpr(void) {
         PARSE_LOG(RETURNEXPR);
 
         Token token = this->currentToken;
         eat(RETURN);
 
-        AST *ret = nullptr;
+        shared_ptr<AST> ret = nullptr;
         if (this->currentToken.isExpr()) ret = checkedExpr();
 
-        return new Return(token, ret);
+        return make_shared<Return>(Return(token, ret));
     }
 
     /**
@@ -1123,24 +1123,24 @@ namespace AVSI {
      * @c:        term: factor ((MUL | DIV) factor)*
      *                  factor: Integer
      */
-    AST *Parser::term(void) {
+    shared_ptr<AST> Parser::term(void) {
         PARSE_LOG(TERM);
 
         if (this->currentToken.getType() == SEMI) return ASTEmpty;
 
-        AST *res = factor();
+        shared_ptr<AST> res = factor();
         auto type = this->currentToken.getType();
         while (type == STAR || type == SLASH || type == REM) {
             Token opt = this->currentToken;
             eat(type);
-            res = new BinOp(res, opt, factor());
+            res = make_shared<BinOp>(BinOp(res, opt, factor()));
             type = this->currentToken.getType();
         }
 
         return res;
     }
 
-    AST *Parser::sizeOf() {
+    shared_ptr<AST> Parser::sizeOf() {
         PARSE_LOG(SIZEOF);
 
         Token token = this->currentToken;
@@ -1151,15 +1151,15 @@ namespace AVSI {
             eat(TYPENAME);
             Type Ty = eatType();
             eat(RPAR);
-            return new Sizeof(token, Ty);
+            return make_shared<Sizeof>(Sizeof(token, Ty));
         } else {
-            AST *var = variable();
+            shared_ptr<AST> var = variable();
             eat(RPAR);
-            return new Sizeof(token, var);
+            return make_shared<Sizeof>(Sizeof(token, var));
         }
     }
 
-    AST *Parser::variable() {
+    shared_ptr<AST> Parser::variable() {
         PARSE_LOG(VARIABLE);
 
         if (this->currentToken.getType() == DOLLAR)
@@ -1180,11 +1180,11 @@ namespace AVSI {
         }
 
         // process [expr] and .ID
-        vector<pair<Variable::offsetType, AST *>> offset;
+        vector<pair<Variable::offsetType, shared_ptr<AST> >> offset;
 
         TokenType ty = this->currentToken.getType();
         Token token;
-        AST* right = nullptr;
+        shared_ptr<AST> right;
         Variable::offsetType offset_ty;
         while (ty == DOT || ty == LSQB) {
             while (ty == DOT) {
@@ -1197,12 +1197,12 @@ namespace AVSI {
                         right = functionCall();
                         offset_ty = Variable::offsetType::FUNCTION;
                     } else {
-                        right = new Variable(this->currentToken);
+                        right = make_shared<Variable>(Variable(this->currentToken));
                         eat(this->currentToken.getType());
                         offset_ty = Variable::offsetType::MEMBER;
                     }
                 } else if (ty == INTEGER) {
-                    right = new Num(this->currentToken);
+                    right = make_shared<Num>(Num(this->currentToken));
                     eat(INTEGER);
                 }
 
@@ -1222,15 +1222,15 @@ namespace AVSI {
         }
 
 
-        return new Variable(var, Ty, offset);
+        return make_shared<Variable>(Variable(var, Ty, offset));
     }
 
-    AST *Parser::WhileStatement() {
+    shared_ptr<AST> Parser::WhileStatement() {
         PARSE_LOG(WHILESTATEMENT);
 
         Token token = this->currentToken;
-        AST *condition;
-        AST *compound;
+        shared_ptr<AST> condition;
+        shared_ptr<AST> compound;
 
         eat(WHILE);
 
@@ -1254,20 +1254,20 @@ namespace AVSI {
         compound = statementList();
         eat(DONE);
 
-        return new While(condition, compound, token);
+        return make_shared<While>(While(condition, compound, token));
     }
 
-    AST *Parser::loopCtrl() {
+    shared_ptr<AST> Parser::loopCtrl() {
         if (this->currentToken.getType() == BREAK) {
             eat(BREAK);
-            return new LoopCtrl(LoopCtrl::LoopCtrlType::CTRL_BREAK, this->currentToken);
+            return make_shared<LoopCtrl>(LoopCtrl(LoopCtrl::LoopCtrlType::CTRL_BREAK, this->currentToken));
         } else {
             eat(CONTINUE);
-            return new LoopCtrl(LoopCtrl::LoopCtrlType::CTRL_CONTINUE, this->currentToken);
+            return make_shared<LoopCtrl>(LoopCtrl(LoopCtrl::LoopCtrlType::CTRL_CONTINUE, this->currentToken));
         }
     }
 
-    AST *Parser::IDHead() {
+    shared_ptr<AST> Parser::IDHead() {
         Token token = this->currentToken;
         Token follow = this->lexer->peekNextToken();
         if (follow.getType() == LPAR) {
@@ -1294,8 +1294,8 @@ namespace AVSI {
             if (next_token.getType() == EQUAL) {
                 return assignment();
             } else {
-                AST *ast = expr();
-                return new BlockExpr(token, ast);
+                shared_ptr<AST> ast = expr();
+                return make_shared<BlockExpr>(BlockExpr(token, ast));
             }
         }
     }

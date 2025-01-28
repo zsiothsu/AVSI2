@@ -37,80 +37,43 @@ namespace AVSI {
     /*******************************************************
      *                    derived syntax                   *
      *******************************************************/
-    Assign::~Assign() {
-        if (this->left != nullptr) { delete this->left; }
-        if (this->right != nullptr) { delete this->right; }
-    }
+    Assign::~Assign() {}
 
     TokenType BinOp::getOp(void) { return this->op.getType(); }
 
-    BinOp::~BinOp() {
-        if (this->left != nullptr) { delete this->left; }
-        if (this->right != nullptr) { delete this->right; }
-    }
+    BinOp::~BinOp() {}
 
     any Boolean::getValue(void) {
         return this->value;
     }
 
-    For::~For() {
-        if (this->initList != nullptr) delete this->initList;
-        if (this->condition != nullptr) delete this->condition;
-        if (this->adjustment != nullptr) delete this->adjustment;
-        if (this->compound != nullptr) delete this->compound;
-    }
+    For::~For() {}
 
-    FunctionDecl::~FunctionDecl() {
-        if (this->compound != nullptr) { delete this->compound; }
-        if (this->paramList != nullptr) { delete this->paramList; }
-    }
+    FunctionDecl::~FunctionDecl() {}
 
-    FunctionCall::~FunctionCall() {
-        for (auto param: this->paramList) { delete param; }
-    }
+    FunctionCall::~FunctionCall() {}
 
-    Generic::~Generic() {
-        if (this->paramList != nullptr) { delete this->paramList; }
-    }
+    Generic::~Generic() {}
 
-    Global::~Global() {
-        if (this->var != nullptr) delete this->var;
-    }
+    Global::~Global() {}
 
     any Num::getValue(void) { return this->value; }
 
     any String::getValue(void) { return this->value; }
 
-    StructInit::~StructInit() {
-        for (auto param: this->paramList) { delete param; }
-    }
+    StructInit::~StructInit() {}
 
-    TypeTrans::~TypeTrans() {
-        delete this->factor;
-    }
+    TypeTrans::~TypeTrans() {}
 
-    ArrayInit::~ArrayInit() {
-        for (auto param: this->paramList) { delete param; }
-    }
+    ArrayInit::~ArrayInit() {}
 
-    If::~If() {
-        if (this->condition != nullptr) { delete this->condition; }
-        if (this->compound != nullptr) { delete this->compound; }
-        if (this->next != nullptr) { delete this->next; }
-    }
+    If::~If() {}
 
-    UnaryOp::~UnaryOp() {
-        if (this->right != nullptr) { delete this->right; }
-    }
+    UnaryOp::~UnaryOp() {}
 
     TokenType UnaryOp::getOp(void) { return this->op.getType(); }
 
-    Compound::~Compound() {
-        for (AST *ast: this->child) delete ast;
-    }
+    Compound::~Compound() {}
 
-    While::~While() {
-        if (this->condition != nullptr) delete this->condition;
-        if (this->compound != nullptr) delete this->compound;
-    }
+    While::~While() {}
 } // namespace AVSI

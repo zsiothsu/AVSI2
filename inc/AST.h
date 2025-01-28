@@ -56,6 +56,7 @@
 #include <typeinfo>
 #include <utility>
 #include <vector>
+#include <memory>
 
 #define __ASSIGN_NAME           "Assign"
 #define __BINOP_NAME            "BinOp"
@@ -90,7 +91,7 @@
 namespace AVSI {
     using std::string;
     using std::vector;
-    using std::unique_ptr;
+    using std::shared_ptr;
     using std::map;
 
     using Type = pair<llvm::Type *, string>;
@@ -146,7 +147,7 @@ namespace AVSI {
         virtual void dump(int depth);
 
         Token getToken(void);
-    };
+    };    
 
     /*******************************************************
      *                    derived syntax                   *
@@ -154,12 +155,12 @@ namespace AVSI {
     class Assign : public AST {
     private:
     public:
-        AST *left;
-        AST *right;
+        shared_ptr<AST> left;
+        shared_ptr<AST> right;
 
         Assign(void) : AST(__ASSIGN_NAME), left(nullptr), right(nullptr) {};
 
-        Assign(const Token &token, AST *left, AST *right)
+        Assign(const Token &token, shared_ptr<AST> left, shared_ptr<AST> right)
                 : AST(__ASSIGN_NAME, token),
                   left(left),
                   right(right) {};
@@ -176,8 +177,8 @@ namespace AVSI {
         Token op;
 
     public:
-        AST *left;
-        AST *right;
+        shared_ptr<AST> left;
+        shared_ptr<AST> right;
 
         BinOp(void)
                 : AST(__BINOP_NAME),
@@ -185,7 +186,7 @@ namespace AVSI {
                   left(nullptr),
                   right(nullptr) {};
 
-        BinOp(AST *left, const Token &op, AST *right)
+        BinOp(shared_ptr<AST> left, const Token &op, shared_ptr<AST> right)
                 : AST(__BINOP_NAME, op), op(op), left(left), right(right) {};
 
         virtual ~BinOp();
@@ -199,13 +200,13 @@ namespace AVSI {
 
     class BlockExpr : public AST {
     public:
-        AST *expr;
+        shared_ptr<AST> expr;
 
         BlockExpr(void)
                 : AST(__BLOCKEXPR_NAME),
                   expr(nullptr) {};
 
-        BlockExpr(Token token, AST *expr)
+        BlockExpr(Token token, shared_ptr<AST> expr)
                 : AST(__BLOCKEXPR_NAME, token),
                   expr(expr) {};
 
@@ -236,15 +237,15 @@ namespace AVSI {
 
     class Compound : public AST {
     public:
-        vector<AST *> child;
+        vector<shared_ptr<AST> > child;
 
         Compound(void)
                 : AST(__COMPOUND_NAME, Token(COMPOUND, 0)),
-                  child(vector<AST *>()) {};
+                  child(vector<shared_ptr<AST> >()) {};
 
         Compound(Token token)
                 : AST(__COMPOUND_NAME, token),
-                  child(vector<AST *>()) {};
+                  child(vector<shared_ptr<AST> >()) {};
 
         virtual ~Compound();
 
@@ -255,17 +256,17 @@ namespace AVSI {
 
     class For : public AST {
     public:
-        AST *initList;
-        AST *condition;
-        AST *adjustment;
-        AST *compound;
+        shared_ptr<AST> initList;
+        shared_ptr<AST> condition;
+        shared_ptr<AST> adjustment;
+        shared_ptr<AST> compound;
         bool noCondition;
 
         For(void)
                 : AST(__FOR_NAME), initList(nullptr), condition(nullptr),
                   adjustment(nullptr), compound(nullptr) {};
 
-        For(AST *initList, AST *condition, AST *adjustment, AST *compound, bool noCondition, Token token)
+        For(shared_ptr<AST> initList, shared_ptr<AST> condition, shared_ptr<AST> adjustment, shared_ptr<AST> compound, bool noCondition, Token token)
                 : AST(__FOR_NAME, token), initList(initList), condition(condition),
                   adjustment(adjustment), compound(compound), noCondition(noCondition) {};
 
@@ -280,8 +281,8 @@ namespace AVSI {
     public:
         string id;
         Type retTy;
-        AST *paramList;
-        AST *compound;
+        shared_ptr<AST> paramList;
+        shared_ptr<AST> compound;
         bool is_export;
         bool is_mangle;
 
@@ -293,7 +294,7 @@ namespace AVSI {
                   is_export(false),
                   is_mangle(true) {};
 
-        FunctionDecl(string id, Type retTy, AST *paramList, AST *compound, const Token &token)
+        FunctionDecl(string id, Type retTy, shared_ptr<AST> paramList, shared_ptr<AST> compound, const Token &token)
                 : AST(__FUNCTIONDECL_NAME, token),
                   id(std::move(id)),
                   retTy(std::move(retTy)),
@@ -312,13 +313,13 @@ namespace AVSI {
     class FunctionCall : public AST {
     public:
         string id;
-        vector<AST *> paramList;
+        vector<shared_ptr<AST> > paramList;
         llvm::Value *param_this;
 
         FunctionCall(void)
-                : AST(__FUNCTIONCALL_NAME),paramList(vector<AST *>()), param_this(nullptr) {};
+                : AST(__FUNCTIONCALL_NAME),paramList(vector<shared_ptr<AST> >()), param_this(nullptr) {};
 
-        FunctionCall(string id, vector<AST *> paramList, const Token &token)
+        FunctionCall(string id, vector<shared_ptr<AST> > paramList, const Token &token)
                 : AST(__FUNCTIONCALL_NAME, token), id(std::move(id)), paramList(std::move(paramList)),
                   param_this(nullptr) {};
 
@@ -332,7 +333,7 @@ namespace AVSI {
     class Generic : public AST {
     public:
         std::string id;
-        AST *paramList;
+        shared_ptr<AST> paramList;
         bool is_mangle;
         int idx;
 
@@ -342,7 +343,7 @@ namespace AVSI {
                   is_mangle(true),
                   idx(0) {};
 
-        Generic(string id, AST *paramList, int idx, Token token)
+        Generic(string id, shared_ptr<AST> paramList, int idx, Token token)
                 : AST(__GENERIC_NAME, token),
                   id(id),
                   paramList(paramList),
@@ -358,7 +359,7 @@ namespace AVSI {
 
     class Global : public AST {
     public:
-        AST *var;
+        shared_ptr<AST> var;
         bool is_export;
         bool is_mangle;
 
@@ -367,7 +368,7 @@ namespace AVSI {
                   is_export(false),
                   is_mangle(true) {};
 
-        Global(AST *var, Token token)
+        Global(shared_ptr<AST> var, Token token)
                 : AST(__GLOBAL_NAME, token),
                   var(var),
                   is_export(false),
@@ -382,14 +383,14 @@ namespace AVSI {
 
     class If : public AST {
     public:
-        AST *condition;
+        shared_ptr<AST> condition;
         bool noCondition;
-        AST *compound;
-        AST *next;
+        shared_ptr<AST> compound;
+        shared_ptr<AST> next;
 
         If(void) : AST(__IF_NAME), condition(nullptr), compound(nullptr), next(nullptr) {};
 
-        If(AST *condition, bool noCondition, AST *compound, AST *next, Token token) :
+        If(shared_ptr<AST> condition, bool noCondition, shared_ptr<AST> compound, shared_ptr<AST> next, Token token) :
                 AST(__IF_NAME, token), condition(condition), noCondition(noCondition),
                 compound(compound), next(next) {};
 
@@ -438,12 +439,12 @@ namespace AVSI {
 
     class Sizeof : public AST {
     public:
-        AST *id;
+        shared_ptr<AST> id;
         Type Ty;
 
         Sizeof(void) : AST(__SIZEOF_NAME) {};
 
-        Sizeof(Token token, AST *id) : AST(__SIZEOF_NAME, token), id(id), Ty(Type(VOID_TY, "void")) {};
+        Sizeof(Token token, shared_ptr<AST> id) : AST(__SIZEOF_NAME, token), id(id), Ty(Type(VOID_TY, "void")) {};
 
         Sizeof(Token token, Type Ty) : AST(__SIZEOF_NAME, token), id(nullptr), Ty(Ty) {};
 
@@ -466,7 +467,7 @@ namespace AVSI {
             FUNCTION = 2
         };
 
-        vector<pair<offsetType, AST *>> offset;
+        vector<pair<offsetType, shared_ptr<AST> >> offset;
 
         Variable(void)
                 : AST(__VARIABLE_NAME),
@@ -486,7 +487,7 @@ namespace AVSI {
                   Ty(std::move(ty)),
                   offset() {};
 
-        Variable(Token var, Type ty, vector<pair<offsetType, AST *>> offset)
+        Variable(Token var, Type ty, vector<pair<offsetType, shared_ptr<AST> >> offset)
                 : AST(__VARIABLE_NAME, var),
                   id(var.getValue().any_cast<std::string>()),
                   Ty(std::move(ty)),
@@ -545,11 +546,11 @@ namespace AVSI {
 
     class Return : public AST {
     public:
-        AST *ret;
+        shared_ptr<AST> ret;
 
         Return(void) : AST(__RETURN_NAME) {};
 
-        Return(const Token &token, AST *ret) : AST(__RETURN_NAME, token), ret(ret) {};
+        Return(const Token &token, shared_ptr<AST> ret) : AST(__RETURN_NAME, token), ret(ret) {};
 
         llvm::Value *codeGen() override;
 
@@ -575,12 +576,12 @@ namespace AVSI {
     class StructInit : public AST {
     public:
         string id;
-        vector<AST *> paramList;
+        vector<shared_ptr<AST> > paramList;
 
         StructInit(void)
-                : AST(__STRUCTINIT_NAME), paramList(vector<AST *>()) {};
+                : AST(__STRUCTINIT_NAME), paramList(vector<shared_ptr<AST> >()) {};
 
-        StructInit(string id, vector<AST *> paramList, const Token &token)
+        StructInit(string id, vector<shared_ptr<AST> > paramList, const Token &token)
                 : AST(__STRUCTINIT_NAME, token), id(std::move(id)), paramList(std::move(paramList)) {};
 
         virtual ~StructInit();
@@ -592,13 +593,13 @@ namespace AVSI {
 
     class TypeTrans : public AST {
     public:
-        AST *factor;
+        shared_ptr<AST> factor;
         Type Ty;
 
         TypeTrans(void)
                 : AST(__TYPETRANS_NAME), factor(nullptr) {};
 
-        TypeTrans(AST *factor, Type Ty, Token token)
+        TypeTrans(shared_ptr<AST> factor, Type Ty, Token token)
                 : AST(__TYPETRANS_NAME, token), factor(factor), Ty(Ty) {};
 
         virtual ~TypeTrans();
@@ -610,14 +611,14 @@ namespace AVSI {
 
     class ArrayInit : public AST {
     public:
-        vector<AST *> paramList;
+        vector<shared_ptr<AST> > paramList;
         Type Ty;
         uint32_t num;
 
         ArrayInit(void)
-                : AST(__ARRAYINIT_NAME), paramList(vector<AST *>()) {};
+                : AST(__ARRAYINIT_NAME), paramList(vector<shared_ptr<AST> >()) {};
 
-        ArrayInit(vector<AST *> paramList, uint32_t num, const Token &token)
+        ArrayInit(vector<shared_ptr<AST> > paramList, uint32_t num, const Token &token)
                 : AST(__ARRAYINIT_NAME, token),
                   paramList(std::move(paramList)),
                   Ty(Type(VOID_TY, "void")),
@@ -640,11 +641,11 @@ namespace AVSI {
         Token op;
 
     public:
-        AST *right;
+        shared_ptr<AST> right;
 
         UnaryOp(void) : AST(__UNARYTOP_NAME) {};
 
-        UnaryOp(Token op, AST *right)
+        UnaryOp(Token op, shared_ptr<AST> right)
                 : AST(__UNARYTOP_NAME, op), op(op), right(right) {};
 
         virtual ~UnaryOp();
@@ -658,13 +659,13 @@ namespace AVSI {
 
     class While : public AST {
     public:
-        AST *condition;
-        AST *compound;
+        shared_ptr<AST> condition;
+        shared_ptr<AST> compound;
 
         While(void)
                 : AST(__WHILE_NAME), condition(nullptr), compound(nullptr) {};
 
-        While(AST *condition, AST *compound, const Token &token)
+        While(shared_ptr<AST> condition, shared_ptr<AST> compound, const Token &token)
                 : AST(__WHILE_NAME, token), condition(condition), compound(compound) {};
 
         virtual ~While();
@@ -685,8 +686,8 @@ namespace AVSI {
         void dump(int depth) override;
     };
 
-    extern AST *ASTEmpty;
-    extern AST *ASTEmptyNotEnd;
+    extern shared_ptr<AST> ASTEmpty;
+    extern shared_ptr<AST> ASTEmptyNotEnd;
 
     pair<map<string, StructDef *>::iterator, string> find_struct(vector<string> modinfo, string &name);
 
