@@ -104,6 +104,7 @@ namespace AVSI {
         REAL,
         VEC,
         OBJ,
+        GRAD,
         BREAK,
         CONTINUE,
         NOMANGLE,
@@ -150,12 +151,6 @@ namespace AVSI {
         void setModInfo(vector<string> info);
 
         vector<string> getModInfo();
-
-        any getNum();
-
-        char getChar();
-
-        std::string getString();
 
         bool isExpr();
     };

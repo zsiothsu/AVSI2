@@ -74,6 +74,28 @@ namespace AVSI {
     }
 
     /**
+     * @description:    insert assignment ast for variable
+     * @param:          name: variable name
+     * @param:          ast: pointer to AST
+     * @return:         none
+     */
+    void SymbolMap::insertAssingedAst(string &name, shared_ptr<AST> ast) {
+        this->assigned_ast[name] = ast;
+    }
+
+    /**
+     * @description:    get assignment AST
+     * @param:          name: variable name
+     * @return:         pointer to AST
+     */
+    shared_ptr<AST> SymbolMap::getAssignedAST(string &name) {
+        if (this->assigned_ast.find(name) != this->assigned_ast.end()) {
+            return this->assigned_ast[name];
+        }
+        return nullptr;
+    }
+
+    /**
      * @description:    push a new scope
      * @return:         none
      */
@@ -135,7 +157,16 @@ namespace AVSI {
      * @param:          addr: pointer to allocated space
      * @return:         none
      */
-    void SymbolTable::insert(basic_string<char> name, llvm::AllocaInst *addr) {
+    void SymbolTable::insert(basic_string<char> name, llvm::AllocaInst *addr, bool current_scope) {
+        if (!current_scope) {
+            for (auto iter = this->maps.rbegin(); iter != this->maps.rend(); iter++) {
+                auto ret = (*iter)->find(name);
+                if (ret != nullptr) {
+                    (*iter)->insert(name, addr);
+                    return;
+                }
+            }
+        }
         this->maps.back()->insert(name, addr);
     }
 
@@ -154,6 +185,31 @@ namespace AVSI {
     void SymbolTable::setLoopEntry(llvm::BasicBlock *BB) {
         this->maps.back()->loop_entry = BB;
     }
+
+    void SymbolTable::insertAssingedAst(string &name, shared_ptr<AST> ast, bool current_scope) {
+        if (!current_scope) {
+            for (auto iter = this->maps.rbegin(); iter != this->maps.rend(); iter++) {
+                auto ret = (*iter)->find(name);
+                if (ret != nullptr) {
+                    (*iter)->insertAssingedAst(name, ast);
+                    return;
+                }
+            }
+        }
+        this->maps.back()->insertAssingedAst(name, ast);
+    }
+
+    shared_ptr<AST> SymbolTable::getAssignedAST(string &name) {
+        for (auto iter = this->maps.rbegin(); iter != this->maps.rend(); iter++) {
+            auto ret = (*iter)->getAssignedAST(name);
+            if (ret != nullptr) {
+                return ret;
+            }
+        }
+        return make_shared<NoneAST>(NoneAST());
+    }
+
+
 
     /**
      * @description:    get module name by path

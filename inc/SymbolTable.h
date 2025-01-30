@@ -53,10 +53,13 @@ namespace AVSI {
     using std::deque;
     using std::vector;
 
+    class AST;
+
     class SymbolMap {
     private:
         llvm::BasicBlock *BB;
         map<string, llvm::AllocaInst *> named_values;
+        map<string, shared_ptr<AST>> assigned_ast;
 
     public:
         llvm::BasicBlock *loop_exit;
@@ -83,6 +86,10 @@ namespace AVSI {
         void insert(string &name, llvm::AllocaInst *addr);
 
         vector<llvm::AllocaInst *> getAllocaList();
+
+        void insertAssingedAst(string &name, shared_ptr<AST> ast);
+
+        shared_ptr<AST> getAssignedAST(string &name);
     };
 
     class SymbolTable {
@@ -110,7 +117,11 @@ namespace AVSI {
 
         void setLoopEntry(llvm::BasicBlock * BB);
 
-        void insert(string name, llvm::AllocaInst *addr);
+        void insert(string name, llvm::AllocaInst *addr, bool current_scope);
+
+        void insertAssingedAst(string &name, shared_ptr<AST> ast, bool current_scope);
+
+        shared_ptr<AST> getAssignedAST(string &name);
     };
 
     string __getModuleNameByPath(vector<string> path);

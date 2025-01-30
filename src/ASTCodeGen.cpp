@@ -528,7 +528,7 @@ namespace AVSI {
             builder->CreateStore(v, addr);
             if (create_new_space) {
                 if (l_is_single_value && assignment) {
-                    symbol_table->insert(l_base_name, addr);
+                    symbol_table->insert(l_base_name, addr, true);
                 } else {
                     if (l_alloca_content_type) registerType(l_alloca_content_type);
                     registerType(v->getType());
@@ -548,7 +548,7 @@ namespace AVSI {
         auto bind = [&](llvm::Value *ptr) -> void {
             if (l_is_single_value && assignment) {
                 llvm::AllocaInst *addr = (llvm::AllocaInst *) ptr;
-                symbol_table->insert(l_base_name, addr);
+                symbol_table->insert(l_base_name, addr, true);
             }
         };
 
@@ -759,7 +759,8 @@ namespace AVSI {
 
         string l_base_name = (static_pointer_cast<Variable>(this->left))->id;
         if (r_value->getType()->isArrayTy()) {
-            store(this, nullptr, r_value, true, l_base_name);
+            auto st = store(this, nullptr, r_value, true, l_base_name);
+            symbol_table->insertAssingedAst(l_base_name, this->right, !st);
         } else {
             auto l_alloca_addr = getAlloca(static_pointer_cast<Variable>(this->left).get());
             if (!l_alloca_addr && !((static_pointer_cast<Variable>(this->left))->offset.empty())) {
@@ -768,7 +769,8 @@ namespace AVSI {
                         this->left->getToken().column, this->left->getToken().column
                 );
             }
-            store(this, l_alloca_addr, r_value, true, l_base_name);
+            auto st = store(this, l_alloca_addr, r_value, true, l_base_name);
+            symbol_table->insertAssingedAst(l_base_name, this->right, !st);
         }
         return llvm::ConstantFP::getNaN(F64_TY);
     }
@@ -1297,7 +1299,7 @@ namespace AVSI {
             for (auto &arg: the_function->args()) {
                 llvm::AllocaInst *alloca = allocaBlockEntry(the_function, arg.getName().str() + ".addr", arg.getType());
                 builder->CreateStore(&arg, alloca);
-                symbol_table->insert(arg.getName().str(), alloca);
+                symbol_table->insert(arg.getName().str(), alloca, true);
             }
 
             llvm::Value *ret = nullptr;
@@ -1906,6 +1908,17 @@ namespace AVSI {
                 });
 
         return llvm::ConstantFP::getNaN(F64_TY);
+    }
+
+    llvm::Value *Grad::codeGen() {
+        auto expr = this->expr;
+        for (auto i: this->vars) {
+            for (int j = 0; j < i.second; j++) {
+                expr = derivator(expr, i.first);
+            }
+        }
+
+        return expr->codeGen();
     }
 
     llvm::Value *If::codeGen() {

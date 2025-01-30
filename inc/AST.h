@@ -69,6 +69,7 @@
 #define __FUNCTIONDECL_NAME     "FunctionDecl"
 #define __GENERIC_NAME          "Generic"
 #define __GLOBAL_NAME           "Global"
+#define __GRAD_NAME             "Grad"
 #define __IF_NAME               "If"
 #define __INPUT_NAME            "Input"
 #define __LOOPCTRL_NAME         "LoopCtrl"
@@ -134,11 +135,19 @@ namespace AVSI {
     public:
         string __AST_name;
 
+        map<string, shared_ptr<AST>> derivative;
+
         AST(void) {};
 
-        AST(string name) : __AST_name(std::move(name)) {};
+        AST(string name) : 
+            token(emptyToken),
+            __AST_name(std::move(name)),
+            derivative(map<string, shared_ptr<AST>>()) {};
 
-        AST(string name, const Token &token) : token(token), __AST_name(std::move(name)) {};
+        AST(string name, const Token &token) : 
+            token(token),
+            __AST_name(std::move(name)),
+            derivative(map<string, shared_ptr<AST>>()) {};
 
         virtual ~AST() {};
 
@@ -375,6 +384,25 @@ namespace AVSI {
                   is_mangle(true) {};
 
         virtual ~Global();
+
+        llvm::Value *codeGen() override;
+
+        void dump(int depth) override;
+    };
+
+    class Grad : public AST {
+    public:
+        shared_ptr<AST> expr;
+        vector<pair<string, int>> vars;
+
+        Grad(void) : AST(__GRAD_NAME), expr(nullptr), vars(vector<pair<string, int>>()) {};
+
+        Grad(shared_ptr<AST> expr, vector<pair<string, int>> vars, Token token):
+            AST(__GRAD_NAME, token),
+            expr(expr),
+            vars(vars) {};
+
+        virtual ~Grad() {};
 
         llvm::Value *codeGen() override;
 
@@ -708,6 +736,14 @@ namespace AVSI {
     void llvm_emit_ir();
 
     void llvm_create_dir(string dir);
+
+    shared_ptr<AST> derivator(shared_ptr<AST> ast, string name);
+
+    shared_ptr<AST> derivator_for_function_call(shared_ptr<AST> ast, string name);
+
+    shared_ptr<AST> derivator_for_special_function(shared_ptr<AST> ast, int index);
+
+    shared_ptr<AST> derivator_for_member_function(shared_ptr<AST> ast, int index);
 } // namespace AVSI
 
 #endif

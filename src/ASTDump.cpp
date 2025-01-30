@@ -173,6 +173,20 @@ namespace AVSI {
         if (var) this->var->dump(depth + 1);
     }
 
+    void Grad::dump(int depth) {
+        printBlank(depth);
+        PRINT_LINE_COLUNM();
+        printBlank(depth + 1);
+        cout << "- expr: " << endl;
+        if (this->expr) this->expr->dump(depth + 1);
+        printBlank(depth + 1);
+        cout << "- vars: " << endl;
+        for (auto i : this->vars) {
+            printBlank(depth + 2);
+            cout << i.first << ", " << i.second << endl;
+        }
+    }
+
     void If::dump(int depth) {
         printBlank(depth);
         PRINT_LINE_COLUNM();

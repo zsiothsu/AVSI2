@@ -331,6 +331,9 @@ namespace AVSI {
         } else if (token_type == IMPORT) {
             PARSE_LOG(STATEMENT);
             return moduleImport();
+        } else if (token_type == GRAD) {
+            PARSE_LOG(STATEMENT);
+            return grad();
         }
 
         for (auto op: ExprOp) {
@@ -534,6 +537,55 @@ namespace AVSI {
         shared_ptr<AST> var = variable();
 
         return make_shared<Global>(Global(var, token));
+    }
+
+    shared_ptr<AST> Parser::grad() {
+        PARSE_LOG(GRAD);
+
+        Token token = this->currentToken;
+        eat(GRAD);
+        eat(LPAR);
+        auto expr_to_grad = expr();
+
+        eat(COMMA);
+
+        vector<pair<string, int>> vars;
+
+        while (
+            (this->currentToken.getType() == ID)
+            || (this->currentToken.getType() == LBRACE)
+        ) {
+            if (this->currentToken.getType() == ID) {
+                auto var = variable();
+                if (!static_pointer_cast<Variable>(var)->offset.empty()) {
+                    throw ExceptionFactory<LogicException>(
+                            "the derivative variable cannot be a member function, array element, or function",
+                            var->getToken().line, var->getToken().column
+                    );
+                }
+                vars.push_back({static_pointer_cast<Variable>(var)->id, 1});
+            } else {
+                eat(LBRACE);
+                auto var = variable();
+                eat(COMMA);
+                Token num_token = this->currentToken;
+                eat(INTEGER);
+                eat(RBRACE);
+                vars.push_back({static_pointer_cast<Variable>(var)->id, num_token.getValue().any_cast<int>()});
+            }
+
+            if (this->currentToken.getType() == COMMA) {
+                eat(COMMA);
+            } else {
+                break;
+            }
+        }
+
+
+        eat(RPAR);
+
+
+        return make_shared<Grad>(Grad(expr_to_grad, vars, token));
     }
 
     shared_ptr<AST> Parser::moduleDef() {
@@ -1029,6 +1081,9 @@ namespace AVSI {
         switch (ty) {
             case SIZEOF:
                 ret = sizeOf();
+                break;
+            case GRAD:
+                ret = grad();
                 break;
             case INTEGER:
             case FLOAT:

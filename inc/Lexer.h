@@ -139,6 +139,7 @@ namespace AVSI {
             {"char",      I8},
             {"sizeof",    SIZEOF},
             {"typename",  TYPENAME},
+            {"grad",      GRAD},
             {"break",     BREAK},
             {"continue",  CONTINUE},
             {"no_mangle", NOMANGLE},

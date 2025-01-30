@@ -77,6 +77,8 @@ namespace AVSI {
 
         shared_ptr<AST> global();
 
+        shared_ptr<AST> grad();
+
         shared_ptr<AST> moduleDef();
 
         shared_ptr<AST> moduleImport();

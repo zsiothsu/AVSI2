@@ -783,4 +783,516 @@ namespace AVSI {
         }
         filesystem::create_directory(d);
     }
+
+    shared_ptr<AST> derivator(shared_ptr<AST> ast, string name) {
+        if (ast->__AST_name == __BINOP_NAME) {
+            shared_ptr<BinOp> binop = static_pointer_cast<BinOp>(ast);
+            auto left = derivator(binop->left, name);
+            auto right = derivator(binop->right, name);
+
+            if (left->__AST_name != __NONEAST_NAME && right->__AST_name != __NONEAST_NAME) {
+                auto type = ast->getToken().getType();
+                if (type == PLUS) {
+                    // (f(x) + g(x))' = f'(x) + g'(x)
+                    return make_shared<BinOp>(
+                        BinOp(left, Token(PLUS, "+", ast->getToken().line, ast->getToken().column), right)
+                    ); 
+                } else if (type == MINUS) {
+                    // (f(x) - g(x))' = f'(x) - g'(x)
+                    return make_shared<BinOp>(
+                        BinOp(left, Token(MINUS, "-", ast->getToken().line, ast->getToken().column), right)
+                    ); 
+                } else if (type == STAR) {
+                    // (f(x) * g(x))' = f'(x) * g(x) + f(x) * g'(x)
+                    auto tmp1 = make_shared<BinOp>(
+                        BinOp(left, Token(STAR, "*", ast->getToken().line, ast->getToken().column), binop->right)
+                    );
+                    auto tmp2 = make_shared<BinOp>(
+                        BinOp(binop->left, Token(STAR, "*", ast->getToken().line, ast->getToken().column), right)
+                    );
+                    return make_shared<BinOp>(
+                        BinOp(tmp1, Token(PLUS, "+", ast->getToken().line, ast->getToken().column), tmp2)
+                    );
+                } else if (type == SLASH) {
+                    // (f(x) / g(x))' = (f'(x) * g(x) - f(x) * g'(x)) / g(x)^2
+                    auto tmp1 = make_shared<BinOp>(
+                        BinOp(left, Token(STAR, "*", ast->getToken().line, ast->getToken().column), binop->right)
+                    );
+                    auto tmp2 = make_shared<BinOp>(
+                        BinOp(binop->left, Token(STAR, "*", ast->getToken().line, ast->getToken().column), right)
+                    );
+                    auto tmp3 = make_shared<BinOp>(
+                        BinOp(tmp1, Token(MINUS, "-", ast->getToken().line, ast->getToken().column), tmp2)
+                    );
+                    return make_shared<BinOp>(
+                        BinOp(tmp3, Token(SLASH, "/", ast->getToken().line, ast->getToken().column), make_shared<BinOp>(
+                            BinOp(binop->right, Token(STAR, "*", ast->getToken().line, ast->getToken().column), binop->right)
+                        ))
+                    );
+                }
+            } else if (left->__AST_name != __NONEAST_NAME) {
+                auto type = ast->getToken().getType();
+                if (type == PLUS) {
+                    return left;
+                } else if (type == MINUS) {
+                    return left;
+                } else if (type == STAR) {
+                    return make_shared<BinOp>(
+                        BinOp(left, Token(STAR, "*", ast->getToken().line, ast->getToken().column), binop->right)
+                    );
+                } else if (type == SLASH) {
+                    return make_shared<BinOp>(
+                        BinOp(left, Token(SLASH, "/", ast->getToken().line, ast->getToken().column), binop->right)
+                    );
+                }
+            } else if (right->__AST_name != __NONEAST_NAME) {
+                auto type = ast->getToken().getType();
+                if (type == PLUS) {
+                    return right;
+                } else if (type == MINUS) {
+                    return make_shared<UnaryOp>(
+                        UnaryOp(Token(MINUS, "-", ast->getToken().line, ast->getToken().column), right)
+                    );
+                } else if (type == STAR) {
+                    return make_shared<BinOp>(
+                        BinOp(binop->left, Token(STAR, "*", ast->getToken().line, ast->getToken().column), right)
+                    );
+                } else if (type == SLASH) {
+                    auto tmp1 = make_shared<BinOp>(
+                        BinOp(binop->left, Token(STAR, "*", ast->getToken().line, ast->getToken().column), right)
+                    );
+                    auto tmp2 = make_shared<BinOp>(
+                        BinOp(binop->right, Token(STAR, "*", ast->getToken().line, ast->getToken().column), binop->right)
+                    );
+                    auto tmp3 = make_shared<BinOp>(
+                        BinOp(tmp1, Token(SLASH, "/", ast->getToken().line, ast->getToken().column), tmp2)
+                    );
+                    return make_shared<UnaryOp>(
+                        UnaryOp(Token(MINUS, "-", ast->getToken().line, ast->getToken().column), tmp3)
+                    );
+                }
+            } else {
+                return make_shared<NoneAST>(NoneAST());
+            }
+        } else if (ast->__AST_name == __UNARYTOP_NAME) {
+            shared_ptr<UnaryOp> unaryop = static_pointer_cast<UnaryOp>(ast);
+            auto expr = derivator(unaryop->right, name);
+            
+            if (expr->__AST_name != __NONEAST_NAME) {
+                auto type = ast->getToken().getType();
+                if (type == PLUS) {
+                    return expr;
+                } else if (type == MINUS) {
+                    return make_shared<UnaryOp>(
+                        UnaryOp(Token(MINUS, "-", ast->getToken().line, ast->getToken().column), expr)
+                    );
+                }
+            } else {
+                return make_shared<NoneAST>(NoneAST());
+            }
+        } else if (ast->__AST_name == __FUNCTIONCALL_NAME) {
+            return derivator_for_function_call(ast, name);
+        } else if (ast->__AST_name == __NUM_NAME) {
+            return make_shared<NoneAST>(NoneAST());
+        } else if (ast->__AST_name == __VARIABLE_NAME) {
+            auto var = static_pointer_cast<Variable>(ast);
+
+            llvm::Value *v = symbol_table->find(var->id);
+
+            if (!v) {
+                throw ExceptionFactory<MissingException>(
+                    "variable " + var->id + " is not defined in current function. "
+                    "please check the variable name, global variable is not supported in derivation",
+                    var->getToken().line,
+                    var->getToken().column
+                );
+            }
+
+            if (var->id == name) {
+                if (!var->offset.empty() && var->offset.rbegin()->first != Variable::offsetType::FUNCTION) {
+                    throw ExceptionFactory<LogicException>(
+                        "derivation of variable with offset is not supported, "
+                        "unsupported variable is in line " + to_string(var->getToken().line) + " column " + to_string(var->getToken().column),
+                        var->getToken().line,
+                        var->getToken().column
+                    );
+                } else if (!var->offset.empty() && var->offset.rbegin()->first == Variable::offsetType::FUNCTION) {
+                    // TODO
+                } else {
+                    return make_shared<Num>(Num(Token(INTEGER, 1, ast->getToken().line, ast->getToken().column)));
+                }
+            } else {
+                auto variable_assign_ast = symbol_table->getAssignedAST(var->id);
+                return derivator(variable_assign_ast, name);
+            }
+        } else {
+            return make_shared<NoneAST>(NoneAST());
+        }
+    }
+
+    /**
+     * @description:    derivator for function call
+     * @param:          ast: AST node
+     *                  name: name of independent variable
+     * @return:         derivated AST
+     */
+    shared_ptr<AST> derivator_for_function_call(shared_ptr<AST> ast, string name) {
+        shared_ptr<FunctionCall> func = static_pointer_cast<FunctionCall>(ast);
+        // store f'1(a, b, ...) a', f'2(a, b, ...) b', ...
+        vector<shared_ptr<AST>> tmp_ast;    
+
+        for (int i = 0; i < func->paramList.size(); i++) {
+            auto tmp = derivator(func->paramList[i], name);
+            if (tmp->__AST_name != __NONEAST_NAME) {
+                tmp_ast.push_back(
+                    make_shared<BinOp>(
+                        BinOp(
+                            tmp,
+                            Token(STAR, "*", func->paramList[i]->getToken().line, func->paramList[i]->getToken().column),
+                            derivator_for_special_function(func, i)
+                        )
+                    )
+                );
+            }   
+        }
+
+        if (tmp_ast.empty()) {
+            return make_shared<NoneAST>(NoneAST());
+        } else if (tmp_ast.size() == 1) {
+            return tmp_ast[0];
+        } else {
+            auto tmp = tmp_ast[0];
+            for (int i = 1; i < tmp_ast.size(); i++) {
+                tmp = make_shared<BinOp>(
+                    BinOp(
+                        tmp,
+                        Token(PLUS, "+", func->getToken().line, func->getToken().column),
+                        tmp_ast[i]
+                    )
+                );
+            }
+            return tmp;
+        }
+    }
+
+    /**
+     * @description:    derivator for special function
+     * @param:          ast: AST node
+     *                  index: index of parameter
+     * @return:         derivated AST for function
+     * @note:           You might wonder why I have so much free time to list all these
+     *                  functions. But actually, these were all generated by AI. This is
+     *                  the first time I've been truly amazed by AI.
+     */
+    shared_ptr<AST> derivator_for_special_function(shared_ptr<AST> ast, int index) {
+        shared_ptr<FunctionCall> func = static_pointer_cast<FunctionCall>(ast);
+
+        if (func->id == "sin") {
+            // d/dx sin(x) = cos(x)
+            return make_shared<FunctionCall>(
+                FunctionCall(
+                    "cos",
+                    func->paramList,
+                    func->getToken()
+                )
+            );
+        } else if (func->id == "cos") {
+            // d/dx cos(x) = -sin(x)
+            return make_shared<UnaryOp>(
+                UnaryOp(
+                    Token(MINUS, "-", func->getToken().line, func->getToken().column),
+                    make_shared<FunctionCall>(
+                        FunctionCall(
+                            "sin",
+                            func->paramList,
+                            func->getToken()
+                        )
+                    )
+                )
+            );
+        } else if (func->id == "tan") {
+            // d/dx tan(x) = sec^2(x)
+            return make_shared<BinOp>(
+                BinOp(
+                    make_shared<FunctionCall>(
+                        FunctionCall(
+                            "sec",
+                            func->paramList,
+                            func->getToken()
+                        )
+                    ),
+                    Token(STAR, "*", func->getToken().line, func->getToken().column),
+                    make_shared<FunctionCall>(
+                        FunctionCall(
+                            "sec",
+                            func->paramList,
+                            func->getToken()
+                        )
+                    )
+                )
+            );
+        } else if (func->id == "cot") {
+            // d/dx cot(x) = -csc^2(x)
+            return make_shared<UnaryOp>(
+                UnaryOp(
+                    Token(MINUS, "-", func->getToken().line, func->getToken().column),
+                    make_shared<BinOp>(
+                        BinOp(
+                            make_shared<FunctionCall>(
+                                FunctionCall(
+                                    "csc",
+                                    func->paramList,
+                                    func->getToken()
+                                )
+                            ),
+                            Token(STAR, "*", func->getToken().line, func->getToken().column),
+                            make_shared<FunctionCall>(
+                                FunctionCall(
+                                    "csc",
+                                    func->paramList,
+                                    func->getToken()
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        } else if (func->id == "sec") {
+            // d/dx sec(x) = sec(x) * tan(x)
+            return make_shared<BinOp>(
+                BinOp(
+                    make_shared<FunctionCall>(
+                        FunctionCall(
+                            "sec",
+                            func->paramList,
+                            func->getToken()
+                        )
+                    ),
+                    Token(STAR, "*", func->getToken().line, func->getToken().column),
+                    make_shared<FunctionCall>(
+                        FunctionCall(
+                            "tan",
+                            func->paramList,
+                            func->getToken()
+                        )
+                    )
+                )
+            );
+        } else if (func->id == "csc") {
+            // d/dx csc(x) = -csc(x) * cot(x)
+            return make_shared<UnaryOp>(
+                UnaryOp(
+                    Token(MINUS, "-", func->getToken().line, func->getToken().column),
+                    make_shared<BinOp>(
+                        BinOp(
+                            make_shared<FunctionCall>(
+                                FunctionCall(
+                                    "csc",
+                                    func->paramList,
+                                    func->getToken()
+                                )
+                            ),
+                            Token(STAR, "*", func->getToken().line, func->getToken().column),
+                            make_shared<FunctionCall>(
+                                FunctionCall(
+                                    "cot",
+                                    func->paramList,
+                                    func->getToken()
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        } else if (func->id == "log") {
+            // d/dx log(x) = 1 / x
+            return make_shared<BinOp>(
+                BinOp(
+                    make_shared<Num>(
+                        Num(Token(INTEGER, 1, func->getToken().line, func->getToken().column))
+                    ),
+                    Token(SLASH, "/", func->getToken().line, func->getToken().column),
+                    func->paramList[0]
+                )
+            );
+        } else if (func->id == "exp") {
+            // d/dx exp(x) = exp(x)
+            return func;
+        } else if (func->id == "sqrt") {
+            // d/dx sqrt(x) = 1 / (2 * sqrt(x))
+            return make_shared<BinOp>(
+                BinOp(
+                    make_shared<Num>(
+                        Num(Token(INTEGER, 1, func->getToken().line, func->getToken().column))
+                    ),
+                    Token(SLASH, "/", func->getToken().line, func->getToken().column),
+                    make_shared<BinOp>(
+                        BinOp(
+                            make_shared<Num>(
+                                Num(Token(INTEGER, 2, func->getToken().line, func->getToken().column))
+                            ),
+                            Token(STAR, "*", func->getToken().line, func->getToken().column),
+                            make_shared<FunctionCall>(
+                                FunctionCall(
+                                    "sqrt",
+                                    func->paramList,
+                                    func->getToken()
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        } else if (func->id == "arcsin") {
+            // d/dx arcsin(x) = 1 / sqrt(1 - x^2)
+            return make_shared<BinOp>(
+                BinOp(
+                    make_shared<Num>(
+                        Num(Token(INTEGER, 1, func->getToken().line, func->getToken().column))
+                    ),
+                    Token(SLASH, "/", func->getToken().line, func->getToken().column),
+                    make_shared<FunctionCall>(
+                        FunctionCall(
+                            "sqrt",
+                            {
+                                make_shared<BinOp>(
+                                    BinOp(
+                                        make_shared<Num>(
+                                            Num(Token(INTEGER, 1, func->getToken().line, func->getToken().column))
+                                        ),
+                                        Token(MINUS, "-", func->getToken().line, func->getToken().column),
+                                        make_shared<BinOp>(
+                                            BinOp(
+                                                func->paramList[0],
+                                                Token(STAR, "*", func->getToken().line, func->getToken().column),
+                                                func->paramList[0]
+                                            )
+                                        )
+                                    )
+                                )
+                            },
+                            func->getToken()
+                        )
+                    )
+                )
+            );
+        } else if (func->id == "arccos") {
+            // d/dx arccos(x) = -1 / sqrt(1 - x^2)
+            return make_shared<UnaryOp>(
+                UnaryOp(
+                    Token(MINUS, "-", func->getToken().line, func->getToken().column),
+                    make_shared<BinOp>(
+                        BinOp(
+                            make_shared<Num>(
+                                Num(Token(INTEGER, 1, func->getToken().line, func->getToken().column))
+                            ),
+                            Token(SLASH, "/", func->getToken().line, func->getToken().column),
+                            make_shared<FunctionCall>(
+                                FunctionCall(
+                                    "sqrt",
+                                    {
+                                        make_shared<BinOp>(
+                                            BinOp(
+                                                make_shared<Num>(
+                                                    Num(Token(INTEGER, 1, func->getToken().line, func->getToken().column))
+                                                ),
+                                                Token(MINUS, "-", func->getToken().line, func->getToken().column),
+                                                make_shared<BinOp>(
+                                                    BinOp(
+                                                        func->paramList[0],
+                                                        Token(STAR, "*", func->getToken().line, func->getToken().column),
+                                                        func->paramList[0]
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    },
+                                    func->getToken()
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        } else if (func->id == "arctan") {
+            // d/dx arctan(x) = 1 / (1 + x^2)
+            return make_shared<BinOp>(
+                BinOp(
+                    make_shared<Num>(
+                        Num(Token(INTEGER, 1, func->getToken().line, func->getToken().column))
+                    ),
+                    Token(SLASH, "/", func->getToken().line, func->getToken().column),
+                    make_shared<BinOp>(
+                        BinOp(
+                            make_shared<Num>(
+                                Num(Token(INTEGER, 1, func->getToken().line, func->getToken().column))
+                            ),
+                            Token(PLUS, "+", func->getToken().line, func->getToken().column),
+                            make_shared<BinOp>(
+                                BinOp(
+                                    func->paramList[0],
+                                    Token(STAR, "*", func->getToken().line, func->getToken().column),
+                                    func->paramList[0]
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        } else if (func->id == "arccot") {
+            // d/dx arccot(x) = -1 / (1 + x^2)
+            return make_shared<UnaryOp>(
+                UnaryOp(
+                    Token(MINUS, "-", func->getToken().line, func->getToken().column),
+                    make_shared<BinOp>(
+                        BinOp(
+                            make_shared<Num>(
+                                Num(Token(INTEGER, 1, func->getToken().line, func->getToken().column))
+                            ),
+                            Token(SLASH, "/", func->getToken().line, func->getToken().column),
+                            make_shared<BinOp>(
+                                BinOp(
+                                    make_shared<Num>(
+                                        Num(Token(INTEGER, 1, func->getToken().line, func->getToken().column))
+                                    ),
+                                    Token(PLUS, "+", func->getToken().line, func->getToken().column),
+                                    make_shared<BinOp>(
+                                        BinOp(
+                                            func->paramList[0],
+                                            Token(STAR, "*", func->getToken().line, func->getToken().column),
+                                            func->paramList[0]
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        } else {
+            return make_shared<FunctionCall>(
+                FunctionCall(
+                    func->id + "_diff" + to_string(index),
+                    func->paramList,
+                    func->getToken()
+                )
+            );
+        }
+    }
+
+    shared_ptr<AST> derivator_for_member_function(shared_ptr<AST> ast, int index) {
+        shared_ptr<Variable> var = static_pointer_cast<Variable>(ast);
+        
+        // TODO
+
+        for (auto i = var->offset.rbegin(); i != var->offset.rend(); i++) {
+            if (i->first == Variable::offsetType::FUNCTION) {
+                auto func = static_pointer_cast<FunctionCall>(i->second);
+                func->id = func->id + "_diff" + to_string(index);
+                break;
+            }
+        }
+
+        return var;
+    }
 }
