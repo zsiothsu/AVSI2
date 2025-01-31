@@ -269,17 +269,28 @@ namespace AVSI {
     }
 
     shared_ptr<AST> Parser::statement() {
-        bool is_export = false;
+        bool is_export = true;
         bool is_mangle = true;
 
-        if (this->currentToken.getType() == EXPORT) {
-            is_export = true;
-            eat(EXPORT);
-        }
+        while (
+            this->currentToken.getType() == EXPORT ||
+            this->currentToken.getType() == PRIVATE ||
+            this->currentToken.getType() == NOMANGLE
+        ) {
+            if (this->currentToken.getType() == EXPORT) {
+                is_export = true;
+                eat(EXPORT);
+            }
 
-        if (this->currentToken.getType() == NOMANGLE) {
-            is_mangle = false;
-            eat(NOMANGLE);
+            if (this->currentToken.getType() == PRIVATE) {
+                is_export = false;
+                eat(PRIVATE);
+            }
+
+            if (this->currentToken.getType() == NOMANGLE) {
+                is_mangle = false;
+                eat(NOMANGLE);
+            }
         }
 
         TokenType token_type = this->currentToken.getType();

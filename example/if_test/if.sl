@@ -2,7 +2,7 @@ mod if_test::if
 
 import std::io
 
-export function foo_iftest(a: i32) -> bool {
+function foo_iftest(a: i32) -> bool {
     b = 1
     c = true
     ret = false

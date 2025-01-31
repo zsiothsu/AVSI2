@@ -134,6 +134,7 @@ namespace AVSI {
             {"global",    GLOBAL},
             {"import",    IMPORT},
             {"export",    EXPORT},
+            {"private",   PRIVATE},
             {"mod",       MODULE},
             {"real",      F64},
             {"arr",       ARR},

@@ -12,12 +12,16 @@ import type_test
 import root::submod as sub
 import grad_test
 
-export no_mangle function main(argc: i32, argv: char**) -> i32 {
+import test_project
+
+no_mangle function main(argc: i32, argv: char**) -> i32 {
     std::io::println("\n=============== test begin ===============")
 
     /*
      * multi-line comment
      */
+
+    test_project::it_works()
 
     a = function_test::fun::foo_p_i64_r_f64(1 as i64)
     // call with absulote path
@@ -77,6 +81,8 @@ export no_mangle function main(argc: i32, argv: char**) -> i32 {
 
     io::print("f(x) = arctan(x) + x\nf'(0): ")
     io::println("%.6lf", grad_test::simple_grad::grad_func(0))
+
+    grad_test::simple_grad::grad_foo(3.14)
 
     io::println("\n================ test end ================")
     io::println("num args: %d", argc)

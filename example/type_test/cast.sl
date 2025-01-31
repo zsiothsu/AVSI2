@@ -1,6 +1,6 @@
 mod type_test::cast
 
-export function cast_test() {
+function cast_test() {
     a = 1
     b = 1.5
     c = b as i64

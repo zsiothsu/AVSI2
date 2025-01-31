@@ -104,11 +104,6 @@ namespace AVSI {
                 skipWhiteSpace();
                 continue;
             }
-            if (this->currentChar == '#') {
-                this->cur = this->line.length();
-                advance();
-                continue;
-            }
             if (this->currentChar == '/') {
                 if (peek() == '/') {
                     this->cur = this->line.length();

@@ -2,7 +2,7 @@ mod loop_test::while
 
 import std::io
 
-export function while_test(x: f64) -> f64{
+function while_test(x: f64) -> f64{
     a = x
     i = 0
     x = 1

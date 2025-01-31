@@ -2,7 +2,7 @@ mod loop_test::for
 
 import std::io
 
-export function for_test() {
+function for_test() {
     for (i = 0; i -lt 10; i = i + 1) do
         a = 'a' + i as i8
         if [ a < 'e' ] then

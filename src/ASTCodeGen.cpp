@@ -153,6 +153,10 @@ namespace AVSI {
     }
 
     uint64_t registerType(llvm::Type *Ty) {
+        if (Ty == nullptr) {
+            return 0;
+        }
+
         llvm::Constant *s = llvm::ConstantInt::get(I64_TY, the_module->getDataLayout().getTypeAllocSize(Ty));
         auto size = llvm::dyn_cast<llvm::ConstantInt>(s)->getLimitedValue();
         if (type_size.find(Ty) == type_size.end()) {
@@ -1706,7 +1710,7 @@ namespace AVSI {
 
 
             caller_args[i] = v;
-            callee_arg_iter++;
+            if (callee_arg_iter != fun->args().end()) callee_arg_iter++;
         }
 
         if (this->param_this) {
