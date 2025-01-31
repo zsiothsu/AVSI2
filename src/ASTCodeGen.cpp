@@ -1233,9 +1233,10 @@ namespace AVSI {
         }
 
         llvm::FunctionType *FT = llvm::FunctionType::get(
-                retTy,
-                Tys,
-                false);
+            retTy,
+            Tys,
+            static_pointer_cast<Param>(this->paramList)->is_va_arg
+        );
 
         if (the_module->getFunction(this->id) == nullptr) {
             builder->ClearInsertionPoint();
@@ -1446,7 +1447,10 @@ namespace AVSI {
                     this->getToken().line, this->getToken().column);
         }
 
-        if (fun->arg_size() != this->paramList.size() + (this->param_this ? 1 : 0)) {
+        if (
+            (!fun->isVarArg() && (fun->arg_size() != this->paramList.size() + (this->param_this ? 1 : 0)))
+            || (fun->isVarArg() && ((fun->arg_size() > this->paramList.size() + (this->param_this ? 1 : 0))))
+        ) {
             // if function has declared, check parameters' size
             throw ExceptionFactory<LogicException>(
                     "candidate function not viable: requires " +
@@ -1479,12 +1483,12 @@ namespace AVSI {
             llvm::Type *callee_type = callee_arg_iter->getType();
             llvm::Type *caller_type = v->getType();
 
-            if (type_size.find(callee_type) == type_size.end()) registerType(callee_type);
+            if (callee_arg_iter != fun->args().end() && type_size.find(callee_type) == type_size.end()) registerType(callee_type);
             if (type_size.find(caller_type) == type_size.end()) registerType(caller_type);
-
 
             if (caller_type->isArrayTy()) {
                 llvm::AllocaInst *addr = (llvm::AllocaInst *) llvm::getLoadStorePointerOperand(v);
+
                 if (!addr) {
                     llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
                     addr = allocaBlockEntry(the_scope, "array.init", caller_type);
@@ -1500,14 +1504,21 @@ namespace AVSI {
                         },
                         "arraydecay"
                 );
+
                 caller_type = v->getType();
                 if (type_size.find(caller_type) == type_size.end()) registerType(caller_type);
             } else if (
                 caller_type->isStructTy() &&
-                ((llvm::PointerType*)(callee_type))->getPointerElementType()->isStructTy() && 
-                ((llvm::StructType*)(((llvm::PointerType*)callee_type)->getPointerElementType()))->isLayoutIdentical((llvm::StructType *) caller_type)
+                (
+                    (callee_arg_iter == fun->args().end()) ||
+                    (
+                        ((llvm::PointerType*)(callee_type))->getPointerElementType()->isStructTy() && 
+                        ((llvm::StructType*)(((llvm::PointerType*)callee_type)->getPointerElementType()))->isLayoutIdentical((llvm::StructType *) caller_type)
+                    )
+                )
             ) {
                 llvm::AllocaInst *addr = (llvm::AllocaInst *) llvm::getLoadStorePointerOperand(v);
+
                 if (!addr) {
                     llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
                     addr = allocaBlockEntry(the_scope, "struct.init", caller_type);
@@ -1523,10 +1534,11 @@ namespace AVSI {
                         },
                         "structdecay"
                 );
-                v = builder->CreatePointerCast(v, callee_type);                
+                
+                v = builder->CreatePointerCast(v, caller_type->getPointerTo());                
                 caller_type = v->getType();
                 if (type_size.find(caller_type) == type_size.end()) registerType(caller_type);
-            } else if (callee_type != caller_type) {
+            } else if ((callee_arg_iter != fun->args().end()) && callee_type != caller_type) {
                 try {
                     v = type_conv(arg.get(), v, caller_type, callee_type, false);
                 } catch (...) {
@@ -1537,6 +1549,7 @@ namespace AVSI {
                             arg->getToken().line, arg->getToken().column);
                 }
             }
+
 
             caller_args[i] = v;
             callee_arg_iter++;

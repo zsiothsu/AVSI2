@@ -10,15 +10,14 @@ export function while_test(x: f64) -> f64{
     while [ i < a ] do
         x = x * 2
         if [ a  -lt 128 ] then
-            std::io::printReal(x as real)
-            std::io::printStr(" ")
+            print("%d ",x)
         else
             break
         fi
         i = i + 1
     done
 
-    std::io::printStr("\n")
+    std::io::println("")
 
     return 0
 }

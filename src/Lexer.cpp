@@ -109,6 +109,39 @@ namespace AVSI {
                 advance();
                 continue;
             }
+            if (this->currentChar == '/') {
+                if (peek() == '/') {
+                    this->cur = this->line.length();
+                    advance();
+                    continue;
+                }
+                if (peek() == '*') {
+                    advance();
+                    advance();
+                    bool eof = false;
+                    while (true) {
+                        if (this->currentChar == EOF) {
+                            eof = true;
+                            break;
+                        } else if (this->currentChar == '*' && peek() == '/') {
+                            advance();
+                            advance();
+                            break;
+                        } else {
+                            advance();
+                        }
+                    }
+                    if (eof) break;
+                }
+            }
+            if (this->currentChar == '.') {
+                if (peek2() == "..") {
+                    advance();
+                    advance();
+                    advance();
+                    return Token(VARARG, string("..."), line, column);
+                }
+            }
             if (isdigit(this->currentChar)) { return number(); }
             if (isalpha(this->currentChar) || this->currentChar == '_') {
                 return Id();
@@ -317,6 +350,27 @@ namespace AVSI {
         }
 
         return string({first, second});
+    }
+
+    /**
+     * @description:    get three characters early
+     * @param:          None
+     * @return:         three chars peeked
+     */
+    string Lexer::peek3() {
+        char first = peek();
+        char second;
+        char third;
+
+        if (this->cur + 3 < this->line.length()) {
+            second = this->line[this->cur + 2];
+            third = this->line[this->cur + 3];
+        } else {
+            second = this->currentChar = 0;
+            third = this->currentChar = 0;
+        }
+
+        return string({first, second, third});
     }
 
     /**

@@ -13,7 +13,7 @@ import root::submod as sub
 import grad_test
 
 export no_mangle function main(argc: i32, argv: char**) -> i32 {
-    std::io::printStr("\n=============== test begin ===============\n")
+    std::io::println("\n=============== test begin ===============")
 
     # call with relative path
     a = function_test::fun::foo_p_i64_r_f64(1 as i64)
@@ -50,39 +50,30 @@ export no_mangle function main(argc: i32, argv: char**) -> i32 {
     sub::submod::test::test()
 
     type_test::global::global_init()
-    io::printReal(type_test::global::global_variable)
-    io::printStr("\n")
+    io::println("%d", type_test::global::global_variable)
     type_test::global::global_variable = 5678
-    io::printReal(type_test::global::global_variable)
+    io::println("%d", type_test::global::global_variable)
 
-    io::printStr("generic fun i32\n")
-    io::printReal(ft::generic_fun(1 as i32))
-    io::printStr("\n")
+    io::println("generic fun i32")
+    io::println("%d", ft::generic_fun(1 as i32))
 
-    io::printStr("generic fun i64\n")
-    io::printReal(ft::generic_fun(1 as i64))
-    io::printStr("\n")
+    io::println("generic fun i64")
+    io::println("%d", ft::generic_fun(1 as i64))
 
-    io::printStr("f(x) = x^3\nf''(6):\n")
-    io::printReal(grad_test::simple_grad::grad_x_x_x(6))
-    io::printStr("\n")
+    io::println("f(x) = x^3\nf''(6):")
+    io::println("%.6lf", grad_test::simple_grad::grad_x_x_x(6))
 
-    io::printStr("f(x) = ((3 / x + 1) + (x * x / 2)) / (x - 1)\nf''(6):\n")
-    io::printReal(grad_test::simple_grad::grad_complex(6))
-    io::printStr("\n")
+    io::println("f(x) = ((3 / x + 1) + (x * x / 2)) / (x - 1)\nf''(6):")
+    io::println("%.6lf", grad_test::simple_grad::grad_complex(6))
 
-    io::printStr("f(x, y) = 2x^2y^2\nd/dx^2dy(f(2,2))\n")
-    io::printReal(grad_test::simple_grad::grad_2d(2, 2))
-    io::printStr("\n")
+    io::println("f(x, y) = 2x^2y^2\nd/dx^2dy(f(2,2))")
+    io::println("%.6lf", grad_test::simple_grad::grad_2d(2, 2))
 
-    std::io::printStr("\n================ test end ================\n")
-    std::io::printStr("num args: ")
-    std::io::printReal(argc as real)
-    std::io::printStr("\n")
+    io::println("\n================ test end ================")
+    io::println("num args: %d", argc)
 
     for (i = 0; i < argc; i = i + 1) do
-        std::io::printStr(argv[i])
-        std::io::printStr("\n")
+        std::io::println("%s", argv[i])
     done
 
 
@@ -96,15 +87,12 @@ export no_mangle function main(argc: i32, argv: char**) -> i32 {
     " /_/    \\_\\/  |_____/|_____|\n"
     "\033[0m"
 
-    io::printStr(banner)
+    io::println(banner)
 
     str = {:char:100}
-    io::printStr("\nHello World!\n")
-    io::printStr("input: ")
-    io::readStr(str)
-    io::printStr("your input: ")
-    io::printStr(str)
-    io::printStr("\n")
+    io::print("\nHello World!\ninput:")
+    io::read("%s", str)
+    io::println("your input: %s", str)
 
     return 0
 }

@@ -850,9 +850,15 @@ namespace AVSI {
     shared_ptr<AST> Parser::param() {
         PARSE_LOG(PARAM);
 
-        shared_ptr<Param> param = make_shared<Param>(Param(this->lastToken));
+        shared_ptr<Param> param = make_shared<Param>(Param(false, this->lastToken));
         set<string> paramSet;
-        while (this->currentToken.getType() == ID) {
+        while ((this->currentToken.getType() == ID) || (this->currentToken.getType() == VARARG)) {
+            if (this->currentToken.getType() == VARARG) {
+                eat(VARARG);
+                param->is_va_arg = true;
+                return param;
+            }
+
             Variable *var = new Variable(this->currentToken);
             string id = this->currentToken.getValue().any_cast<string>();
             if (paramSet.find(id) != paramSet.end()) {

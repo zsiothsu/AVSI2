@@ -30,7 +30,7 @@ $(LIBAVSI): $(CDIR)/avsi.c $(STDDIR_OUT)/$(STDBC)
 
 $(STDDIR_OUT)/$(STDBC): $(STDDIR)/__init__.sl
 	@echo "building .bc file"
-	@$(CC) $(STDDIR)/__init__.sl -m -o $(STDDIR_OUT)
+	@$(CC) $(STDDIR)/__init__.sl -m -l -o $(STDDIR_OUT)
 
 
 .PHONY: clean

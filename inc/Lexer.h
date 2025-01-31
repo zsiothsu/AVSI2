@@ -73,6 +73,8 @@ namespace AVSI {
 
         string peek2();
 
+        string peek3();
+
         void skipWhiteSpace();
 
         Token str();
@@ -154,7 +156,7 @@ namespace AVSI {
             {"i8",        I8},
             {"isize",     ISIZE},
             {"bool",      BOOL},
-            {"void",      VOID},
+            {"void",      VOID}
     };
 } // namespace AVSI
 

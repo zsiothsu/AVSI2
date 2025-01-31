@@ -265,6 +265,7 @@ namespace AVSI {
         for(auto i : paramList) {
             i->dump(depth + 1);
         }
+        printBlank(depth + 1); cout << "- is_va_arg:" << is_va_arg << endl;
     }
 
     void Return::dump(int depth) {

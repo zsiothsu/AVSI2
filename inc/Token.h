@@ -81,6 +81,7 @@ namespace AVSI {
         DOLLAR,     // $
         COLON,      // :
         TO,         // ->
+        VARARG,     // ...
         // reserved keywork
         FUNCTION,
         RETURN,

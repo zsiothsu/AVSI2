@@ -64,6 +64,7 @@ $(LIBAVSI): $(DIR_LIBAVSI)/C/avsi.c $(DIR_LIBAVSI)/std/__init__.sl $(DIR_OUTPUT)
 $(DIR_OUTPUT)/$(BIN): $(DIR_OUTPUT)/main.o $(OBJS)
 	@$(ECHO) "CXX    $<"
 	@$(CXX) $(LDFLAGS) $^ -o $@
+	@chmod +x $(DIR_OUTPUT)/$(BIN)
 
 $(DIR_OUTPUT)/main.o: $(MAIN)
 	@$(ECHO) "CXX    $<"

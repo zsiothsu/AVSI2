@@ -9,10 +9,10 @@ export function foo_iftest(a: i32) -> bool {
     if [ c && b == 1] then
         if [ a == 1 ] then
             ret = true
-            std::io::printStr("true\n")
+            std::io::println("true")
         else
             ret = false
-            std::io::printStr("false\n")
+            std::io::println("false")
         fi
     fi
 

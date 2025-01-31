@@ -102,7 +102,7 @@ static const char *template_source_main =
         R"(mod main)" "\n\n"
         R"(import std::io)" "\n\n"
         R"(export function main(argc: i32, argv: char**) -> i32 {)" "\n"
-        R"(    std::io::printStr("Hello World!\n"))" "\n"
+        R"(    std::io::println("Hello World!\n"))" "\n"
         R"(    return 0)" "\n"
         R"(})" "\n";
 

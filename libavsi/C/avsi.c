@@ -1,19 +1,27 @@
 #include <stdio.h>
+#include <stdarg.h>
 
-void printStr(char* s) {
-    printf("%s", s);
+int print(char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    int ret = vprintf(fmt, args);
+    va_end(args);
+    return ret;
 }
 
-void printReal(double num) {
-    printf("%f", num);
+int println(char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    int ret = vprintf(fmt, args);
+    va_end(args);
+    printf("\n");
+    return ret + 1;
 }
 
-double readNum() {
-    double num;
-    scanf("%lf", &num);
-    return num;
-}
-
-int readStr(char* str) {
-    return scanf("%s", str);
+int read(char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    int ret = vscanf(fmt, args);
+    va_end(args);
+    return ret;
 }

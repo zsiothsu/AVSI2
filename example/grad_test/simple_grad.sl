@@ -1,6 +1,6 @@
 mod grad_test::simple_grad
 
-export function grad_x_x_x(x: i32) -> i32 {
+export function grad_x_x_x(x: i32) -> f64 {
     y = x * x * x
 
     # 6x

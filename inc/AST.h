@@ -565,9 +565,11 @@ namespace AVSI {
     public:
         vector<Variable *> paramList;
 
-        Param(void) : AST(__PARAM_NAME), paramList(vector<Variable *>()) {};
+        bool is_va_arg;
 
-        Param(Token token) : AST(__PARAM_NAME, token), paramList(vector<Variable *>()) {};
+        Param(void) : AST(__PARAM_NAME), paramList(vector<Variable *>()), is_va_arg(false) {};
+
+        Param(bool is_va_arg, Token token) : AST(__PARAM_NAME, token), paramList(vector<Variable *>()), is_va_arg(is_va_arg) {};
 
         void dump(int depth) override;
     };
