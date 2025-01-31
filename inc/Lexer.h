@@ -136,6 +136,7 @@ namespace AVSI {
             {"export",    EXPORT},
             {"mod",       MODULE},
             {"real",      F64},
+            {"arr",       ARR},
             {"vec",       VEC},
             {"obj",       OBJ},
             {"char",      I8},

@@ -5,17 +5,17 @@ import subobject
 obj S {
     a: i8
     b: f32
-    c: vec[i8:100]
+    c: arr[i8:100]
 }
 
 no_mangle obj NS {
     a: i8
     b: f32
-    c: vec[i8:100]
+    c: arr[i8:100]
 }
 
 no_mangle obj VS {
-    c: vec[i32:100]
+    c: arr[i32:100]
 }
 
 export function S::member_function(num: i32) -> i32 {

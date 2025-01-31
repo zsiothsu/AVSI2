@@ -644,20 +644,23 @@ namespace AVSI {
         vector<shared_ptr<AST> > paramList;
         Type Ty;
         uint32_t num;
+        bool is_vec;
 
         ArrayInit(void)
                 : AST(__ARRAYINIT_NAME), paramList(vector<shared_ptr<AST> >()) {};
 
-        ArrayInit(vector<shared_ptr<AST> > paramList, uint32_t num, const Token &token)
+        ArrayInit(vector<shared_ptr<AST> > paramList, uint32_t num, bool is_vec, const Token &token)
                 : AST(__ARRAYINIT_NAME, token),
                   paramList(std::move(paramList)),
                   Ty(Type(VOID_TY, "void")),
-                  num(num) {};
+                  num(num),
+                  is_vec(is_vec) {};
 
-        ArrayInit(Type Ty, uint32_t num, const Token &token)
+        ArrayInit(Type Ty, uint32_t num, bool is_vec, const Token &token)
                 : AST(__ARRAYINIT_NAME, token),
                   Ty(Ty),
-                  num(num) {};
+                  num(num),
+                  is_vec(is_vec) {};
 
         virtual ~ArrayInit();
 

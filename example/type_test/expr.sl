@@ -54,7 +54,7 @@ export function block_expr_test() -> i32{
     b as i32
 }
 
-export function arr_test_1(arr: vec[i32:0]) {
+export function arr_test_1(arr: arr[i32:0]) {
     b = &arr
     c = b[0]
 }

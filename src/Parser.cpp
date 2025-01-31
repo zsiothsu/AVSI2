@@ -355,6 +355,14 @@ namespace AVSI {
 
         eat(LBRACE);
 
+        bool is_vec = false;
+        if (this->currentToken.getType() == VEC) {
+            is_vec = true;
+            eat(VEC);
+        } else if (this->currentToken.getType() == ARR) {
+            eat(ARR);
+        } 
+
         if (this->currentToken.getType() == COLON) {
             eat(COLON);
             Type Ty = eatType();
@@ -362,7 +370,7 @@ namespace AVSI {
             uint32_t num = this->currentToken.getValue().any_cast<int>();
             eat(INTEGER);
             eat(RBRACE);
-            return make_shared<ArrayInit>(ArrayInit(Ty, num, token));
+            return make_shared<ArrayInit>(ArrayInit(Ty, num, is_vec, token));
         }
 
         while (this->currentToken.getType() != RBRACE) {
@@ -374,7 +382,7 @@ namespace AVSI {
         }
         eat(RBRACE);
 
-        return make_shared<ArrayInit>(ArrayInit(elements, elements.size(), token));
+        return make_shared<ArrayInit>(ArrayInit(elements, elements.size(), is_vec, token));
     }
 
     shared_ptr<AST> Parser::assignment() {
@@ -725,7 +733,7 @@ namespace AVSI {
                 );
             }
 
-            if (simple_types.find(i->Ty.first) == simple_types.end() && i->Ty.second != "vec") {
+            if (simple_types.find(i->Ty.first) == simple_types.end() && i->Ty.second != "arr") {
                 if (struct_types.find(i->Ty.second) == struct_types.end()) {
                     throw ExceptionFactory<MissingException>(
                             "missing type '" + i->Ty.second + "'",
@@ -1371,8 +1379,8 @@ namespace AVSI {
             eat(token);
             auto ty = token_to_simple_types[token];
             ret = Type(ty, type_name[ty]);
-        } else if (this->currentToken.getType() == VEC) {
-            eat(VEC);
+        } else if (this->currentToken.getType() == ARR) {
+            eat(ARR);
             eat(LSQB);
             if (this->currentToken.getType() != RSQB) {
                 // Type can be any types, even another vector
@@ -1396,18 +1404,71 @@ namespace AVSI {
                 eat(RSQB);
                 if (array_size != 0) {
                     llvm::Type *Ty = llvm::ArrayType::get(nest.first, array_size);
-                    type_name[Ty] = "vec[" + type_name[nest.first] + ":" + to_string(array_size) + "]";
+                    type_name[Ty] = "arr[" + type_name[nest.first] + ":" + to_string(array_size) + "]";
                     type_name[Ty->getPointerTo()] = type_name[Ty] + "*";
                     type_size[Ty] = type_size[nest.first] * array_size;
                     type_name[Ty->getPointerTo()] = PTR_SIZE;
-                    ret = Type(Ty, "vec");
+                    ret = Type(Ty, "arr");
                 } else {
                     llvm::Type *Ty = nest.first->getPointerTo();
                     type_name[Ty] = type_name[nest.first] + "*";
                     type_name[Ty->getPointerTo()] = type_name[Ty] + "*";
                     type_size[Ty] = PTR_SIZE;
                     type_name[Ty->getPointerTo()] = PTR_SIZE;
+                    ret = Type(Ty, "arr");
+                }
+            } else {
+                throw ExceptionFactory<SyntaxException>(
+                        "array type and size must be provided",
+                        this->currentToken.line,
+                        this->currentToken.column
+                );
+            }
+        } else if (this->currentToken.getType() == VEC) {
+            eat(ARR);
+            eat(LSQB);
+            if (this->currentToken.getType() != RSQB) {
+                // Type can be any types, even another vector
+                Token token = this->currentToken;
+                Type nest = eatType();
+                if (nest.first == VOID_TY) {
+                    nest.first = I8_TY;
+                }
+
+                if (simple_types.find(nest.first) == simple_types.end()) {
+                    throw ExceptionFactory<LogicException>(
+                            "element of vector type must be simple",
+                            token.line,
+                            token.column
+                    );
+                }
+
+                eat(COLON);
+                int array_size = 0;
+                if (this->currentToken.getType() == INTEGER) {
+                    array_size = this->currentToken.getValue().any_cast<int>();
+                    eat(INTEGER);
+                } else {
+                    throw ExceptionFactory<SyntaxException>(
+                            "array size must be provided",
+                            this->currentToken.line,
+                            this->currentToken.column
+                    );
+                }
+                eat(RSQB);
+                if (array_size != 0) {
+                    llvm::Type *Ty = llvm::VectorType::get(nest.first, array_size, false);
+                    type_name[Ty] = "vec[" + type_name[nest.first] + ":" + to_string(array_size) + "]";
+                    type_name[Ty->getPointerTo()] = type_name[Ty] + "*";
+                    type_size[Ty] = type_size[nest.first] * array_size;
+                    type_name[Ty->getPointerTo()] = PTR_SIZE;
                     ret = Type(Ty, "vec");
+                } else {
+                    throw ExceptionFactory<LogicException>(
+                        "array size must bigger than 0",
+                        this->currentToken.line,
+                        this->currentToken.column
+                    );
                 }
             } else {
                 throw ExceptionFactory<SyntaxException>(
