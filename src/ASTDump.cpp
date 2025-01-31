@@ -36,6 +36,9 @@ do { \
 } while(false)
 
 namespace AVSI {
+    // type name to be displayed in debug message
+    extern map<llvm::Type *, string> type_name;
+
     void printBlank(int depth) {
         for (int i = 0; i < depth; i++) {
             cout << "  ";
@@ -158,9 +161,21 @@ namespace AVSI {
         PRINT_LINE_COLUNM();
         printBlank(depth + 1);
         cout << "- id: " << id << endl;
-        printBlank(depth + 1);
-        cout << "- function list:" << endl;
-        if (paramList) this->paramList->dump(depth + 1);
+
+        if (!this->func_list.empty()) {
+            printBlank(depth + 1);
+            cout << "- function list:" << endl;
+            for (auto i : this->func_list) {
+                printBlank(depth + 2);
+                cout << type_name[i.second.first] << ": " << i.first << endl;
+            }
+        }
+
+        if (!this->default_func.empty()) {
+            printBlank(depth + 1);
+            cout << "- default: " << this->default_func << endl;
+        }
+        
     }
 
     void Global::dump(int depth) {

@@ -342,20 +342,23 @@ namespace AVSI {
     class Generic : public AST {
     public:
         std::string id;
-        shared_ptr<AST> paramList;
+        vector<pair<string,Type>> func_list;
+        string default_func;
         bool is_mangle;
         int idx;
 
         Generic(void)
                 : AST(__GENERIC_NAME), id(""),
-                  paramList(nullptr),
+                  func_list(vector<pair<string,Type>>()),
+                  default_func(string()),
                   is_mangle(true),
                   idx(0) {};
 
-        Generic(string id, shared_ptr<AST> paramList, int idx, Token token)
+        Generic(string id, vector<pair<string,Type>> func_list, string default_func, int idx, Token token)
                 : AST(__GENERIC_NAME, token),
                   id(id),
-                  paramList(paramList),
+                  func_list(func_list),
+                  default_func(default_func),
                   is_mangle(true),
                   idx(idx) {};
 

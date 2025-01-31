@@ -521,19 +521,43 @@ namespace AVSI {
         }
 
         eat(LBRACE);
-        shared_ptr<Param> paramList = static_pointer_cast<Param>(param());
-        // check types
-        for (Variable *i: paramList->paramList) {
-            if (i->Ty.first == nullptr) {
-                throw ExceptionFactory<SyntaxException>(
-                        "missing type of function '" + i->id + "'",
-                        i->getToken().line, i->getToken().column
-                );
+
+        vector<pair<string,Type>> func_list;
+        string default_func;
+        while(this->currentToken.getType() != RBRACE) {
+            Token token = this->currentToken;
+            auto ty = eatType();
+            eat(COLON);
+            string id;
+            if (this->currentToken.getType() == ID) {
+                id = this->currentToken.getValue().any_cast<string>();
+            }
+            eat(ID);
+
+            if (ty.second == "default") {
+                default_func = id;
+                break;
+            } else {
+                // check types
+                if (ty.first == nullptr) {
+                    throw ExceptionFactory<SyntaxException>(
+                        "missing type of function '" + id + "'",
+                        token.line, token.column
+                    );
+                }
+                func_list.push_back({id, ty});
+            }
+
+            if (this->currentToken.getType() == RBRACE) {
+                break;
+            } else {
+                eat(COMMA);
             }
         }
+
         eat(RBRACE);
 
-        return make_shared<Generic>(Generic(id, paramList, idx, token));
+        return make_shared<Generic>(Generic(id, func_list, default_func, idx, token));
     }
 
     shared_ptr<AST> Parser::global() {
@@ -1494,6 +1518,10 @@ namespace AVSI {
             Type Ty = Type(ty.first->second->Ty, ty.second);
             eat(ID);
             ret = Ty;
+        } else if (this->currentToken.getType() == DEFAULT) {
+            eat(DEFAULT);
+            Type Ty = Type(nullptr, "default");
+            ret = Ty;
         } else {
             throw ExceptionFactory<SyntaxException>(
                     "type is unrecognized",
@@ -1502,7 +1530,7 @@ namespace AVSI {
             );
         }
 
-        while (this->currentToken.getType() == STAR) {
+        while (this->currentToken.getType() == STAR && ret.first) {
             eat(STAR);
             llvm::Type *ty = ret.first->getPointerTo();
             string name = ret.second + "*";

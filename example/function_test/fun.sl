@@ -17,7 +17,12 @@ export function fun_i64(x: i64) -> i64 {
     return x + 2
 }
 
+export function fun_default(x: f32) -> f32 {
+    return x + 3
+}
+
 generic generic_fun <0> {
-    fun_i32: i32,
-    fun_i64: i64,
+    i32 : fun_i32,
+    i64 : fun_i64,
+    default: fun_default
 }

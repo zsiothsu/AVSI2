@@ -19,8 +19,8 @@ type = ["bin","staticlib"]
 [[lib.bin]]
 name = "T"
 entry = "main.sl"
-ccflags = ["-W","-l"]
-ldflags = []
+ccflags = ["-O", "-W","-l"]
+ldflags = ["-lm"]
 nostd = false
 
 [lib.lib]

@@ -13,6 +13,7 @@ STDBC			:= std/std.bc
 # only listing them here
 OBJS			:= \
 $(STDDIR_OUT)/std/io.o \
+$(STDDIR_OUT)/std/math.o \
 $(STDDIR_OUT)/std/std.o
 
 CC				:= $(ROOT)/../build/avsi
@@ -22,7 +23,7 @@ SYS_LIB			:= /usr/lib
 
 all: $(STDDIR_OUT)/$(STDBC) $(LIBAVSI)
 
-$(LIBAVSI): $(CDIR)/avsi.c $(STDDIR_OUT)/$(STDBC)
+$(LIBAVSI): $(CDIR)/io.c $(CDIR)/math.c  $(STDDIR_OUT)/$(STDBC)
 	@echo "building libavsi"
 	@make all -C $(CDIR)
 	@echo "find objs: $(OBJS) "

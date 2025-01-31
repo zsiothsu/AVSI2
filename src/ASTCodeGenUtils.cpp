@@ -142,6 +142,11 @@ namespace AVSI {
         // to check absolute or relative path
         auto module_path_size = module_path.size();
         bool is_absolute_module_path = true;
+        bool is_std = false;
+
+        if (!path.empty() && path[0] == "std") {
+            is_std = true;
+        }
 
         if(!path.empty() && path[0] == "root") {
             path.erase(path.begin());
@@ -167,6 +172,12 @@ namespace AVSI {
             module_name_alias[unresolved_path_absulote] = unresolved_path_absulote;
             if (!as.empty())
                 module_name_alias[as] = unresolved_path_absulote;
+        } else if (is_std) {
+            string unresolved_path_relative = getpathListToUnresolved(path);
+            unresolved_path_relative += (unresolved_path_relative.empty() ? "" : "::") + mod;
+            module_name_alias[unresolved_path_relative] = unresolved_path_relative;
+            if (!as.empty())
+                module_name_alias[as] = unresolved_path_relative;
         } else {
             string unresolved_path_relative = getpathListToUnresolved(path);
             unresolved_path_relative += (unresolved_path_relative.empty() ? "" : "::") + mod;
@@ -522,6 +533,7 @@ namespace AVSI {
                 {I1_TY, "bool"}, {I1_TY->getPointerTo(), "bool*"},
                 {VOID_TY, "void"}, {VOID_TY->getPointerTo(), "void*"},
                 {ISIZE_TY, "isize"}, {ISIZE_TY->getPointerTo(), "isize*"},
+                {nullptr, "default"}
         };
         
         type_size = {

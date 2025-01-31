@@ -119,6 +119,7 @@ namespace AVSI {
                     advance();
                     advance();
                     bool eof = false;
+                    bool end = false;
                     while (true) {
                         if (this->currentChar == EOF) {
                             eof = true;
@@ -126,12 +127,14 @@ namespace AVSI {
                         } else if (this->currentChar == '*' && peek() == '/') {
                             advance();
                             advance();
+                            end = true;
                             break;
                         } else {
                             advance();
                         }
                     }
                     if (eof) break;
+                    if (end) continue;
                 }
             }
             if (this->currentChar == '.') {

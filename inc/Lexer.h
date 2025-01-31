@@ -148,6 +148,7 @@ namespace AVSI {
             {"no_mangle", NOMANGLE},
             {"as",        AS},
             {"generic",   GENERIC},
+            {"default",   DEFAULT},
             {"f64",       F64},
             {"f32",       F32},
             {"i128",      I128},

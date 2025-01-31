@@ -1553,6 +1553,7 @@ namespace AVSI {
                 func_names.push_back(getFunctionNameMangling(modinfo, this->id));
             }
         }
+        func_names.push_back(this->id);
 
         for (auto i: func_names) {
             fun = the_module->getFunction(i);
@@ -1562,6 +1563,7 @@ namespace AVSI {
         }
 
         if (!fun) {
+            // may be generic function
             for (auto i: func_names) {
                 if (generic_function.find(i) != generic_function.end()) {
                     int idx = generic_function[i]->idx;
@@ -1570,10 +1572,14 @@ namespace AVSI {
                     if (generic_function[i]->function_map.find(arg_type_name) != generic_function[i]->function_map.end()) {
                         fun = the_module->getFunction(generic_function[i]->function_map[arg_type_name]);
                         break;
+                    } else if (generic_function[i]->function_map.find("default") != generic_function[i]->function_map.end()){
+                        fun = the_module->getFunction(generic_function[i]->function_map["default"]);
+                        break;
                     } else {
                         throw ExceptionFactory<MissingException>(
-                                "function '" + this->id + "' is not declared for type '" + arg_type_name + "'",
-                                this->getToken().line, this->getToken().column);
+                            "function '" + this->id + "' is not declared for type '" + arg_type_name + "'",
+                            this->getToken().line, this->getToken().column
+                        );
                     }
                 }
             }
@@ -1676,6 +1682,16 @@ namespace AVSI {
                 v = builder->CreatePointerCast(v, caller_type->getPointerTo());                
                 caller_type = v->getType();
                 if (type_size.find(caller_type) == type_size.end()) registerType(caller_type);
+            } else if ((callee_arg_iter == fun->args().end()) && caller_type->isFloatingPointTy()) {
+                try {
+                    v = type_conv(arg.get(), v, caller_type, llvm::Type::getDoubleTy(*the_context), false);
+                } catch (...) {
+                    throw ExceptionFactory<TypeException>(
+                            "unmatched type, provided: " +
+                            type_name[caller_type] +
+                            ", excepted: " + type_name[callee_arg_iter->getType()],
+                            arg->getToken().line, arg->getToken().column);
+                }
             } else if ((callee_arg_iter != fun->args().end()) && callee_type != caller_type) {
                 try {
                     v = type_conv(arg.get(), v, caller_type, callee_type, false);
@@ -1758,17 +1774,10 @@ namespace AVSI {
         GenericDef *gd = new GenericDef();
         gd->idx = this->idx;
 
-        for (Variable *i: (static_pointer_cast<Param>(this->paramList))->paramList) {
-            string mapped_func_name = get_func_name(i->id, parent_modinfo, i->getToken());
-            if (!i->getToken().getModInfo().empty()) {
-                throw ExceptionFactory<SyntaxException>(
-                        "mod path is no needed",
-                        token.line,
-                        token.column
-                );
-            }
+        for (auto i: this->func_list) {
+            string mapped_func_name = get_func_name(i.first, parent_modinfo, this->token);
 
-            string ty_name = type_name[i->Ty.first];
+            string ty_name = type_name[i.second.first];
 
             llvm::Metadata *md_args[] = {
                     llvm::MDString::get(*the_context, mapped_func_name),
@@ -1777,6 +1786,16 @@ namespace AVSI {
 
             meta->addOperand(llvm::MDNode::get(*the_context, md_args));
             gd->function_map[ty_name] = mapped_func_name;
+        }
+
+        if (!this->default_func.empty()) {
+            llvm::Metadata *md_args[] = {
+                    llvm::MDString::get(*the_context,  get_func_name(this->default_func, parent_modinfo, this->token)),
+                    llvm::MDString::get(*the_context, "default")
+            };            
+
+            meta->addOperand(llvm::MDNode::get(*the_context, md_args));
+            gd->function_map["default"] = this->default_func;
         }
 
         generic_function[mapper_func_name] = gd;
