@@ -263,7 +263,10 @@ namespace AVSI {
                 advance();
                 return Token(iter->second, tokenVaule, line, column);
             }
-            return Token::empty();
+            advance();
+            throw ExceptionFactory<SyntaxException>(
+                "unknow token", this->linenum, this->cur
+            );
         }
         return Token(END, string("EOF"), 0, 0);
     }
@@ -271,10 +274,15 @@ namespace AVSI {
     Token Lexer::peekNextToken() {
         Lexer *backup = new Lexer();
         stash(backup);
-        Token token = getNextToken();
-        restore(backup);
-        delete backup;
-        return token;
+
+        try {
+            Token token = getNextToken();
+            restore(backup);
+            delete backup;
+            return token;
+        } catch (Exception &e) {
+            throw e;
+        }
     }
 
     /**

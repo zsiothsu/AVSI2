@@ -98,7 +98,7 @@ namespace AVSI {
         DONE,
         GLOBAL,
         IMPORT,
-        EXPORT,
+        PUBLIC,
         PRIVATE,
         MODULE,
         SIZEOF,
@@ -177,7 +177,7 @@ namespace AVSI {
     };
 
     const static TokenType FIRST_STATEMENT[] = {
-            EXPORT, FUNCTION, ID,
+            PUBLIC, FUNCTION, ID,
             RETURN, IF, FOR,
             WHILE, OBJ, MODULE,
             IMPORT
@@ -235,7 +235,7 @@ namespace AVSI {
             {GENERIC,   "GENERIC"},
             {GRAD,      "GRAD"},
             {IMPORT,    "IMPORT"},
-            {EXPORT,    "EXPORT"},
+            {PUBLIC,    "PUBLIC"},
             {PRIVATE,   "PRIVATE"},
             {MODULE,    "MODULE"},
             {SIZEOF,    "SIZEOF"},

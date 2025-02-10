@@ -18,7 +18,7 @@ COMPOUND:
 
 EXPORTCHECK:
     | ε
-    | EXPORT
+    | PUBLIC
 
 EXPR:
     | TERM (('+'PLUS | '-'MINUS) TERM)*

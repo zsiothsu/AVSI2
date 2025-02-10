@@ -133,7 +133,7 @@ namespace AVSI {
             {"done",      DONE},
             {"global",    GLOBAL},
             {"import",    IMPORT},
-            {"export",    EXPORT},
+            {"public",    PUBLIC},
             {"private",   PRIVATE},
             {"mod",       MODULE},
             {"real",      F64},

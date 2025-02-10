@@ -29,7 +29,7 @@ DO              do
 DONE            done
 GLOBAL          global
 IMPORT          import
-EXPORT          export
+PUBLIC          public
 MODULE          mod
 SIZEOF          sizeof
 TYPENAME        typename

@@ -58,7 +58,7 @@ cart: $(CART)
 $(CART): $(DIR_CART)/main.cpp
 	@$(CD) $(DIR_CART) && make all
 
-$(LIBAVSI): $(DIR_LIBAVSI)/C/avsi.c $(DIR_LIBAVSI)/std/__init__.sl $(DIR_OUTPUT)/$(BIN)
+$(LIBAVSI): $(DIR_LIBAVSI)/C/Makefile $(DIR_LIBAVSI)/std/__init__.sl $(DIR_OUTPUT)/$(BIN)
 	@$(CD) $(DIR_LIBAVSI) && make all
 
 $(DIR_OUTPUT)/$(BIN): $(DIR_OUTPUT)/main.o $(OBJS)

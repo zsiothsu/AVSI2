@@ -198,7 +198,12 @@ namespace AVSI {
             if (currentToken.getType() == RPAR)
                 this->parenCnt--;
             this->lastToken = this->currentToken;
-            this->currentToken = this->lexer->getNextToken();
+
+            try {
+                this->currentToken = this->lexer->getNextToken();
+            } catch (Exception &e) {
+                throw e;
+            }
 
 #ifdef __AVSI_DEBUG__TOKEN_NAME
             cout << '<'
@@ -273,13 +278,13 @@ namespace AVSI {
         bool is_mangle = true;
 
         while (
-            this->currentToken.getType() == EXPORT ||
+            this->currentToken.getType() == PUBLIC ||
             this->currentToken.getType() == PRIVATE ||
             this->currentToken.getType() == NOMANGLE
         ) {
-            if (this->currentToken.getType() == EXPORT) {
+            if (this->currentToken.getType() == PUBLIC) {
                 is_export = true;
-                eat(EXPORT);
+                eat(PUBLIC);
             }
 
             if (this->currentToken.getType() == PRIVATE) {

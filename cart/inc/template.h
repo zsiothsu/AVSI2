@@ -43,7 +43,7 @@ static const char *template_lib_bin =
         R"(name = "%s")" "\n"
         R"(entry = "main.sl")" "\n"
         R"(ccflags = ["-O", "-W"])" "\n"
-        R"(ldflags = [])" "\n"
+        R"(ldflags = ["-lm"])" "\n"
         R"(nostd = false)" "\n";
 
 /**
@@ -55,7 +55,7 @@ static const char *template_lib_bin_removed =
         R"(#name = "%s")" "\n"
         R"(#entry = "main.sl")" "\n"
         R"(#ccflags = ["-O", "-W"])" "\n"
-        R"(#ldflags = [])" "\n"
+        R"(#ldflags = ["-lm"])" "\n"
         R"(#nostd = false)" "\n";
 
 /**
@@ -101,7 +101,7 @@ static const char *template_lib_lib_removed =
 static const char *template_source_main =
         R"(mod main)" "\n\n"
         R"(import std::io)" "\n\n"
-        R"(export function main(argc: i32, argv: char**) -> i32 {)" "\n"
+        R"(public function main(argc: i32, argv: char**) -> i32 {)" "\n"
         R"(    std::io::println("Hello World!\n"))" "\n"
         R"(    return 0)" "\n"
         R"(})" "\n";
@@ -115,6 +115,6 @@ static const char *template_source_main =
  */
 static const char *template_source_lib =
         R"(mod %s)" "\n\n"
-        R"(export function it_works() -> i32{)" "\n"
+        R"(public function it_works() -> i32{)" "\n"
         R"(    return 0)" "\n"
         R"(})" "\n";
