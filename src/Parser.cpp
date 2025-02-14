@@ -279,6 +279,7 @@ namespace AVSI {
         bool is_inline = false;
         bool is_always_inline = false;
         bool is_noinline = false;
+        bool is_pure = false;
 
         auto token_is_function_attr = [](Token t) -> bool {
             for (TokenType i: FUNCTION_ATTR) {
@@ -317,6 +318,11 @@ namespace AVSI {
                 is_noinline = true;
                 eat(NOINLINE);
             }
+
+            if (this->currentToken.getType() == PURE) {
+                is_pure = true;
+                eat(PURE);
+            }
         }
 
         TokenType token_type = this->currentToken.getType();
@@ -329,6 +335,7 @@ namespace AVSI {
             function->is_inline = is_inline;
             function->is_always_inline = is_always_inline;
             function->is_noinline = is_noinline;
+            function->is_pure = is_pure;
             return function;
         } else if (token_type == RETURN) {
             PARSE_LOG(STATEMENT);

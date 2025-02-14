@@ -1,18 +1,18 @@
 mod std::math
 
-no_mangle function _sin(x: f64) -> f64
-no_mangle function _cos(x: f64) -> f64
-no_mangle function _tan(x: f64) -> f64
-no_mangle function _cot(x: f64) -> f64
-no_mangle function _sec(x: f64) -> f64
-no_mangle function _csc(x: f64) -> f64
-no_mangle function _log(x: f64) -> f64
-no_mangle function _exp(x: f64) -> f64
-no_mangle function _sqrt(x: f64) -> f64
-no_mangle function _arcsin(x: f64) -> f64
-no_mangle function _arccos(x: f64) -> f64
-no_mangle function _arctan(x: f64) -> f64
-no_mangle function _arccot(x: f64) -> f64
+pure no_mangle function _sin(x: f64) -> f64
+pure no_mangle function _cos(x: f64) -> f64
+pure no_mangle function _tan(x: f64) -> f64
+pure no_mangle function _cot(x: f64) -> f64
+pure no_mangle function _sec(x: f64) -> f64
+pure no_mangle function _csc(x: f64) -> f64
+pure no_mangle function _log(x: f64) -> f64
+pure no_mangle function _exp(x: f64) -> f64
+pure no_mangle function _sqrt(x: f64) -> f64
+pure no_mangle function _arcsin(x: f64) -> f64
+pure no_mangle function _arccos(x: f64) -> f64
+pure no_mangle function _arctan(x: f64) -> f64
+pure no_mangle function _arccot(x: f64) -> f64
 
 no_mangle generic sin {
     default: _sin

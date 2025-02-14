@@ -398,7 +398,7 @@ namespace AVSI {
         auto function_iter = imported_module->getFunctionList().begin();
         while (function_iter != imported_module->getFunctionList().end()) {
             auto fun = &(*function_iter);
-            the_module->getOrInsertFunction(fun->getName(), fun->getFunctionType());
+            the_module->getOrInsertFunction(fun->getName(), fun->getFunctionType(), fun->getAttributes());
             function_iter++;
         }
 

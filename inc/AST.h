@@ -297,6 +297,7 @@ namespace AVSI {
         bool is_inline;
         bool is_always_inline;
         bool is_noinline;
+        bool is_pure;
 
         FunctionDecl(void)
                 : AST(__FUNCTIONDECL_NAME),
@@ -307,7 +308,8 @@ namespace AVSI {
                   is_mangle(true),
                   is_inline(false),
                   is_always_inline(false),
-                  is_noinline(false) {};
+                  is_noinline(false),
+                  is_pure(false) {};
 
         FunctionDecl(string id, Type retTy, shared_ptr<AST> paramList, shared_ptr<AST> compound, const Token &token)
                 : AST(__FUNCTIONDECL_NAME, token),
@@ -319,7 +321,8 @@ namespace AVSI {
                   is_mangle(true),
                   is_inline(false),
                   is_always_inline(false),
-                  is_noinline(false) {};
+                  is_noinline(false),
+                  is_pure(false) {};
 
         virtual ~FunctionDecl();
 

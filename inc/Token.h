@@ -117,6 +117,7 @@ namespace AVSI {
         INLINE,
         ALWAYS_INLINE,
         NOINLINE,
+        PURE,
         // types,
         F64,
         F32,
@@ -184,12 +185,14 @@ namespace AVSI {
             RETURN, IF, FOR,
             WHILE, OBJ, MODULE,
             IMPORT, NOMANGLE, INLINE,
-            ALWAYS_INLINE, NOINLINE, GLOBAL
+            ALWAYS_INLINE, NOINLINE, GLOBAL,
+            PURE
     };
 
     const static TokenType FUNCTION_ATTR[] = {
             PUBLIC, PRIVATE, NOMANGLE, 
-            INLINE, ALWAYS_INLINE, NOINLINE
+            INLINE, ALWAYS_INLINE, NOINLINE,
+            PURE
     };
 
     static map<TokenType, string> token_name = {
@@ -243,6 +246,7 @@ namespace AVSI {
             {INLINE,            "INLINE"},
             {ALWAYS_INLINE,     "ALWAYS_INLINE"},
             {NOINLINE,          "NOINLINE"},
+            {PURE,              "PURE"},
             {GLOBAL,            "GLOBAL"},
             {GENERIC,           "GENERIC"},
             {GRAD,              "GRAD"},

@@ -1423,6 +1423,12 @@ namespace AVSI {
                 the_function->addFnAttr(llvm::Attribute::InlineHint);
             }
 
+            if (this->is_pure) {
+                the_function->addFnAttr(llvm::Attribute::ReadNone);
+                the_function->addFnAttr(llvm::Attribute::NoUnwind);
+                the_function->addFnAttr(llvm::Attribute::WillReturn);
+            }
+
             uint8_t param_index = 0;
             auto args_iter = the_function->args().begin();
 
