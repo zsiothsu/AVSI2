@@ -277,6 +277,7 @@ int main(int argc, char **argv) {
         if(opt_dump) tree->dump(0);
         if (opt_reliance) return 0;
         tree->codeGen();
+        llvm_run_optimization();
 
         if (err_count + warn_count != 0) {
             std::cerr << __COLOR_RESET

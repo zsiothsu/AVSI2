@@ -294,6 +294,9 @@ namespace AVSI {
         shared_ptr<AST> compound;
         bool is_export;
         bool is_mangle;
+        bool is_inline;
+        bool is_always_inline;
+        bool is_noinline;
 
         FunctionDecl(void)
                 : AST(__FUNCTIONDECL_NAME),
@@ -301,7 +304,10 @@ namespace AVSI {
                   paramList(nullptr),
                   compound(nullptr),
                   is_export(false),
-                  is_mangle(true) {};
+                  is_mangle(true),
+                  is_inline(false),
+                  is_always_inline(false),
+                  is_noinline(false) {};
 
         FunctionDecl(string id, Type retTy, shared_ptr<AST> paramList, shared_ptr<AST> compound, const Token &token)
                 : AST(__FUNCTIONDECL_NAME, token),
@@ -310,7 +316,10 @@ namespace AVSI {
                   paramList(paramList),
                   compound(compound),
                   is_export(false),
-                  is_mangle(true) {};
+                  is_mangle(true),
+                  is_inline(false),
+                  is_always_inline(false),
+                  is_noinline(false) {};
 
         virtual ~FunctionDecl();
 
@@ -742,6 +751,8 @@ namespace AVSI {
     void llvm_emit_bitcode();
 
     void llvm_emit_ir();
+
+    void llvm_run_optimization();
 
     void llvm_create_dir(string dir);
 

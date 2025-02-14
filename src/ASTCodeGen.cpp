@@ -40,6 +40,7 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/IR/LegacyPassManager.h"
 
 #if (LLVM_VERSION_MAJOR >= 14)
 
@@ -67,7 +68,8 @@ namespace AVSI {
     llvm::LLVMContext *the_context;
     llvm::Module *the_module;
     llvm::IRBuilder<> *builder;
-    llvm::legacy::FunctionPassManager *the_fpm;
+    llvm::legacy::FunctionPassManager *the_function_fpm;
+    llvm::legacy::PassManager *the_module_fpm;
     llvm::TargetMachine *TheTargetMachine;
 
     llvm::BasicBlock *global_insert_point;
@@ -111,6 +113,9 @@ namespace AVSI {
 
     // map a relative or renamed module path to absolute
     map<string, string> module_name_alias;
+
+    // map a constant string to llvm const
+    map<string, llvm::Constant *> const_string_pool;
 
     extern void debug_type(llvm::Value *v);
 
@@ -1410,6 +1415,14 @@ namespace AVSI {
                     the_module);
             function_protos[this->id] = FT;
 
+            if (this->is_noinline) {
+                the_function->addFnAttr(llvm::Attribute::NoInline);
+            } else if (this->is_always_inline) {
+                the_function->addFnAttr(llvm::Attribute::AlwaysInline);
+            } else if (this->is_inline) {
+                the_function->addFnAttr(llvm::Attribute::InlineHint);
+            }
+
             uint8_t param_index = 0;
             auto args_iter = the_function->args().begin();
 
@@ -1497,7 +1510,7 @@ namespace AVSI {
                             "some errors occurred when generating function",
                             this->token.line, this->token.column);
                 }
-                the_fpm->run(*the_function);
+                the_function_fpm->run(*the_function);
                 if (last_BB != nullptr) {
                     builder->SetInsertPoint(last_BB, last_pt);
                 }
@@ -1590,9 +1603,30 @@ namespace AVSI {
         }
 
         if (!fun) {
-            throw ExceptionFactory<MissingException>(
+            if (this->param_this == nullptr) {
+                Warning(
+                    "implicit declaration of function '" + this->id + "'",
+                    this->getToken().line, this->getToken().column
+                );
+
+                llvm::FunctionType *FT = llvm::FunctionType::get(
+                    llvm::Type::getInt32Ty(*the_context),
+                    true
+                );
+
+                llvm::Function::Create(
+                    FT,
+                    llvm::Function::ExternalLinkage,
+                    this->id,
+                    the_module);
+
+                function_protos[this->id] = FT;
+                fun = the_module->getFunction(this->id);
+            } else {
+                throw ExceptionFactory<MissingException>(
                     "function '" + this->id + "' is not declared",
                     this->getToken().line, this->getToken().column);
+            }
         }
 
         if (
@@ -1628,7 +1662,7 @@ namespace AVSI {
                 return nullptr;
             }
 
-            llvm::Type *callee_type = callee_arg_iter->getType();
+            llvm::Type *callee_type = callee_arg_iter == fun->args().end() ? nullptr : callee_arg_iter->getType();
             llvm::Type *caller_type = v->getType();
 
             if (callee_arg_iter != fun->args().end() && type_size.find(callee_type) == type_size.end()) registerType(callee_type);
@@ -1717,10 +1751,48 @@ namespace AVSI {
             caller_args.insert(caller_args.begin(), this->param_this);
         }
 
-        if (fun->getFunctionType()->getReturnType() != VOID_TY) {
-            return builder->CreateCall(fun, caller_args, "callLocal");
+        bool cast = false;
+
+        if (fun->arg_size() != caller_args.size()) {
+            cast = true;
         } else {
-            builder->CreateCall(fun, caller_args);
+            for (int i = 0; i < caller_args.size(); i++) {
+                if (fun->getArg(i)->getType() != caller_args[i]->getType()) {
+                    cast = true;
+                    break;
+                }
+            }
+        }
+
+        llvm::CallInst *inst = nullptr;
+
+        if (cast) {
+            vector<llvm::Type*> caller_types;
+            for (auto i: caller_args) {
+                caller_types.push_back(i->getType());
+            }
+            llvm::FunctionType *FT = llvm::FunctionType::get(
+                fun->getReturnType(),
+                caller_types,
+                false
+            );                
+            llvm::Constant *BitcastExpr = llvm::ConstantExpr::getBitCast(
+                fun,
+                FT->getPointerTo()
+            );
+            inst = builder->CreateCall(
+                FT,
+                BitcastExpr,
+                caller_args,
+                "callLocal" 
+            );
+        } else {
+            inst = builder->CreateCall(fun, caller_args, "callLocal");
+        }
+
+        if (fun->getFunctionType()->getReturnType() != VOID_TY) {
+            return inst;
+        } else {
             return llvm::ConstantFP::getNaN(F64_TY);
         }
     }
@@ -2375,8 +2447,14 @@ namespace AVSI {
     }
 
     llvm::Value *String::codeGen() {
-        // the return type of CreateGlobalStringPtr is i8*
-        return builder->CreateGlobalStringPtr(this->getValue().any_cast<string>(), ".str");
+        string str = this->getValue().any_cast<string>();
+        if (const_string_pool.find(str) != const_string_pool.end()) {
+            return const_string_pool[str];
+        } else {
+            auto ptr = builder->CreateGlobalStringPtr(this->getValue().any_cast<string>(), ".str", 0, the_module);
+            const_string_pool[str] = ptr;
+            return ptr;
+        }
     }
 
     llvm::Value *Variable::codeGen() {

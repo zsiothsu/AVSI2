@@ -276,12 +276,18 @@ namespace AVSI {
     shared_ptr<AST> Parser::statement() {
         bool is_export = true;
         bool is_mangle = true;
+        bool is_inline = false;
+        bool is_always_inline = false;
+        bool is_noinline = false;
 
-        while (
-            this->currentToken.getType() == PUBLIC ||
-            this->currentToken.getType() == PRIVATE ||
-            this->currentToken.getType() == NOMANGLE
-        ) {
+        auto token_is_function_attr = [](Token t) -> bool {
+            for (TokenType i: FUNCTION_ATTR) {
+                if (i == t.getType()) return true;
+            }
+            return false;
+        };
+
+        while (token_is_function_attr(this->currentToken)) {
             if (this->currentToken.getType() == PUBLIC) {
                 is_export = true;
                 eat(PUBLIC);
@@ -296,6 +302,21 @@ namespace AVSI {
                 is_mangle = false;
                 eat(NOMANGLE);
             }
+
+            if (this->currentToken.getType() == INLINE) {
+                is_inline = true;
+                eat(INLINE);
+            }
+
+            if (this->currentToken.getType() == ALWAYS_INLINE) {
+                is_always_inline = true;
+                eat(ALWAYS_INLINE);
+            }
+
+            if (this->currentToken.getType() == NOINLINE) {
+                is_noinline = true;
+                eat(NOINLINE);
+            }
         }
 
         TokenType token_type = this->currentToken.getType();
@@ -305,6 +326,9 @@ namespace AVSI {
             shared_ptr<FunctionDecl> function = static_pointer_cast<FunctionDecl>(functionDecl());
             function->is_export = is_export;
             function->is_mangle = is_mangle;
+            function->is_inline = is_inline;
+            function->is_always_inline = is_always_inline;
+            function->is_noinline = is_noinline;
             return function;
         } else if (token_type == RETURN) {
             PARSE_LOG(STATEMENT);

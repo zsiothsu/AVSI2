@@ -46,8 +46,11 @@
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
+#include "llvm/Transforms/IPO.h"
+#include "llvm/Transforms/IPO/AlwaysInliner.h"
 #if (LLVM_VERSION_MAJOR >= 14)
 #include "llvm/MC/TargetRegistry.h"
 #else
@@ -75,7 +78,9 @@ namespace AVSI {
     extern llvm::LLVMContext *the_context;
     extern llvm::Module *the_module;
     extern llvm::IRBuilder<> *builder;
-    extern llvm::legacy::FunctionPassManager *the_fpm;
+    extern llvm::legacy::FunctionPassManager *the_function_fpm;
+    extern llvm::legacy::PassManager *the_module_fpm;
+
     extern llvm::TargetMachine *TheTargetMachine;
 
     extern llvm::BasicBlock *global_insert_point;
@@ -117,15 +122,17 @@ namespace AVSI {
      *******************************************************/
     void llvm_module_fpm_init() {
         if (opt_optimize) {
-            the_fpm->add(llvm::createReassociatePass());
-            the_fpm->add(llvm::createGVNPass());
-            the_fpm->add(llvm::createInstructionCombiningPass());
-            the_fpm->add(llvm::createCFGSimplificationPass());
-            the_fpm->add(llvm::createDeadCodeEliminationPass());
-            the_fpm->add(llvm::createFlattenCFGPass());
+            the_function_fpm->add(llvm::createReassociatePass());
+            the_function_fpm->add(llvm::createGVNPass());
+            the_function_fpm->add(llvm::createInstructionCombiningPass());
+            the_function_fpm->add(llvm::createCFGSimplificationPass());
+            the_function_fpm->add(llvm::createDeadCodeEliminationPass());
+            the_function_fpm->add(llvm::createFlattenCFGPass());
         }
+        the_function_fpm->doInitialization();
 
-        the_fpm->doInitialization();
+        the_module_fpm->add(llvm::createFunctionInliningPass());
+        // the_module_fpm->add(llvm::createAlwaysInlinerLegacyPass());
     }
 
     /**
@@ -470,7 +477,7 @@ namespace AVSI {
     void llvm_global_context_reset() {
         // reset context and module
         delete TheTargetMachine;
-        delete the_fpm;
+        delete the_function_fpm;
         delete builder;
         delete the_module;
         delete the_context;
@@ -478,7 +485,8 @@ namespace AVSI {
         the_context = new llvm::LLVMContext();
         the_module = new llvm::Module("program", *the_context);
         builder = new llvm::IRBuilder<>(*the_context);
-        the_fpm = new llvm::legacy::FunctionPassManager(the_module);
+        the_function_fpm = new llvm::legacy::FunctionPassManager(the_module);
+        the_module_fpm = new llvm::legacy::PassManager();
         TheTargetMachine = nullptr;
 
         // reset symbols
@@ -767,6 +775,10 @@ namespace AVSI {
         if (opt_verbose)
             llvm::outs() << "Wrote " << filesystem::absolute(filesystem::path(Filename)) << "\n";
         dest.close();
+    }
+
+    void llvm_run_optimization() {
+        the_module_fpm->run(*the_module);
     }
 
     void debug_type(llvm::Value *v) {
