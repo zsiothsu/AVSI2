@@ -540,7 +540,7 @@ namespace AVSI {
                 {I16_TY, "i16"}, {I16_TY->getPointerTo(), "i16*"},
                 {I8_TY, "i8"}, {I8_TY->getPointerTo(), "i8*"},
                 {I1_TY, "bool"}, {I1_TY->getPointerTo(), "bool*"},
-                {VOID_TY, "void"}, {VOID_TY->getPointerTo(), "void*"},
+                {VOID_TY, "void"},
                 {ISIZE_TY, "isize"}, {ISIZE_TY->getPointerTo(), "isize*"},
                 {nullptr, "default"}
         };
@@ -554,7 +554,7 @@ namespace AVSI {
                 {I16_TY, 2}, {I16_TY->getPointerTo(), 1},
                 {I8_TY, 1}, {I8_TY->getPointerTo(), 1},
                 {I1_TY, 1}, {I1_TY->getPointerTo(), 1},
-                {VOID_TY, 0}, {VOID_TY->getPointerTo(), 1},
+                {VOID_TY, 0},
                 {ISIZE_TY, PTR_SIZE}, {ISIZE_TY->getPointerTo(), 1},
         };
 
