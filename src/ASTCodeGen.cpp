@@ -2058,8 +2058,8 @@ namespace AVSI {
             type_name[arr->getType()->getPointerTo()] = "arr[" + type_name[tname] + ":" + to_string(element_num) + "]*";
             type_size[arr->getType()] = tsize * element_num;
 
-            string global_var_name = "__constant." + string(builder->GetInsertBlock()->getParent()->getName()) + ".arr";
-            llvm::function_ref<llvm::GlobalVariable *()> global_var_callback = [arr, global_var_name] {
+            string global_var_name = string("__constant.") + string(builder->GetInsertBlock()->getParent()->getName()) + string(".arr");
+            llvm::function_ref<llvm::GlobalVariable *()> global_var_callback = [&] {
                 return new llvm::GlobalVariable(
                         *the_module,
                         arr->getType(),
@@ -2073,11 +2073,6 @@ namespace AVSI {
                     (llvm::Type *) arr->getType(),
                     global_var_callback
             );
-
-            // llvm::AllocaInst *alloca_addr = allocaBlockEntry(builder->GetInsertBlock()->getParent(), "",
-            //                                                  arr->getType());
-
-            // builder->CreateMemCpy(alloca_addr, llvm::MaybeAlign(), ptr, llvm::MaybeAlign(), type_size[arr->getType()]);
 
             return builder->CreateLoad(arr->getType(), ptr);
         } else {
