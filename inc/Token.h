@@ -69,6 +69,8 @@ namespace AVSI {
         SHR,        // >>
         SHRU,       // >>>
         REM,        // %
+        INC,        // ++
+        DEC,        // --
         // symbol
         LPAR,       // (
         RPAR,       // )
@@ -118,6 +120,7 @@ namespace AVSI {
         ALWAYS_INLINE,
         NOINLINE,
         PURE,
+        CONST,
         // types,
         F64,
         F32,
@@ -177,7 +180,9 @@ namespace AVSI {
             LPAR,
             NOT,
             LBRACE,
-            IF
+            IF,
+            INC,
+            DEC
     };
 
     const static TokenType FIRST_STATEMENT[] = {
@@ -192,7 +197,7 @@ namespace AVSI {
     const static TokenType FUNCTION_ATTR[] = {
             PUBLIC, PRIVATE, NOMANGLE, 
             INLINE, ALWAYS_INLINE, NOINLINE,
-            PURE
+            PURE, CONST
     };
 
     static map<TokenType, string> token_name = {
@@ -263,6 +268,7 @@ namespace AVSI {
             {BREAK,             "BREAK"},
             {CONTINUE,          "CONTINUE"},
             {NOMANGLE,          "NOMANGLE"},
+            {CONST,             "CONST"},
             {AS,                "AS"},
             {F64,               "F64"},
             {F32,               "F32"},
@@ -281,6 +287,8 @@ namespace AVSI {
             {SHR,               "SHR"},
             {SHRU,              "SHRU"},
             {REM,               "REM"},
+            {INC,               "INC"},
+            {DEC,               "DEC"},
     };
 } // namespace AVSI
 

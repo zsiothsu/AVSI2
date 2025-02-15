@@ -186,6 +186,7 @@ namespace AVSI {
         printBlank(depth + 1);
         cout << "- is_mangle: " << is_mangle << endl;
         if (var) this->var->dump(depth + 1);
+        if (expr) this->expr->dump(depth + 1);
     }
 
     void Grad::dump(int depth) {
@@ -315,6 +316,11 @@ namespace AVSI {
         printBlank(depth);
         PRINT_LINE_COLUNM();
         printBlank(depth + 1); cout << "- num: " << num << endl;
+        if (this->num_by_const) {
+            printBlank(depth + 1);
+            cout << "- num_by_const:" << endl;
+            this->num_by_const->dump(depth + 2);
+        }
         printBlank(depth + 1); cout << "- paramList:" << endl;
         for(auto i : paramList) {
             i->dump(depth + 1);

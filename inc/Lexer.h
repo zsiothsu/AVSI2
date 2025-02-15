@@ -154,6 +154,7 @@ namespace AVSI {
             {"always_inline",   ALWAYS_INLINE},
             {"noinline",        NOINLINE},
             {"pure",            PURE},
+            {"const",           CONST},
             {"f64",             F64},
             {"f32",             F32},
             {"i128",            I128},

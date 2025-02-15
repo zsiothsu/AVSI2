@@ -384,19 +384,34 @@ namespace AVSI {
     class Global : public AST {
     public:
         shared_ptr<AST> var;
+        shared_ptr<AST> expr;
         bool is_export;
         bool is_mangle;
+        bool is_const;
 
         Global(void)
                 : AST(__GLOBAL_NAME),
+                  var(nullptr),
+                  expr(nullptr),
                   is_export(false),
-                  is_mangle(true) {};
+                  is_mangle(true),
+                  is_const(false) {};
 
         Global(shared_ptr<AST> var, Token token)
                 : AST(__GLOBAL_NAME, token),
                   var(var),
+                  expr(nullptr),
                   is_export(false),
-                  is_mangle(true) {};
+                  is_mangle(true),
+                  is_const(false) {};
+
+        Global(shared_ptr<AST> var, shared_ptr<AST> expr, Token token)
+                : AST(__GLOBAL_NAME, token),
+                  var(var),
+                  expr(expr),
+                  is_export(false),
+                  is_mangle(true),
+                  is_const(false) {};
 
         virtual ~Global();
 
@@ -659,6 +674,7 @@ namespace AVSI {
         vector<shared_ptr<AST> > paramList;
         Type Ty;
         uint32_t num;
+        shared_ptr<AST> num_by_const;
         bool is_vec;
 
         ArrayInit(void)
@@ -677,6 +693,13 @@ namespace AVSI {
                   num(num),
                   is_vec(is_vec) {};
 
+        ArrayInit(Type Ty, shared_ptr<AST> num_by_const, bool is_vec, const Token &token)
+                : AST(__ARRAYINIT_NAME, token),
+                  Ty(Ty),
+                  num(0),
+                  num_by_const(num_by_const),
+                  is_vec(is_vec) {};
+
         virtual ~ArrayInit();
 
         llvm::Value *codeGen() override;
@@ -690,11 +713,16 @@ namespace AVSI {
 
     public:
         shared_ptr<AST> right;
+        
+        bool op_is_suffix;
 
-        UnaryOp(void) : AST(__UNARYTOP_NAME) {};
+        UnaryOp(void) : AST(__UNARYTOP_NAME), op_is_suffix(false) {};
 
         UnaryOp(Token op, shared_ptr<AST> right)
-                : AST(__UNARYTOP_NAME, op), op(op), right(right) {};
+                : AST(__UNARYTOP_NAME, op), op(op), right(right), op_is_suffix(false) {};
+
+        UnaryOp(Token op, shared_ptr<AST> right, bool op_is_suffix)
+                : AST(__UNARYTOP_NAME, op), op(op), right(right), op_is_suffix(op_is_suffix) {};
 
         virtual ~UnaryOp();
 

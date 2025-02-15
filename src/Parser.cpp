@@ -280,6 +280,7 @@ namespace AVSI {
         bool is_always_inline = false;
         bool is_noinline = false;
         bool is_pure = false;
+        bool is_const = false;
 
         auto token_is_function_attr = [](Token t) -> bool {
             for (TokenType i: FUNCTION_ATTR) {
@@ -323,6 +324,11 @@ namespace AVSI {
                 is_pure = true;
                 eat(PURE);
             }
+
+            if (this->currentToken.getType() == CONST) {
+                is_const = true;
+                eat(CONST);
+            }
         }
 
         TokenType token_type = this->currentToken.getType();
@@ -362,6 +368,7 @@ namespace AVSI {
             shared_ptr<Global> glb = static_pointer_cast<Global>(global());
             glb->is_export = is_export;
             glb->is_mangle = is_mangle;
+            glb->is_const = is_const;
             return glb;
         } else if (token_type == OBJ) {
             PARSE_LOG(STATEMENT);
@@ -414,10 +421,17 @@ namespace AVSI {
             eat(COLON);
             Type Ty = eatType();
             eat(COLON);
-            uint32_t num = this->currentToken.getValue().any_cast<int>();
-            eat(INTEGER);
-            eat(RBRACE);
-            return make_shared<ArrayInit>(ArrayInit(Ty, num, is_vec, token));
+
+            if (this->currentToken.getType() == INTEGER) {
+                uint32_t num = this->currentToken.getValue().any_cast<int>();
+                eat(INTEGER);
+                eat(RBRACE);
+                return make_shared<ArrayInit>(ArrayInit(Ty, num, is_vec, token));
+            } else {
+                shared_ptr<AST> num = checkedExpr();
+                eat(RBRACE);
+                return make_shared<ArrayInit>(ArrayInit(Ty, num, is_vec, token));
+            }
         }
 
         while (this->currentToken.getType() != RBRACE) {
@@ -614,6 +628,12 @@ namespace AVSI {
         eat(GLOBAL);
 
         shared_ptr<AST> var = variable();
+
+        if (this->currentToken.getType() == EQUAL) {
+            eat(EQUAL);
+            shared_ptr<AST> expr = checkedExpr();
+            return make_shared<Global>(Global(var, expr, token));
+        }
 
         return make_shared<Global>(Global(var, token));
     }

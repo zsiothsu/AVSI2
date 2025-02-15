@@ -342,12 +342,68 @@ namespace AVSI {
         return base;
     }
 
+    llvm::Constant *getGlobalConstant(Variable *var) {
+        auto modinfo = var->getToken().getModInfo();
+        llvm::GlobalVariable *v;
+        if (modinfo.empty()) {
+            // function in currnet module
+            v = the_module->getGlobalVariable(
+                    getFunctionNameMangling(module_path_with_module_name, var->id)
+            );
+        } else if (modinfo[0] == "root") {
+            // absolute path
+            vector<string> p;
+            modinfo.erase(modinfo.begin());
+            p.insert(p.end(), package_path.begin(), package_path.end());
+            p.insert(p.end(), modinfo.begin(), modinfo.end());
+            v = the_module->getGlobalVariable(
+                    getFunctionNameMangling(p, var->id));
+        } else {
+            // may be relative path
+            auto fun_path = module_path;
+            fun_path.insert(fun_path.end(), modinfo.begin(), modinfo.end());
+            v = the_module->getGlobalVariable(
+                    getFunctionNameMangling(fun_path, var->id));
+
+            // may be alias
+            if (!v) {
+                string head = modinfo[0];
+                if (module_name_alias.find(head) != module_name_alias.end()) {
+                    auto path_cut = modinfo;
+                    path_cut.erase(path_cut.begin());
+                    head = module_name_alias[head];
+                    auto head_to_origin = getpathUnresolvedToList(head);
+                    for (auto i: path_cut) {
+                        head_to_origin.push_back(i);
+                    }
+                    v = the_module->getGlobalVariable(
+                            getFunctionNameMangling(head_to_origin, var->id));
+                }
+            }
+        }   
+
+        if (v) {
+            if (v->hasAttribute(llvm::Attribute::ReadOnly)) {
+                auto init = v->getInitializer();
+                if (init && (llvm::dyn_cast<llvm::ConstantFP>(init)  || llvm::dyn_cast<llvm::ConstantInt>(init))) {
+                    return init;
+                } else {
+                    return nullptr;
+                }
+            } else {
+                return nullptr;
+            }
+        } else {
+            return nullptr;
+        }
+    }
+
     /**
      * @description:    get address of variable
      * @param:          var: variable AST
      * @return:         a pointer to target address
      */
-    llvm::Value *getAlloca(Variable *var) {
+    llvm::Value *getAlloca(Variable *var, bool *is_const = nullptr) {
         // remember that all value token from symbol table is address
         llvm::Value *v = symbol_table->find(var->id);
         auto modinfo = var->getToken().getModInfo();
@@ -388,6 +444,10 @@ namespace AVSI {
                                 getFunctionNameMangling(head_to_origin, var->id));
                     }
                 }
+            }
+
+            if (v && is_const) {
+                *is_const = llvm::dyn_cast<llvm::GlobalVariable>(v)->hasAttribute(llvm::Attribute::ReadOnly);
             }
         }
 
@@ -877,18 +937,36 @@ namespace AVSI {
         llvm::Value *r_value = this->right->codeGen();
 
         string l_base_name = (static_pointer_cast<Variable>(this->left))->id;
+        bool is_const = false;
         if (r_value->getType()->isArrayTy() || r_value->getType()->isVectorTy()) {
-            auto l_alloca_addr = getAlloca(static_pointer_cast<Variable>(this->left).get());
+            auto l_alloca_addr = getAlloca(static_pointer_cast<Variable>(this->left).get(), &is_const);
+
+            if (is_const) {
+                throw ExceptionFactory<LogicException>(
+                    "cannot assign to a constant variable",
+                    this->getToken().line, this->getToken().column
+                );
+            }
+
             auto st = store(this, l_alloca_addr, r_value, true, l_base_name);
             symbol_table->insertAssingedAst(l_base_name, this->right, !st);
         } else {
-            auto l_alloca_addr = getAlloca(static_pointer_cast<Variable>(this->left).get());
+            auto l_alloca_addr = getAlloca(static_pointer_cast<Variable>(this->left).get(), &is_const);
+
+            if (is_const) {
+                throw ExceptionFactory<LogicException>(
+                    "cannot assign to a constant variable",
+                    this->getToken().line, this->getToken().column
+                );
+            }
+
             if (!l_alloca_addr && !((static_pointer_cast<Variable>(this->left))->offset.empty())) {
                 throw ExceptionFactory<MissingException>(
                         "missing variable '" + l_base_name + "'",
-                        this->left->getToken().column, this->left->getToken().column
+                        this->getToken().line, this->getToken().column
                 );
             }
+
             auto st = store(this, l_alloca_addr, r_value, true, l_base_name);
             symbol_table->insertAssingedAst(l_base_name, this->right, !st);
         }
@@ -1933,8 +2011,31 @@ namespace AVSI {
     }
 
     llvm::Value *ArrayInit::codeGen() {
-        llvm::Function *the_scope = builder->GetInsertBlock()->getParent();
+        bool is_in_function = builder->GetInsertBlock() ? true : false;
+        llvm::Function *the_scope = is_in_function ? builder->GetInsertBlock()->getParent() : nullptr;
         uint32_t element_num = this->num;
+
+        if (this->num_by_const.get()) {
+            try {
+                auto num = this->num_by_const->codeGen();
+                auto cons = llvm::dyn_cast<llvm::Constant>(num);
+                auto cons_data = llvm::dyn_cast<llvm::ConstantData>(cons);
+                auto cons_int = llvm::dyn_cast<llvm::ConstantInt>(cons_data);
+                if (cons_int) {
+                    element_num = cons_int->getZExtValue();
+                } else {
+                    throw ExceptionFactory<LogicException>(
+                        "array initializer must be a compile-time constant",
+                        this->num_by_const->getToken().line, this->num_by_const->getToken().column
+                    );
+                }
+            } catch (...) {
+                throw ExceptionFactory<LogicException>(
+                    "array initializer must be a compile-time constant",
+                    this->num_by_const->getToken().line, this->num_by_const->getToken().column
+                );
+            }
+        }
 
         /**
          * a pointer will be returned if element_num equals to 0.
@@ -1969,16 +2070,20 @@ namespace AVSI {
                         "arr[" + type_name[this->Ty.first] + ":" + to_string(element_num) + "]*";
                 type_size[arr_type] = type_size[this->Ty.first] * element_num;
                 type_size[arr_type->getPointerTo()] = PTR_SIZE;
-                llvm::AllocaInst *array_alloca = allocaBlockEntry(the_scope, "array.init.by.type", arr_type);
-                builder->CreateMemSet(
-                        array_alloca,
-                        llvm::ConstantInt::get(
-                                llvm::Type::getInt8Ty(*the_context),
-                                0),
-                        type_size[arr_type],
-                        llvm::MaybeAlign());
+                if (is_in_function) {
+                    llvm::AllocaInst *array_alloca = allocaBlockEntry(the_scope, "array.init.by.type", arr_type);
+                    builder->CreateMemSet(
+                            array_alloca,
+                            llvm::ConstantInt::get(
+                                    llvm::Type::getInt8Ty(*the_context),
+                                    0),
+                            type_size[arr_type],
+                            llvm::MaybeAlign());
 
-                return builder->CreateLoad(arr_type, array_alloca);
+                    return builder->CreateLoad(arr_type, array_alloca);
+                } else {
+                    return llvm::ConstantAggregateZero::get(arr_type);
+                }
             } else {
                 auto vec_type = llvm::VectorType::get(this->Ty.first, element_num, false);
                 type_name[vec_type] = "vec[" + type_name[this->Ty.first] + ":" + to_string(element_num) + "]";
@@ -1986,16 +2091,21 @@ namespace AVSI {
                         "vec[" + type_name[this->Ty.first] + ":" + to_string(element_num) + "]*";
                 type_size[vec_type] = type_size[this->Ty.first] * element_num;
                 type_size[vec_type->getPointerTo()] = PTR_SIZE;
-                llvm::AllocaInst *array_alloca = allocaBlockEntry(the_scope, "vector.init.by.type", vec_type);
-                builder->CreateMemSet(
-                        array_alloca,
-                        llvm::ConstantInt::get(
-                                llvm::Type::getInt8Ty(*the_context),
-                                0),
-                        type_size[vec_type],
-                        llvm::MaybeAlign());
 
-                return builder->CreateLoad(vec_type, array_alloca);
+                if (is_in_function) {
+                    llvm::AllocaInst *array_alloca = allocaBlockEntry(the_scope, "vector.init.by.type", vec_type);
+                    builder->CreateMemSet(
+                            array_alloca,
+                            llvm::ConstantInt::get(
+                                    llvm::Type::getInt8Ty(*the_context),
+                                    0),
+                            type_size[vec_type],
+                            llvm::MaybeAlign());
+
+                    return builder->CreateLoad(vec_type, array_alloca);
+                } else {
+                    return llvm::ConstantAggregateZero::get(vec_type);
+                }
             }
         }
 
@@ -2058,55 +2168,61 @@ namespace AVSI {
             type_name[arr->getType()->getPointerTo()] = "arr[" + type_name[tname] + ":" + to_string(element_num) + "]*";
             type_size[arr->getType()] = tsize * element_num;
 
-            string global_var_name = string("__constant.") + string(builder->GetInsertBlock()->getParent()->getName()) + string(".arr");
-            llvm::function_ref<llvm::GlobalVariable *()> global_var_callback = [&] {
-                return new llvm::GlobalVariable(
-                        *the_module,
-                        arr->getType(),
-                        false,
-                        llvm::GlobalVariable::LinkageTypes::PrivateLinkage,
-                        arr,
-                        global_var_name);
-            };
-            auto ptr = the_module->getOrInsertGlobal(
-                    global_var_name,
-                    (llvm::Type *) arr->getType(),
-                    global_var_callback
-            );
+            if (is_in_function) {
+                string global_var_name = string("__constant.") + string(builder->GetInsertBlock()->getParent()->getName()) + string(".arr");
+                llvm::function_ref<llvm::GlobalVariable *()> global_var_callback = [&] {
+                    return new llvm::GlobalVariable(
+                            *the_module,
+                            arr->getType(),
+                            false,
+                            llvm::GlobalVariable::LinkageTypes::PrivateLinkage,
+                            arr,
+                            global_var_name);
+                };
+                auto ptr = the_module->getOrInsertGlobal(
+                        global_var_name,
+                        (llvm::Type *) arr->getType(),
+                        global_var_callback
+                );
 
-            return builder->CreateLoad(arr->getType(), ptr);
-        } else {
-            // else initialize an array by store action
-            llvm::Value *head_rv = this->paramList[0]->codeGen();
-            auto eleTy = head_rv->getType();
-            auto arr_type = llvm::ArrayType::get(eleTy, element_num + 1);
-
-            if (type_size.find(eleTy) == type_size.end()) {
-                registerType(eleTy);
+                return builder->CreateLoad(arr->getType(), ptr);
+            } else {
+                return arr;
             }
+        } else {
+            if (is_in_function) {
+                // else initialize an array by store action
+                llvm::Value *head_rv = this->paramList[0]->codeGen();
+                auto eleTy = head_rv->getType();
+                auto arr_type = llvm::ArrayType::get(eleTy, element_num + 1);
 
-            type_name[arr_type] = "arr[" + type_name[eleTy] + ":" + to_string(element_num) + "]";
-            type_name[arr_type->getPointerTo()] = "arr[" + type_name[eleTy] + ":" + to_string(element_num) + "]*";
-            type_size[arr_type] = (eleTy->isPointerTy() ? PTR_SIZE : type_size[eleTy]) * element_num;
-            // initialize array
-            llvm::AllocaInst *array_alloca = allocaBlockEntry(the_scope, "array.init.by.value", arr_type);
+                if (type_size.find(eleTy) == type_size.end()) {
+                    registerType(eleTy);
+                }
 
-            // store first element
-            auto first_element_addr = builder->CreateGEP(
-                    llvm::cast<llvm::PointerType>(array_alloca->getType()->getScalarType())->getPointerElementType(),
-                    array_alloca,
-                    {
-                            llvm::ConstantInt::get(ISIZE_TY, 0),
-                            llvm::ConstantInt::get(ISIZE_TY, 0),
-                    },
-                    "Array.init.element." + to_string(0));
-            builder->CreateStore(head_rv, first_element_addr);
+                type_name[arr_type] = "arr[" + type_name[eleTy] + ":" + to_string(element_num) + "]";
+                type_name[arr_type->getPointerTo()] = "arr[" + type_name[eleTy] + ":" + to_string(element_num) + "]*";
+                type_size[arr_type] = (eleTy->isPointerTy() ? PTR_SIZE : type_size[eleTy]) * element_num;
 
-            // initialize other elements
-            for (int i = 1; i < element_num; i++) {
-                shared_ptr<AST> param = this->paramList[i];
-                llvm::Value *rv = param->codeGen();
-                auto element_addr = builder->CreateGEP(
+                // initialize array
+                llvm::AllocaInst *array_alloca = allocaBlockEntry(the_scope, "array.init.by.value", arr_type);
+
+                // store first element
+                auto first_element_addr = builder->CreateGEP(
+                        llvm::cast<llvm::PointerType>(array_alloca->getType()->getScalarType())->getPointerElementType(),
+                        array_alloca,
+                        {
+                                llvm::ConstantInt::get(ISIZE_TY, 0),
+                                llvm::ConstantInt::get(ISIZE_TY, 0),
+                        },
+                        "Array.init.element." + to_string(0));
+                builder->CreateStore(head_rv, first_element_addr);
+
+                // initialize other elements
+                for (int i = 1; i < element_num; i++) {
+                    shared_ptr<AST> param = this->paramList[i];
+                    llvm::Value *rv = param->codeGen();
+                    auto element_addr = builder->CreateGEP(
                         llvm::cast<llvm::PointerType>(array_alloca->getType()->getScalarType())->getPointerElementType(),
                         array_alloca,
                         {
@@ -2115,33 +2231,39 @@ namespace AVSI {
                         },
                         "ArrayInit.element." + to_string(i));
 
-                if (rv->getType() != eleTy) {
-                    try {
-                        rv = type_conv(param.get(), rv, rv->getType(), eleTy, false);
-                    } catch (...) {
-                        throw ExceptionFactory<TypeException>(
-                                "not matched type, element type: " +
-                                type_name[rv->getType()] +
-                                ", array type: " + type_name[eleTy],
-                                param->getToken().line, param->getToken().column);
+                    if (rv->getType() != eleTy) {
+                        try {
+                            rv = type_conv(param.get(), rv, rv->getType(), eleTy, false);
+                        } catch (...) {
+                            throw ExceptionFactory<TypeException>(
+                                    "not matched type, element type: " +
+                                    type_name[rv->getType()] +
+                                    ", array type: " + type_name[eleTy],
+                                    param->getToken().line, param->getToken().column);
+                        }
                     }
+
+                    builder->CreateStore(rv, element_addr);
                 }
 
-                builder->CreateStore(rv, element_addr);
+                // add NULL to tail
+                auto element_addr = builder->CreateGEP(
+                        llvm::cast<llvm::PointerType>(array_alloca->getType()->getScalarType())->getPointerElementType(),
+                        array_alloca,
+                        {
+                                llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), 0),
+                                llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), element_num),
+                        },
+                        "ArrayInit.element.tail");
+                builder->CreateStore(llvm::Constant::getNullValue(eleTy), element_addr);
+
+                return builder->CreateLoad(arr_type, array_alloca);
+            } else {
+                throw ExceptionFactory<LogicException>(
+                    "array initializer must be a compile-time constant",
+                    this->getToken().line, this->getToken().column
+                );
             }
-
-            // add NULL to tail
-            auto element_addr = builder->CreateGEP(
-                    llvm::cast<llvm::PointerType>(array_alloca->getType()->getScalarType())->getPointerElementType(),
-                    array_alloca,
-                    {
-                            llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), 0),
-                            llvm::ConstantInt::get(llvm::Type::getInt32Ty(*the_context), element_num),
-                    },
-                    "ArrayInit.element.tail");
-            builder->CreateStore(llvm::Constant::getNullValue(eleTy), element_addr);
-
-            return builder->CreateLoad(arr_type, array_alloca);
         }
     }
 
@@ -2149,10 +2271,15 @@ namespace AVSI {
         shared_ptr<Variable> v = static_pointer_cast<Variable>(this->var);
         string id = v->id;
 
-        if (v->Ty.first == VOID_TY) {
-            throw ExceptionFactory<LogicException>(
+        if (v->Ty.first == VOID_TY && this->expr.get() == nullptr) {
+            throw ExceptionFactory<SyntaxException>(
                     "missing type of global variable '" + id + "'",
                     this->getToken().column, this->getToken().column);
+        } else if (v->Ty.first != VOID_TY && this->expr.get() != nullptr) {
+            Warning(
+                    "type of global variable '" + id + "' will be ignored",
+                    this->getToken().line, this->getToken().column
+            );
         }
 
         auto link_type =
@@ -2160,16 +2287,41 @@ namespace AVSI {
                 ? llvm::GlobalVariable::ExternalLinkage
                 : llvm::GlobalVariable::PrivateLinkage;
 
+        llvm::Constant *init = llvm::Constant::getNullValue(v->Ty.first);
+
+        if (this->expr != nullptr) {
+            try {
+                auto right = this->expr->codeGen();
+                init = llvm::dyn_cast<llvm::Constant>(right);
+                if (!init) {
+                    throw ExceptionFactory<LogicException>(
+                            "initializer element is not a compile-time constant",
+                            this->getToken().line, this->getToken().column);
+                }
+            } catch (...) {
+                throw ExceptionFactory<LogicException>(
+                        "initializer element is not a compile-time constant",
+                        this->getToken().line, this->getToken().column);
+            }
+        }
+        
         the_module->getOrInsertGlobal(
                 this->is_mangle ? getFunctionNameMangling(module_path_with_module_name, id) : id, v->Ty.first,
-                [v, link_type, id] {
-                    return new llvm::GlobalVariable(
-                            *the_module,
-                            v->Ty.first,
-                            false,
-                            link_type,
-                            llvm::Constant::getNullValue(v->Ty.first),
-                            getFunctionNameMangling(module_path_with_module_name, id));
+                [&] {
+                    auto gv = new llvm::GlobalVariable(
+                        *the_module,
+                        init->getType(),
+                        false,
+                        link_type,
+                        init,
+                        getFunctionNameMangling(module_path_with_module_name, id));
+                    if (gv->getType()->isArrayTy()) {
+                        gv->setAlignment(llvm::Align(16));
+                    }
+                    if (this->is_const) {
+                        gv->addAttribute(llvm::Attribute::ReadOnly);
+                    }
+                    return gv;
                 });
 
         return llvm::ConstantFP::getNaN(F64_TY);
@@ -2458,18 +2610,27 @@ namespace AVSI {
     }
 
     llvm::Value *Variable::codeGen() {
+        llvm::Constant *global_const = getGlobalConstant(this);
+        if (global_const) {
+            return global_const;
+        }
+
         llvm::Value *v = getAlloca(this);
 
         if (!v) {
             throw ExceptionFactory<MissingException>(
-                    "variable '" + this->id + "' is not defined",
-                    this->token.line, this->token.column);
+                "variable '" + this->id + "' is not defined",
+                this->token.line, this->token.column
+            );
         }
 
-        if (llvm::dyn_cast<llvm::Constant>(v) && llvm::dyn_cast<llvm::Constant>(v)->isNaN()) {
-            return llvm::ConstantFP::getNaN(F64_TY);
-        } else {
+        if (builder->GetInsertBlock()) {
             return builder->CreateLoad(v->getType()->getPointerElementType(), v, this->id.c_str());
+        } else {
+            throw ExceptionFactory<MissingException>(
+                "cannot get the value of variable '" + this->id + "' out of function",
+                this->token.line, this->token.column
+            );
         }
     }
 
