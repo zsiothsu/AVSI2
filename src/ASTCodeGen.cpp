@@ -1014,11 +1014,10 @@ namespace AVSI {
                                 "divisor cannot be 0",
                                 this->token.line, this->token.column);
                     }
-                    if (!float_point) {
-                        lv_real = builder->CreateSIToFP(lv, F32_TY);
-                        rv_real = builder->CreateSIToFP(rv, F32_TY);
-                    }
-                    return builder->CreateFDiv(lv_real, rv_real, "div");
+                    if (float_point)
+                        return builder->CreateFDiv(lv_real, rv_real, "div");
+                    else
+                        return builder->CreateSDiv(lv, rv, "div");
                 case EQ:
                     if (float_point) {
                         cmp_value_boolean = builder->CreateFCmpOEQ(lv_real, rv_real, "eq");

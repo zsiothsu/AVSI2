@@ -132,7 +132,7 @@ namespace AVSI {
         the_function_fpm->doInitialization();
 
         the_module_fpm->add(llvm::createFunctionInliningPass());
-        // the_module_fpm->add(llvm::createAlwaysInlinerLegacyPass());
+        the_module_fpm->add(llvm::createAlwaysInlinerLegacyPass());
     }
 
     /**
@@ -478,6 +478,7 @@ namespace AVSI {
         // reset context and module
         delete TheTargetMachine;
         delete the_function_fpm;
+        delete the_module_fpm;
         delete builder;
         delete the_module;
         delete the_context;
