@@ -9,7 +9,7 @@ function while_test(x: f64) -> f64 {
 
     while [ i < a ] do
         x = x * 2
-        if [ a  -lt 128 ] then
+        if [ a  < 128 ] then
             std::io::print("%d ",x)
         else
             break

@@ -51,6 +51,7 @@
 #include "llvm/Transforms/Utils/ValueMapper.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
+#include "llvm/Transforms/AggressiveInstCombine/AggressiveInstCombine.h"
 #if (LLVM_VERSION_MAJOR >= 14)
 #include "llvm/MC/TargetRegistry.h"
 #else
@@ -123,11 +124,34 @@ namespace AVSI {
     void llvm_module_fpm_init() {
         if (opt_optimize) {
             the_function_fpm->add(llvm::createReassociatePass());
-            the_function_fpm->add(llvm::createGVNPass());
+            the_function_fpm->add(llvm::createConstantHoistingPass());
             the_function_fpm->add(llvm::createInstructionCombiningPass());
+            the_function_fpm->add(llvm::createReassociatePass());
             the_function_fpm->add(llvm::createCFGSimplificationPass());
             the_function_fpm->add(llvm::createDeadCodeEliminationPass());
             the_function_fpm->add(llvm::createFlattenCFGPass());
+            the_function_fpm->add(llvm::createGVNPass());
+            the_function_fpm->add(llvm::createLICMPass());
+            the_function_fpm->add(llvm::createLoopSinkPass());
+            the_function_fpm->add(llvm::createLoopInstSimplifyPass());
+            the_function_fpm->add(llvm::createLoopFlattenPass());
+            the_function_fpm->add(llvm::createLoopRotatePass());
+            the_function_fpm->add(llvm::createLoopIdiomPass());
+            the_function_fpm->add(llvm::createLoopPredicationPass());
+            the_function_fpm->add(llvm::createLoopVersioningLICMPass());
+            the_function_fpm->add(llvm::createLoopDistributePass());
+            the_function_fpm->add(llvm::createLoopFusePass());
+            the_function_fpm->add(llvm::createGVNHoistPass());
+            the_function_fpm->add(llvm::createSpeculativeExecutionPass());
+            the_function_fpm->add(llvm::createIndVarSimplifyPass());
+
+
+            the_function_fpm->add(llvm::createReassociatePass());
+            the_function_fpm->add(llvm::createConstantHoistingPass());
+            the_function_fpm->add(llvm::createInstructionCombiningPass());
+            the_function_fpm->add(llvm::createDeadStoreEliminationPass());
+            the_function_fpm->add(llvm::createAggressiveDCEPass());
+            the_function_fpm->add(llvm::createAggressiveInstCombinerPass()); 
         }
         the_function_fpm->doInitialization();
 

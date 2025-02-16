@@ -9,6 +9,7 @@ example/build/*
 *.d
 *.ll
 *.bc
+*.i
 
 .vscode
 .VSCodeCounter

@@ -221,52 +221,6 @@ namespace AVSI {
             if (this->currentChar == '-') {
                 char _peek = peek();
                 string _peek2 = peek2();
-                if (_peek2 == "eq") {
-                    advance();
-                    advance();
-                    advance();
-                    return Token(EQ, string("-eq"), line, column);
-                }
-                if (_peek2 == "ne") {
-                    advance();
-                    advance();
-                    advance();
-                    return Token(NE, string("-ne"), line, column);
-                }
-                if (_peek2 == "gt") {
-                    advance();
-                    advance();
-                    advance();
-                    return Token(GT, string("-gt"), line, column);
-                }
-                if (_peek2 == "lt") {
-                    advance();
-                    advance();
-                    advance();
-                    return Token(LT, string("-lt"), line, column);
-                }
-                if (_peek2 == "ge") {
-                    advance();
-                    advance();
-                    advance();
-                    return Token(GE, string("-ge"), line, column);
-                }
-                if (_peek2 == "le") {
-                    advance();
-                    advance();
-                    advance();
-                    return Token(LE, string("-le"), line, column);
-                }
-                if (_peek == 'o') {
-                    advance();
-                    advance();
-                    return Token(OR, string("-o"), line, column);
-                }
-                if (_peek == 'a') {
-                    advance();
-                    advance();
-                    return Token(AND, string("-a"), line, column);
-                }
                 if (_peek == '>') {
                     advance();
                     advance();

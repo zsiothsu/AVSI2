@@ -241,12 +241,12 @@ namespace AVSI {
 
             if (index->getType()->isFloatingPointTy()) {
                 index = builder->CreateFPToSI(index, I32_TY);
-            } else {
+            } else if (index->getType() != I32_TY) {
                 index = builder->CreateSExtOrTrunc(index, I32_TY);
             }
             offset_list.push_back(index);
 
-            base = builder->CreateGEP(
+            base = builder->CreateInBoundsGEP(
                     base->getType()->getScalarType()->getPointerElementType(),
                     base,
                     offset_list,
@@ -350,6 +350,10 @@ namespace AVSI {
             v = the_module->getGlobalVariable(
                     getFunctionNameMangling(module_path_with_module_name, var->id)
             );
+
+            if (!v) {
+                v = the_module->getGlobalVariable(var->id);
+            }
         } else if (modinfo[0] == "root") {
             // absolute path
             vector<string> p;
@@ -414,6 +418,10 @@ namespace AVSI {
                 v = the_module->getGlobalVariable(
                         getFunctionNameMangling(module_path_with_module_name, var->id)
                 );
+
+                if (!v) {
+                    v = the_module->getGlobalVariable(var->id);
+                }
             } else if (modinfo[0] == "root") {
                 // absolute path
                 vector<string> p;
@@ -850,7 +858,7 @@ namespace AVSI {
         if (etype == VOID_TY) {
             throw ExceptionFactory<TypeException>(
                     "void type is not allowed",
-                    ast->getToken().column, ast->getToken().column);
+                    ast->getToken().line, ast->getToken().column);
         }
 
         bool is_v_simple = simple_types.find(vtype) != simple_types.end();
@@ -921,7 +929,7 @@ namespace AVSI {
 
             throw ExceptionFactory<TypeException>(
                     "undefined cast '" + type_name[vtype] + "' to '" + type_name[etype] + "'",
-                    ast->getToken().column, ast->getToken().column);
+                    ast->getToken().line, ast->getToken().column);
         }
     }
 
@@ -991,13 +999,13 @@ namespace AVSI {
             if (lv_const && lv_const->isNaN()) {
                 throw ExceptionFactory<LogicException>(
                         "left operand must have a value",
-                        this->left->getToken().column, this->left->getToken().column
+                        this->left->getToken().line, this->left->getToken().column
                 );
             }
             if (rv_const && rv_const->isNaN()) {
                 throw ExceptionFactory<LogicException>(
                         "right operand must have a value",
-                        this->right->getToken().column, this->right->getToken().column
+                        this->right->getToken().line, this->right->getToken().column
                 );
             }
 
@@ -1594,6 +1602,7 @@ namespace AVSI {
                             this->token.line, this->token.column);
                 }
                 the_function_fpm->run(*the_function);
+                the_function_fpm->run(*the_function);
                 if (last_BB != nullptr) {
                     builder->SetInsertPoint(last_BB, last_pt);
                 }
@@ -2069,7 +2078,7 @@ namespace AVSI {
         if (this->paramList.size() == 0 && this->Ty.first == VOID_TY) {
             throw ExceptionFactory<TypeException>(
                     "array with void type is not allowed",
-                    this->getToken().column, this->getToken().column);
+                    this->getToken().line, this->getToken().column);
         }
 
         /**
@@ -2287,7 +2296,7 @@ namespace AVSI {
         if (v->Ty.first == VOID_TY && this->expr.get() == nullptr) {
             throw ExceptionFactory<SyntaxException>(
                     "missing type of global variable '" + id + "'",
-                    this->getToken().column, this->getToken().column);
+                    this->getToken().line, this->getToken().column);
         } else if (v->Ty.first != VOID_TY && this->expr.get() != nullptr) {
             Warning(
                     "type of global variable '" + id + "' will be ignored",
@@ -2300,7 +2309,7 @@ namespace AVSI {
                 ? llvm::GlobalVariable::ExternalLinkage
                 : llvm::GlobalVariable::PrivateLinkage;
 
-        llvm::Constant *init = llvm::Constant::getNullValue(v->Ty.first);
+        llvm::Constant *init = v->Ty.first == VOID_TY ? nullptr : llvm::Constant::getNullValue(v->Ty.first);
 
         if (this->expr != nullptr) {
             try {
@@ -2317,17 +2326,22 @@ namespace AVSI {
                         this->getToken().line, this->getToken().column);
             }
         }
-        
+
+        auto g_type = init->getType();
+        auto g_name = this->is_mangle ? getFunctionNameMangling(module_path_with_module_name, id) : id;
+
         the_module->getOrInsertGlobal(
-                this->is_mangle ? getFunctionNameMangling(module_path_with_module_name, id) : id, v->Ty.first,
+                g_name,
+                g_type,
                 [&] {
                     auto gv = new llvm::GlobalVariable(
                         *the_module,
-                        init->getType(),
-                        false,
+                        g_type,
+                        this->is_const,
                         link_type,
                         init,
-                        getFunctionNameMangling(module_path_with_module_name, id));
+                        g_name
+                    );
                     if (gv->getType()->isArrayTy()) {
                         gv->setAlignment(llvm::Align(16));
                     }
