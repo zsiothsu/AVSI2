@@ -414,6 +414,10 @@ namespace AVSI {
         auto md_iter = imported_module->getNamedMDList().begin();
         while (md_iter != imported_module->getNamedMDList().end()) {
             auto md = &(*md_iter);
+            if (the_module->getNamedMetadata(md->getName())) {
+                md_iter++;
+                continue;
+            }
             auto new_md = the_module->getOrInsertNamedMetadata(md->getName());
             for (auto node: md->operands()) {
                 new_md->addOperand(node);

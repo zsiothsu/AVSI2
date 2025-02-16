@@ -45,7 +45,7 @@ no_mangle function main(argc: i32, argv: char**) -> i32 {
     object_test::object::obj_test()
     size = sizeof(typename object_test::object::S)
     size = sizeof(typename NS)
-    s = root::object_test::object::S(1 as i8, 1.2 as f32, []'H', 'E', 'L', 'L', 'O'])
+    s = root::object_test::object::S(1 as i8, 1.2 as f32, ['H', 'E', 'L', 'L', 'O'])
     s.a = s.member_function(1) as i8
     object_test::object::S::member_function(&s, 1)
     t = VS([1,2])
@@ -104,7 +104,7 @@ no_mangle function main(argc: i32, argv: char**) -> i32 {
 
     io::println(banner)
 
-    str = {:char:100}
+    str = [:char:100]
     io::print("\nHello World!\ninput:")
     io::read("%s", str)
     io::println("your input: %s", str)

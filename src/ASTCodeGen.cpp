@@ -1863,14 +1863,27 @@ namespace AVSI {
                 fun,
                 FT->getPointerTo()
             );
-            inst = builder->CreateCall(
-                FT,
-                BitcastExpr,
-                caller_args,
-                "callLocal" 
-            );
+
+            if (FT->getReturnType() != VOID_TY) {
+                inst = builder->CreateCall(
+                    FT,
+                    BitcastExpr,
+                    caller_args,
+                    "callLocal" 
+                );
+            } else {
+                inst = builder->CreateCall(
+                    FT,
+                    BitcastExpr,
+                    caller_args
+                );
+            }
         } else {
-            inst = builder->CreateCall(fun, caller_args, "callLocal");
+            if (fun->getFunctionType()->getReturnType() != VOID_TY) {
+                inst = builder->CreateCall(fun, caller_args, "callLocal");
+            } else {
+                inst = builder->CreateCall(fun, caller_args);
+            }
         }
 
         if (fun->getFunctionType()->getReturnType() != VOID_TY) {

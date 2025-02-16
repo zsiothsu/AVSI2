@@ -60,7 +60,7 @@ function arr_test_1(test_arr: arr[i32:0]) {
 }
 
 function arr_test_2() {
-    a = {1 as i32, 2,3,4}
+    a = [1 as i32, 2,3,4]
     b = &a
     c = b[0]
 }

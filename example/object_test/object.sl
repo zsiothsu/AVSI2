@@ -29,7 +29,7 @@ function other_function(a: S, b: i32) -> i32{
 }
 
 function obj_test() {
-    a = S(1 as i8, 1.2 as f32, {'H', 'E', 'L', 'L', 'O'})
+    a = S(1 as i8, 1.2 as f32, ['H', 'E', 'L', 'L', 'O'])
     a.a = 2 as i8
     a.member_function(0)
     other_function(a, 10)
