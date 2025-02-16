@@ -54,6 +54,7 @@ extern std::string output_root_path;
 extern std::vector<std::string> include_path;
 extern std::vector<std::string> package_path;
 
+extern std::string input_file_name_raw;
 extern std::string input_file_name;
 extern std::string input_file_name_no_suffix;
 extern std::string input_file_path_absolut;

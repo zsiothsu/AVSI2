@@ -205,6 +205,7 @@ int main(int argc, char **argv) {
     }
 
     char *fileName = argv[optind];
+    input_file_name_raw = fileName;
     input_file_name = basename(fileName);
     input_file_name_no_suffix = input_file_name.substr(0, input_file_name.find('.'));
 
@@ -267,6 +268,15 @@ int main(int argc, char **argv) {
     }
 
     try {
+        string preprocessed_file_name = llvm_emit_cpp();
+        file.close();
+        file.open(preprocessed_file_name, ios::in);
+        if (!file.is_open()) {
+            cout << "AVSI: can't open file '" + preprocessed_file_name + "'" << endl;
+            return -1;
+        }
+
+
         llvm_global_context_reset();
         llvm_machine_init();
         llvm_module_fpm_init();

@@ -37,6 +37,7 @@ std::string output_root_path;
 std::vector<std::string> include_path;
 std::vector<std::string> package_path;
 
+std::string input_file_name_raw;
 std::string input_file_name;
 std::string input_file_path;
 std::string input_file_name_no_suffix;

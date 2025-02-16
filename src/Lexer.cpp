@@ -104,9 +104,25 @@ namespace AVSI {
                 skipWhiteSpace();
                 continue;
             }
+            if (this->currentChar == '#') {
+                advance();
+                int linenum_backup = this->linenum;
+                skipWhiteSpace();
+                if (this->linenum != linenum_backup) {
+                    continue;
+                }
+                if (isdigit(this->currentChar)) {
+                    Token num =  number();
+                    this->linenum = num.getValue().any_cast<int>() - 1;
+                }
+                this->cur = this->line.length();
+                advance();
+                continue;
+            }
             if (this->currentChar == '/') {
                 if (peek() == '/') {
                     this->cur = this->line.length();
+                    
                     advance();
                     continue;
                 }

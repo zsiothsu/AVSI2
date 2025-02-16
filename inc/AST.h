@@ -783,6 +783,8 @@ namespace AVSI {
 
     void llvm_emit_ir();
 
+    string llvm_emit_cpp();
+
     void llvm_run_optimization();
 
     void llvm_create_dir(string dir);

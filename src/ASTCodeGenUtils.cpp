@@ -778,6 +778,47 @@ namespace AVSI {
         dest.close();
     }
 
+    string llvm_emit_cpp() {
+        std::filesystem::path dir = filesystem::path(input_file_path_absolut).filename();
+        string file_basename;
+        if (input_file_name_no_suffix == MODULE_INIT_NAME)
+            file_basename = dir.string();
+        else if (input_file_name_no_suffix == MODULE_LIB_NAME)
+            file_basename = module_name_nopath;
+        else
+            file_basename = input_file_name_no_suffix;
+
+        auto Filename =
+                output_root_path + SYSTEM_PATH_DIVIDER + input_file_path_relative + SYSTEM_PATH_DIVIDER +
+                string(file_basename) + ".i";
+        llvm_create_dir(filesystem::path(Filename).parent_path());
+
+        string param = input_file_name_raw + " -o " + Filename;
+        FILE* p = popen(("cpp " + param).c_str(), "r");
+        if (!p) {
+            throw ExceptionFactory<SysErrException>(
+                    "failed to run cpp",
+                    0, 0);
+        }
+
+        char buf[1024];
+        string result;
+        while (fgets(buf, 1024, p)) {
+            result += buf;
+        }
+
+        cout << result;
+
+        int status = pclose(p);
+        if (status != 0) {
+            throw ExceptionFactory<SysErrException>(
+                "some error while preprocessing", 0, 0
+            );
+        } else {
+            return Filename;
+        }
+    }
+
     void llvm_run_optimization() {
         the_module_fpm->run(*the_module);
     }
