@@ -2645,7 +2645,17 @@ namespace AVSI {
 
         for (shared_ptr<AST> ast: this->child) {
             try {
+                llvm::BasicBlock *bb = builder->GetInsertBlock();
+                if (ast->__AST_name == __COMPOUND_NAME && bb) {
+                    symbol_table->push(bb);
+                }
+
                 auto value = ast->codeGen();
+
+                if (ast->__AST_name == __COMPOUND_NAME && bb) {
+                    symbol_table->pop();
+                }
+
                 cnt++;
 
                 // value of calling function is not belonging to block

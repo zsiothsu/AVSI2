@@ -16,14 +16,14 @@ function grad_complex(x: i32) -> f64 {
     y = (t1 + t2) / t3
 
     // (1 + 6/x^3)/(-1 + x) - (2 (-3/x^2 + x))/(-1 + x)^2 + (2 (1 + 3/x + x^2/2))/(-1 + x)^3
-    grad(y, {x, 2})
+    grad(y, [x, 2])
 }
 
 function grad_2d(x: i32, y: i32) -> f64 {
     z = 2 * x * x * y * y
 
     // 8y
-    grad(z, {x, 2}, y)
+    grad(z, [x, 2], y)
 }
 
 function grad_func(x: f32) -> f32 {
@@ -39,8 +39,8 @@ function foo_diff0_diff0_diff0(x: f32) -> f32 { 6 }
 function grad_foo(x: f32) {
     y = foo(x)
     y1 = grad(y, x)
-    y2 = grad(y, {x,2})
-    y3 = grad(y, {x,3})
+    y2 = grad(y, [x,2])
+    y3 = grad(y, [x,3])
 
     io::println("f(x) = x ^ 3")
     io::println("f(%f) = %f", x, y)

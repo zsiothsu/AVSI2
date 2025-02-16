@@ -179,7 +179,7 @@ namespace AVSI {
             ID,
             LPAR,
             NOT,
-            LBRACE,
+            LSQB,
             IF,
             INC,
             DEC

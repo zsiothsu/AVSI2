@@ -388,6 +388,12 @@ namespace AVSI {
         } else if (token_type == GRAD) {
             PARSE_LOG(STATEMENT);
             return grad();
+        } else if (token_type == LBRACE) {
+            PARSE_LOG(STATEMENT);
+            eat(LBRACE);
+            auto comp = statementList();
+            eat(RBRACE);
+            return comp;
         }
 
         for (auto op: ExprOp) {
@@ -407,7 +413,7 @@ namespace AVSI {
         vector<shared_ptr<AST>> elements;
         Token token = this->currentToken;
 
-        eat(LBRACE);
+        eat(LSQB);
 
         bool is_vec = false;
         if (this->currentToken.getType() == VEC) {
@@ -425,23 +431,23 @@ namespace AVSI {
             if (this->currentToken.getType() == INTEGER) {
                 uint32_t num = this->currentToken.getValue().any_cast<int>();
                 eat(INTEGER);
-                eat(RBRACE);
+                eat(RSQB);
                 return make_shared<ArrayInit>(ArrayInit(Ty, num, is_vec, token));
             } else {
                 shared_ptr<AST> num = checkedExpr();
-                eat(RBRACE);
+                eat(RSQB);
                 return make_shared<ArrayInit>(ArrayInit(Ty, num, is_vec, token));
             }
         }
 
-        while (this->currentToken.getType() != RBRACE) {
+        while (this->currentToken.getType() != RSQB) {
             elements.push_back(expr());
 
-            if (this->currentToken.getType() != RBRACE) {
+            if (this->currentToken.getType() != RSQB) {
                 eat(COMMA);
             }
         }
-        eat(RBRACE);
+        eat(RSQB);
 
         return make_shared<ArrayInit>(ArrayInit(elements, elements.size(), is_vec, token));
     }
@@ -652,7 +658,7 @@ namespace AVSI {
 
         while (
             (this->currentToken.getType() == ID)
-            || (this->currentToken.getType() == LBRACE)
+            || (this->currentToken.getType() == LSQB)
         ) {
             if (this->currentToken.getType() == ID) {
                 auto var = variable();
@@ -664,12 +670,12 @@ namespace AVSI {
                 }
                 vars.push_back({static_pointer_cast<Variable>(var)->id, 1});
             } else {
-                eat(LBRACE);
+                eat(LSQB);
                 auto var = variable();
                 eat(COMMA);
                 Token num_token = this->currentToken;
                 eat(INTEGER);
-                eat(RBRACE);
+                eat(RSQB);
                 vars.push_back({static_pointer_cast<Variable>(var)->id, num_token.getValue().any_cast<int>()});
             }
 
@@ -1149,7 +1155,7 @@ namespace AVSI {
     shared_ptr<AST> Parser::checkedExpr() {
         PARSE_LOG(EXPRCHECK);
 
-        if (this->currentToken.getType() == LBRACE) return arraylist();
+        if (this->currentToken.getType() == LSQB) return arraylist();
         if (this->currentToken.getType() == STRING) {
             Token token = this->currentToken;
             eat(STRING);

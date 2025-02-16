@@ -29,7 +29,7 @@ no_mangle function main(argc: i32, argv: char**) -> i32 {
     // call with alias
     a = ft::foo_p_i64_r_f64(1 as i64)
 
-    b = function_test::fun::foo_p_i8ptr_i32_r_i8({'a', 'b', 46 as i8}, 2)
+    b = function_test::fun::foo_p_i8ptr_i32_r_i8(['a', 'b', 46 as i8], 2)
 
     c = if_test::if::foo_iftest(0 as i8)
 
@@ -45,10 +45,10 @@ no_mangle function main(argc: i32, argv: char**) -> i32 {
     object_test::object::obj_test()
     size = sizeof(typename object_test::object::S)
     size = sizeof(typename NS)
-    s = root::object_test::object::S(1 as i8, 1.2 as f32, {'H', 'E', 'L', 'L', 'O'})
+    s = root::object_test::object::S(1 as i8, 1.2 as f32, []'H', 'E', 'L', 'L', 'O'])
     s.a = s.member_function(1) as i8
     object_test::object::S::member_function(&s, 1)
-    t = VS({1,2})
+    t = VS([1,2])
 
     type_test::cast::cast_test()
     type_test::expr::expr_test()
