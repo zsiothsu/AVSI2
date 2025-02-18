@@ -182,7 +182,8 @@ namespace AVSI {
             LSQB,
             IF,
             INC,
-            DEC
+            DEC,
+            GRAD
     };
 
     const static TokenType FIRST_STATEMENT[] = {

@@ -789,6 +789,27 @@ namespace AVSI {
 
     void llvm_create_dir(string dir);
 
+    /* codegen utils */
+    llvm::PointerType *getArrayBasicTypePointer(llvm::PointerType *Ty);
+
+    bool isTheSameBasicType(llvm::PointerType *l, llvm::PointerType *r);
+
+    uint64_t registerType(llvm::Type *Ty);
+
+    llvm::AllocaInst *allocaBlockEntry(llvm::Function *fun, string name, llvm::Type *Ty);
+
+    llvm::Value *getOffset(llvm::Value *base, shared_ptr<AST> offset);
+
+    llvm::Constant *getGlobalConstant(Variable *var);
+
+    llvm::Value *getAlloca(Variable *var, bool *is_const = nullptr);
+
+    bool store(AST *ast, llvm::Value *l_alloca_addr, llvm::Value *r_value, bool assignment = true, string l_base_name = "member");
+
+    llvm::Value *type_conv(AST *ast, llvm::Value *v, llvm::Type *vtype, llvm::Type *etype, bool AllowPtrConv = true);
+
+    /* derivator */
+
     shared_ptr<AST> derivator(shared_ptr<AST> ast, string name);
 
     shared_ptr<AST> derivator_for_function_call(shared_ptr<AST> ast, string name);
@@ -796,6 +817,17 @@ namespace AVSI {
     shared_ptr<AST> derivator_for_special_function(shared_ptr<AST> ast, int index);
 
     shared_ptr<AST> derivator_for_member_function(shared_ptr<AST> ast, int index);
+
+    /* built-in function */
+    bool SF_convert_binop_operand(FunctionCall *ast, llvm::Value *lv, llvm::Value *rv);
+
+    bool SF_is_builtin(FunctionCall *ast);
+
+    llvm::Value *SF_builtin(FunctionCall *ast);
+
+    llvm::Value *SF_min(FunctionCall *ast);
+
+    llvm::Value *SF_max(FunctionCall *ast);
 } // namespace AVSI
 
 #endif
